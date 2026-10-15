@@ -411,7 +411,7 @@ async function generateLines(run){
  }
  if(!lines.length)throw Error("No active employees have eligible simulated compensation or hours for this period");
  const counts=summarizeLines(lines);
- if(!confirm("Generate "+counts.employees+" employee pay lines with fictional gross pay "+money(counts.grossCents)+"? Existing draft lines will be replaced."))return;
+ if(!await confirmAction("Generate payroll preview","Generate "+counts.employees+" employee pay lines with fictional gross pay "+money(counts.grossCents)+"? Existing draft lines will be replaced."))return;
  const base=collection(db,"tenants",state.tenantId,"payrollRuns",run.id,"lines");
  const batch=writeBatch(db);
  for(const old of state.lines)if(!lines.some(x=>x.employeeId===old.employeeId))batch.delete(doc(base,old.employeeId));
@@ -427,7 +427,7 @@ async function moveRun(run,next){
  if(next==="approved"||next==="rejected")fields.approvedBy=state.user.uid;
  if(next==="finalized")fields.finalizedBy=state.user.uid;
  if(next==="draft"){fields.submittedBy="";fields.approvedBy="";}
- if(!confirm("Change this fictional payroll run to "+next+"?"))return;
+ if(!await confirmAction("Confirm payroll status","Change this fictional payroll run to "+next+"?"))return;
  await updateDoc(doc(db,"tenants",state.tenantId,"payrollRuns",run.id),fields);
  await refreshCompany();await selectRun(run.id);
  toast("Payroll run marked "+next+".");
@@ -437,8 +437,10 @@ $("inviteForm").addEventListener("submit",async event=>{
  const email=cleanEmail($("inviteEmail").value),role=$("inviteRole").value;
  if(!email||!["client_admin","payroll_specialist","viewer"].includes(role))return;
  try{
-  await setDoc(doc(db,"tenants",state.tenantId,"invites",email),
-    {email,role,createdAt:serverTimestamp(),createdBy:state.user.uid});
+  const invitation=doc(db,"tenants",state.tenantId,"invites",email);
+  const existing=await getDoc(invitation);
+  if(existing.exists())await updateDoc(invitation,{role});
+  else await setDoc(invitation,{email,role,createdAt:serverTimestamp(),createdBy:state.user.uid});
   const link=location.origin+location.pathname+"#join="+encodeURIComponent(state.tenantId);
   $("inviteShare").classList.remove("hidden");
   $("inviteShare").replaceChildren(mk("strong","","Invitation saved"),mk("small","","Send the invitee this company link: "+link));
@@ -467,21 +469,22 @@ $("timeDate").value=localDate(new Date());
 const now=new Date(),before=new Date();before.setDate(now.getDate()-13);
 $("periodStart").value=localDate(before);$("periodEnd").value=localDate(now);
 const payday=new Date();payday.setDate(now.getDate()+3);$("payDate").value=localDate(payday);
+async function confirmAction(title,message){
+ const modal=$("sterlingDialog");
+ if(!modal?.showModal)return false;
+ $("dialogTitle").textContent=title;$("dialogText").textContent=message;
+ modal.showModal();
+ return await new Promise(resolve=>{
+  modal.addEventListener("close",()=>resolve(modal.returnValue==="confirm"),{once:true});
+ });
+}
 let phase2=null,phase2Pending=null;
 async function initializePhase2(){
  if(phase2)return phase2;
  if(!phase2Pending){
   phase2Pending=mountPhase2({
    db,getState:()=>state,refreshCompany,loadTenantDirectory,
-   notify:toast,confirmAction:async(title,message)=>{
-    const modal=$("sterlingDialog");
-    $("dialogTitle").textContent=title;$("dialogText").textContent=message;
-    if(!modal?.showModal)return false;
-    modal.showModal();
-    return await new Promise(resolve=>{
-     modal.addEventListener("close",()=>resolve(modal.returnValue==="confirm"),{once:true});
-    });
-   }
+   notify:toast,confirmAction
   }).then(x=>(phase2=x,x)).catch(error=>{phase2Pending=null;throw error});
  }
  return phase2Pending;
