@@ -1,0 +1,76 @@
+<div class="service-hero">
+ <div><div class="eyebrow">CLIENT RELATIONSHIPS / SIMULATION</div><h2>Billing and support, in one place.</h2><p class="muted">Manage fictional subscriptions, invoice history and client support without real charges or banking details.</p></div>
+ <div class="service-toolbar"><button id="p5Refresh" class="btn">Refresh workspace</button><button id="p5Export" class="btn primary">Export invoice statement</button></div>
+</div>
+<div class="metric-grid compact" id="p5Metrics"></div>
+<div class="service-tabs" role="tablist" aria-label="Client services">
+ <button data-p5-tab="overview" class="active" type="button">Overview & plan</button>
+ <button data-p5-tab="invoices" type="button">Invoices & ledger</button>
+ <button data-p5-tab="support" type="button">Support desk</button>
+</div>
+<section data-p5-panel="overview" class="service-panel">
+ <div class="ops-grid">
+ <article class="panel"><div class="eyebrow">SERVICE AGREEMENT</div><h2>Client plan</h2><p class="muted">All plan rates and contract states are simulated.</p>
+ <form id="p5AgreementForm" class="form-stack">
+ <div class="two-fields"><label>Plan<select id="p5Tier"><option value="starter">Starter</option><option value="standard">Standard</option><option value="enterprise">Enterprise</option></select></label>
+ <label>Billing cycle<select id="p5BillingCycle"><option value="monthly">Monthly</option><option value="annual">Annual</option></select></label></div>
+ <div class="two-fields"><label>Agreement state<select id="p5AgreementStatus"><option value="trial">Trial</option><option value="active">Active</option><option value="paused">Paused</option><option value="cancelled">Cancelled</option></select></label>
+ <label>Renewal date<input id="p5Renewal" type="date"></label></div>
+ <label>Simulated seat limit<input id="p5Seats" type="number" min="0" max="100000" value="0"></label>
+ <button class="btn primary" type="submit">Save service agreement</button></form>
+ <div id="p5AgreementSummary" class="data-note"></div></article>
+ <article class="panel"><div class="eyebrow">ACTION CENTER</div><h2>What needs attention</h2><div id="p5Attention" class="list"></div>
+ <div class="data-note"><strong>Not a payment system</strong><small>Invoices, subscriptions, payments, credits and their status changes exist only inside this simulation.</small></div></article>
+ </div>
+</section>
+<section data-p5-panel="invoices" class="service-panel hidden">
+ <div class="two-col asymmetric">
+  <article class="panel"><div class="eyebrow">INVOICE CREATION</div><h2>New fictional invoice</h2>
+   <form id="p5InvoiceForm" class="form-stack">
+    <label>Description<input id="p5Description" maxlength="160" required placeholder="Payroll processing services"></label>
+    <div class="two-fields"><label>Amount ($)<input id="p5Amount" type="number" min=".01" step=".01" required></label><label>Due date<input id="p5Due" type="date"></label></div>
+    <button class="btn primary" type="submit">Create draft invoice</button>
+   </form>
+  </article>
+  <article class="panel"><div class="section-heading"><h2>Invoice register</h2><span class="subtle-pill">FICTIONAL</span></div>
+   <label>Search invoices<input id="p5InvoiceSearch" type="search" placeholder="Description or status"></label>
+   <div id="p5Invoices" class="list"></div><button id="p5MoreInvoices" class="btn hidden">Load more invoices</button>
+  </article>
+ </div>
+ <article class="panel phase3-spaced" id="p5LedgerPanel">
+  <div class="section-heading"><h2>Invoice ledger</h2><span class="subtle-pill">APPEND-ONLY EVENTS</span></div>
+  <p class="muted">Select an invoice to inspect mock payments, credits and adjustments. Ledger entries are immutable.</p>
+  <div id="p5SelectedInvoice" class="data-note">Choose an invoice in the register above.</div>
+  <div id="p5Ledger" class="list"></div>
+  <form id="p5EventForm" class="form-stack hidden">
+   <div class="three-fields"><label>Event<select id="p5EventType"><option value="payment">Mock payment</option><option value="credit">Mock credit</option><option value="adjustment">Mock adjustment</option></select></label>
+   <label>Amount ($)<input id="p5EventAmount" type="number" min=".01" step=".01" required></label>
+   <label>Note<input id="p5EventNote" maxlength="300" minlength="6" required placeholder="Explain the fictional entry"></label></div>
+   <button class="btn primary" type="submit">Post fictional ledger event</button>
+  </form>
+ </article>
+</section>
+<section data-p5-panel="support" class="service-panel hidden">
+ <div class="two-col asymmetric">
+  <article class="panel"><div class="eyebrow">CLIENT SUPPORT</div><h2>Open a case</h2>
+   <form id="p5TicketForm" class="form-stack">
+    <label>Subject<input id="p5Subject" maxlength="120" required></label>
+    <div class="two-fields"><label>Category<select id="p5Category"><option value="payroll">Payroll</option><option value="employee">Employee</option><option value="billing">Billing</option><option value="technical">Technical</option><option value="general">General</option></select></label>
+    <label>Priority<select id="p5Priority"><option value="normal">Normal</option><option value="low">Low</option><option value="high">High</option><option value="urgent">Urgent</option></select></label></div>
+    <label>Details<textarea id="p5Details" maxlength="1500" minlength="10" rows="4" required></textarea></label>
+    <button class="btn primary" type="submit">Submit support case</button>
+   </form>
+  </article>
+  <article class="panel"><div class="section-heading"><h2>Support queue</h2><span class="subtle-pill" id="p5SupportCount">0 cases</span></div>
+   <div class="two-fields"><label>Search<input id="p5TicketSearch" type="search" placeholder="Subject or description"></label><label>Filter<select id="p5TicketFilter"><option value="all">All statuses</option><option value="open">Open</option><option value="in_progress">In progress</option><option value="waiting_on_client">Waiting on client</option><option value="resolved">Resolved</option><option value="closed">Closed</option></select></label></div>
+   <div id="p5Tickets" class="list"></div><button id="p5MoreTickets" class="btn hidden">Load more cases</button>
+  </article>
+ </div>
+ <article class="panel phase3-spaced"><h2>Case conversation</h2><div id="p5SelectedTicket" class="data-note">Choose a case in the queue.</div>
+  <div id="p5Notes" class="list"></div>
+  <form id="p5NoteForm" class="form-stack hidden"><label>Message<textarea id="p5NoteText" maxlength="1600" minlength="2" rows="3" required></textarea></label>
+   <label class="checkline"><input type="checkbox" id="p5Internal"> Internal staff note (hidden from regular client viewers)</label>
+   <button class="btn primary" type="submit">Add case update</button>
+  </form>
+ </article>
+</section>
