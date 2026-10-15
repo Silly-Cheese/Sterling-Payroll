@@ -178,6 +178,35 @@ service cloud.firestore {
      exists(/databases/$(database)/documents/tenants/$(t)/employeeLinks/$(uid));
     allow update, delete: if false;
    }
+   // Text-only fictional requests: no uploads, real IDs, or bank/tax data.
+   match /employeeRequests/{uid}/items/{requestId} {
+    allow get, list: if clientAdmin(t) || (signedIn() && request.auth.uid == uid && employeeLinked(t));
+    allow create: if clientAdmin(t) &&
+     exists(/databases/$(database)/documents/tenants/$(t)/employeeLinks/$(uid)) &&
+     request.resource.data.keys().hasOnly(['title','instructions','dueDate','status','createdBy','createdAt','response','updatedAt']) &&
+     text(request.resource.data.title,100) &&
+     text(request.resource.data.instructions,800) &&
+     request.resource.data.dueDate is string &&
+     (request.resource.data.dueDate == '' || date(request.resource.data.dueDate)) &&
+     request.resource.data.status == 'pending' &&
+     request.resource.data.createdBy == request.auth.uid &&
+     request.resource.data.response == '' &&
+     request.resource.data.createdAt == request.time &&
+     request.resource.data.updatedAt == request.time;
+    allow update: if (
+     (signedIn() && request.auth.uid == uid && employeeLinked(t) &&
+      resource.data.status == 'pending' && request.resource.data.status == 'submitted' &&
+      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','response','updatedAt']) &&
+      request.resource.data.response is string && request.resource.data.response.size() <= 500 &&
+      request.resource.data.updatedAt == request.time)
+     ||
+     (clientAdmin(t) && resource.data.status == 'submitted' &&
+      request.resource.data.status in ['completed','pending'] &&
+      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt']) &&
+      request.resource.data.updatedAt == request.time)
+     );
+    allow delete: if false;
+   }
    match /employees/{e} {
     allow get: if clientView(t) || ownsEmployee(t,e);
     allow list: if clientView(t);
