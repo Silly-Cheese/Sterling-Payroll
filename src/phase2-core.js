@@ -2,7 +2,7 @@ import {toCents} from "./payroll-core.js";
 export const CLIENT_PLANS=Object.freeze(["starter","standard","enterprise"]);
 export const EMPLOYEE_STATUSES=Object.freeze(["active","leave","inactive"]);
 export const PAY_FREQUENCIES=Object.freeze(["weekly","biweekly","semimonthly","monthly"]);
-export const ACCESS_ROLES=Object.freeze(["client_admin","payroll_specialist","viewer"]);
+export const ACCESS_ROLES=Object.freeze(["client_admin","payroll_specialist","viewer","employee"]);
 const safe=(s,n)=>String(s??"").trim().slice(0,n);
 export function parseCsv(text){
  if(typeof text!=="string"||text.length>160000)throw Error("CSV file is too large");
