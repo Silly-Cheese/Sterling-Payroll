@@ -18,18 +18,21 @@ Open the project's Firestore Database, create it if necessary, and publish the c
 
 GitHub commits **do not automatically publish** Firestore security rules.
 
-## 3. Grant the first Sterling platform administrator
+## 3. One-time owner bootstrap — no manual UID configuration
 
-There is no public first-registrant owner claim. This prevents an arbitrary visitor from seizing a public payroll platform.
+The platform now includes **Verify and complete owner setup** for its designated owner.
 
-1. Register through Sterling Payroll (or create your account through Firebase Authentication).
-2. Find the intended owner's Firebase Authentication UID under Authentication → Users.
-3. In Firestore → Data, create collection **platformAdmins**.
-4. Create a document whose document ID exactly equals the intended owner's Authentication UID.
-5. Set **active** to boolean **true**, and **role** to string **owner**.
-6. Sign out and back in. The Client Companies section will now be available.
+**Before the very first claim**, replace the placeholder address in the `ownerEmail()` function near the top of [firestore.rules](./firestore.rules) with the exact email of the intended owner account, then publish those rules in Firebase Console → Firestore Database → Rules. This is a one-time allowlist configuration; the email must match the **Firebase Authentication verified email**, not merely a typed email field.
 
-Never add private Admin SDK keys, passwords or service account JSON to GitHub Pages.
+1. Open the Sterling Payroll website and register or sign in with that email.
+2. Verify your email address using Firebase Authentication's verification message.
+3. Return to the website and select **Verify and complete owner setup**.
+4. Corporate setup atomically creates `system/bootstrap` and `platformAdmins/{your signed-in UID}`; it fails if already initialized.
+5. Your account receives the Sterling owner role without manually copying any UID into Firestore.
+
+**Why the email allowlist is essential:** Allowing the first arbitrary visitor to claim owner on a public GitHub Pages site would expose every client's HR and fictional payroll data. Until `ownerEmail()` is configured and the updated rules are published, the owner claim is deliberately blocked. Never use a shared address controlled by someone else.
+
+If a platform administrator already exists, the system will keep its existing authorization. The one-time bootstrap is not a backdoor that can reset ownership.
 
 ## 4. Publish on GitHub Pages
 
@@ -85,3 +88,15 @@ Simulation uses a 1.5× overtime multiplier for illustration and subtracts ficti
 - tests/payroll.test.mjs — test coverage
 - .github/workflows/verify.yml — CI
 - .github/workflows/pages.yml — static hosting
+
+## Phase 2 — Clients, personnel and team administration
+
+- **Client Companies** includes client editing (name, industry, contact, service tier, internal notes and active/suspended status).
+- **Personnel Operations** includes employee editing, pay frequency changes, CSV import preview, and multi-select employment status updates.
+- **Team Access** includes member role changes and staff suspension, subject to tenant authorization rules.
+- Employee, timekeeping and payroll lists support bounded **Load more** pagination. For safety, payroll generation is blocked when not all employee/time records have been loaded.
+- Client-role updates are not available to the affected member themselves. When a client is suspended, ordinary client members lose access while Sterling platform administrators retain oversight.
+
+**Required Firebase update:** Re-publish the latest `firestore.rules` from the repository. GitHub Pages does not deploy Firestore Security Rules.
+
+**Phase 2 does not create real employment records or pay anyone.** Do not upload real taxpayer identifiers or banking data to this simulator.
