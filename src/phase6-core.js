@@ -23,7 +23,8 @@ export function assessIntegrity({employees=[],timeEntries=[],runs=[],invoices=[]
   const lines=linesByRun[r.id];if(!lines)continue;
   for(const line of lines){
    const a=["regularCents","overtimeCents","bonusCents","deductionCents","grossCents","netCents"].map(k=>line[k]);
-   if(!a.every(v=>Number.isSafeInteger(v)&&v>=0)||a[0]+a[1]+a[2]!==a[4]||a[4]-a[3]!==a[5])issues.push("Pay line in period "+r.id+" does not reconcile.");
+   const commission=line.commissionCents||0;
+   if(!a.every(v=>Number.isSafeInteger(v)&&v>=0)||!Number.isSafeInteger(commission)||commission<0||a[0]+a[1]+a[2]+commission!==a[4]||a[4]-a[3]!==a[5])issues.push("Pay line in period "+r.id+" does not reconcile.");
   }
  }
  for(const invoice of invoices)if(!Number.isSafeInteger(invoice.amountCents)||invoice.amountCents<0)issues.push("A fictional invoice has invalid amount data.");
