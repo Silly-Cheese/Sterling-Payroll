@@ -7,6 +7,7 @@ import {mountPhase3} from "./phase3.js";
 // Phase 4 loads lazily, so a pending Pages deployment cannot break the sign-in screen.
 import {buildPayrollPreview,DEFAULT_POLICY} from "./phase3-core.js";
 import {mountPhase2} from "./phase2.js";
+import {createOwnerRecordActions} from "./record-actions.js";
 
 const app=initializeApp({
  apiKey:"AIzaSyBAAAUc0nDiiD7zfURjohVj1UBA-1yQmV0",
@@ -329,6 +330,7 @@ function renderEmployees(){
    auditClient(update,"personnel","employee-status",e.id,e.status+" → "+status);await update.commit();
    await refreshCompany();toast("Employee status updated.");
   },"small")]:[];
+  if(state.platformOwner)actions.push(button("Archive",()=>ownerActions.archiveEmployee(e),"small"),button("Delete",()=>ownerActions.remove("employees",e),"small danger"));
   el.append(item(e.displayName,description,actions,e.status,e.status==="active"?"success":""));
  }
  const selector=$("timeEmployee");const old=selector.value;selector.replaceChildren(new Option("Select an employee",""));
@@ -382,7 +384,8 @@ function renderTime(){
  if(!state.time.length)return empty(el,"No time entries have been recorded.");
  for(const entry of state.time.slice(0,100)){
   const employee=state.employees.find(e=>e.id===entry.employeeId);
-  el.append(item(employee?.displayName||"Former employee",entry.workDate+" • "+entry.regularHours+" regular • "+entry.overtimeHours+" overtime"+(entry.note?" • "+entry.note:""),[],entry.status||"pending"));
+  const actions=state.platformOwner?[button("Delete",()=>ownerActions.remove("timeEntries",entry),"small danger")]:[];
+  el.append(item(employee?.displayName||"Former employee",entry.workDate+" • "+entry.regularHours+" regular • "+entry.overtimeHours+" overtime"+(entry.note?" • "+entry.note:""),actions,entry.status||"pending"));
  }
 }
 $("runForm").addEventListener("submit",async event=>{
@@ -402,7 +405,7 @@ function renderRuns(){
  for(const run of state.runs){
   const css=run.status==="finalized"?"success":run.status==="rejected"?"danger":"";
   el.append(item(run.periodStart+" — "+run.periodEnd,"Pay date "+run.payDate,
-   [button("Open",()=>selectRun(run.id),"small")],run.status,css));
+   [button("Open",()=>selectRun(run.id),"small"),...(state.platformOwner?[run.status==="draft"||run.status==="rejected"?button("Delete",()=>ownerActions.remove("payrollRuns",run),"small danger"):button("Correct / void",()=>go("owner"),"small")]:[])],run.status,css));
  }
  if(!state.selectedRun||!state.runs.some(r=>r.id===state.selectedRun))$("runDetails").classList.add("hidden");
 }
@@ -564,6 +567,9 @@ async function confirmAction(title,message){
  });
 }
 let phase2=null,phase2Pending=null,phase3=null,phase4=null,phase5=null,phase6=null,ownerUI=null,staffUI=null;
+const ownerActions=createOwnerRecordActions({db,getState:()=>state,notify:toast,
+ onChanged:async kind=>{if(["billingInvoices","supportTickets"].includes(kind))await phase5?.refresh?.();else await refreshCompany()}
+});
 async function initializePhase2(){
  if(phase2)return phase2;
  if(!phase2Pending){
