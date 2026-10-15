@@ -165,7 +165,7 @@ export function mountOwnerControls({db,getState,notify,confirmAction,refreshComp
  };
  async function deleteSelected(archiveOnly){
   try{
-   ensureOwner();const why=reason($("ownerReason").value),kind=$("ownerKind").value,record=records.find(d=>d.id===$("ownerRecord").value);
+   ensureOwner();let why=archiveOnly?reason($("ownerReason").value):"";const kind=$("ownerKind").value,record=records.find(d=>d.id===$("ownerRecord").value);
    if(!record)throw Error("Select an existing record");
    const previous=record.data(),batch=writeBatch(db);
    if(!archiveOnly&&kind==="employees"){
@@ -196,7 +196,12 @@ export function mountOwnerControls({db,getState,notify,confirmAction,refreshComp
     batch.delete(record.ref);
    }
    const operation=archiveOnly?"archive":"delete";
-   if(!await confirmAction("Owner "+operation,"Confirm "+operation+" of "+textFor(kind,record)+"? A separate audit record will remain."))return;
+   if(!archiveOnly){
+    if(typeof requestDeletion!=="function")throw Error("Custom deletion confirmation is unavailable");
+    const decision=await requestDeletion({title:"Delete "+textFor(kind,record),recordLabel:textFor(kind,record),message:"Delete this fictional record and any supported child records permanently? You cannot undo this operation."});
+    if(!decision)return;
+    why=reason(decision.reason);
+   }else if(!await confirmAction("Archive record","Archive "+textFor(kind,record)+"? You can still review historical records."))return;
    await auditBatch(batch,kind,record.id,operation,why,previous);
    await batch.commit();
    notify("Owner "+operation+" completed.");await refresh();await refreshCompany();
