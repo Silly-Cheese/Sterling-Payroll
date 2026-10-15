@@ -126,6 +126,10 @@ async function loadTenantDirectory(){
 }
 async function chooseTenant(id,writeStorage=true){
  state.tenantId=id;state.role="";state.selectedRun=null;state.lines=[];
+ // Never carry sensitive personnel data from a previous tenant into another workspace.
+ state.employees=[];state.time=[];state.runs=[];
+ state.employeeCursor=null;state.timeCursor=null;state.runCursor=null;
+ state.moreEmployees=false;state.moreTime=false;state.moreRuns=false;
  if(state.user&&writeStorage)localStorage.setItem("sterling-payroll-company-"+state.user.uid,id);
  $("companySelect").value=id;
  if(id){
@@ -186,7 +190,12 @@ async function refreshCompany(){
   $("loadMoreEmployees").classList.toggle("hidden",!state.moreEmployees);
   $("loadMoreTime").classList.toggle("hidden",!state.moreTime);
   $("loadMoreRuns").classList.toggle("hidden",!state.moreRuns);
- }catch(e){fail(e,"Company data could not load")}
+ }catch(e){
+  if(state.tenantId!==id)return;
+  state.employees=[];state.time=[];state.runs=[];state.lines=[];state.selectedRun=null;
+  state.moreEmployees=false;state.moreTime=false;state.moreRuns=false;
+  fail(e,"Company data could not load");
+ }
  renderDashboard();renderEmployees();renderTime();renderRuns();phase2?.refresh();
 }
 function renderDashboard(){
