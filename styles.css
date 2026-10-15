@@ -8,3 +8,42 @@ input,select{border-radius:10px;padding:11px 12px;color:var(--ink);background:#0
 @media(max-width:400px){.metric-grid,.metric-grid.compact{grid-template-columns:1fr}.auth-features{gap:5px}.auth-features span{font-size:10px}.topbar-title{display:none}.company-switch select{width:calc(100vw - 95px)}}
 
 .adjust-input{width:85px;max-width:none;padding:7px 8px;margin:0 5px 5px 0;font-size:11px}.run-details td:last-child{min-width:300px}.run-details td:last-child .btn{margin-left:3px}
+
+/* Phase 2: consistent multi-client operations and Bootstrap */
+.ops-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.ops-grid .panel,.ops-grid input,.ops-grid select{min-width:0}
+.ops-grid .panel>label{margin-top:16px}
+.ops-grid form{margin-top:19px}
+.ops-grid .form-stack{gap:17px}
+.divider{height:1px;background:var(--line);margin:25px 0}
+#phase2ClientTools{margin-top:23px}
+#phase2ClientTools form label{min-width:0}
+#phase2AccessTools{margin-top:20px}
+#p2Members .list-item{align-items:center}
+#p2Members .item-actions{flex-wrap:wrap}
+#p2Members select{width:clamp(135px,12vw,190px)}
+.bulk-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:12px;padding:13px 0 16px;border-bottom:1px solid var(--line)}
+.bulk-toolbar>select{min-width:120px}
+.checkline{display:flex;flex-direction:row;align-items:center;gap:7px;white-space:nowrap}
+.checkline input{width:auto}
+.employee-check{display:flex;flex-direction:row;align-items:center;gap:15px;border:1px solid #2a3436;background:#161b1f;border-radius:11px;padding:13px 16px;cursor:pointer;min-width:0}
+.employee-check input{width:18px;height:18px;flex-shrink:0;accent-color:#cdb488}
+.employee-check span{min-width:0}
+.employee-check strong,.employee-check small{display:block}
+.employee-check strong{font-size:12px;color:#eae5dc}
+.employee-check small{font-size:11px;color:var(--muted);margin-top:4px}
+#p2ImportStatus{font-size:11px;line-height:1.6}
+#p2PreviewList{max-height:370px;overflow-y:auto}
+#p2PreviewList .list-item{padding:10px 13px}
+.bootstrap-banner{margin:0 0 21px;border-color:#68573c;background:linear-gradient(130deg,#28231c,#14171b)}
+.bootstrap-banner h2{font-size:27px;margin-bottom:12px}
+.bootstrap-banner .btn{margin-top:12px}
+.sterling-dialog{color:var(--ink);background:#161b1f;border:1px solid #65573f;border-radius:16px;width:min(450px,calc(100% - 30px));padding:24px;box-shadow:0 25px 90px #000a}
+.sterling-dialog::backdrop{background:#020506c9}
+.sterling-dialog h2{margin-bottom:12px}
+.sterling-dialog p{line-height:1.7}
+.sterling-dialog .actions{justify-content:flex-end;margin-top:24px}
+#page-operations .panel{min-width:0}
+#page-operations #p2Person{width:100%}
+@media(max-width:1020px){.ops-grid{grid-template-columns:1fr}}
+@media(max-width:760px){.bulk-toolbar{align-items:stretch}.bulk-toolbar select,.bulk-toolbar .btn{flex:1}.employee-check{padding:12px}.ops-grid .panel{padding:18px}#p2Members .list-item{flex-direction:column;align-items:flex-start}#p2Members .item-actions{justify-content:flex-start;width:100%}}
