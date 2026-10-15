@@ -23,6 +23,16 @@ service cloud.firestore {
    allow list: if platform();
    allow write: if false;
   }
+  // Private per-user directory of accepted client workspaces; never a permission grant by itself.
+  match /userTenants/{uid}/items/{t} {
+   allow get,list: if signedIn() && request.auth.uid == uid;
+   allow create: if signedIn() && request.auth.uid == uid &&
+     request.resource.data.keys().hasOnly(['tenantId','joinedAt']) &&
+     request.resource.data.tenantId == t &&
+     existsAfter(/databases/$(database)/documents/tenants/$(t)/members/$(uid)) &&
+     getAfter(/databases/$(database)/documents/tenants/$(t)/members/$(uid)).data.status == 'active';
+   allow update,delete: if false;
+  }
   match /tenants/{t} {
    allow read: if clientView(t);
    allow create: if platform() &&
@@ -47,7 +57,7 @@ service cloud.firestore {
       request.resource.data.email.size() <= 254 &&
       request.resource.data.role in ['client_admin','payroll_specialist','viewer'] &&
       request.resource.data.createdBy == request.auth.uid;
-    allow update,delete: if clientAdmin(t) && request.resource.data == resource.data; // effectively immutable
+    allow update,delete: if false;
    }
 
    match /members/{uid} {
