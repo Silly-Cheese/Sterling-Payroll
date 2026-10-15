@@ -28,7 +28,7 @@
     </form>
     <p class="fine-print">These preferences do not change employer-controlled pay rates, names on payroll statements, or HR records.</p>
   </article>
-  <article class="panel">
+  <article class="panel" id="p4NewsPanel">
     <div class="section-heading"><h2>Company announcements</h2><span class="subtle-pill">COMPANY NEWS</span></div>
     <form id="p4AnnouncementForm" class="form-stack hidden">
       <label>Announcement title<input id="p4AnnouncementTitle" maxlength="100" required></label>
@@ -39,13 +39,13 @@
   </article>
 </div>
 <div class="ops-grid phase3-spaced">
-  <article class="panel">
+  <article class="panel" id="p4PayPanel">
     <div class="section-heading"><h2>My simulated pay</h2><span class="subtle-pill">FINALIZED ONLY</span></div>
     <p class="muted">View your own finalized pay lines and print or save a fictional paystub. Drafts and other employees' pay are inaccessible.</p>
     <div id="p4PayHistory" class="list"></div>
     <p class="fine-print">Up to 50 finalized runs are loaded initially. Large histories will receive additional pagination in a later release.</p>
   </article>
-  <article class="panel">
+  <article class="panel" id="p4MessagesPanel">
     <div class="section-heading"><h2>Company messages</h2><span class="subtle-pill">PRIVATE THREAD</span></div>
     <div id="p4ThreadSelectorWrap" class="hidden">
       <label>Employee conversation<select id="p4ThreadSelector"><option value="">Select linked employee</option></select></label>
@@ -67,17 +67,6 @@
     <label>Instructions<textarea id="p4RequestInstructions" required maxlength="800" rows="3"></textarea></label>
     <label>Due date (optional)<input id="p4RequestDue" type="date"></label>
     <button class="btn primary" type="submit">Assign request to selected employee</button>
-  </form>
-  <div id="p4Requests" class="list"></div>
-</article>
-<article class="panel phase4-spaced" id="p4RequestsPanel">
-  <div class="section-heading"><div><div class="eyebrow">EMPLOYEE SELF-SERVICE</div><h2>Information requests</h2></div><span class="subtle-pill">TEXT ONLY</span></div>
-  <p class="muted">Employers can request non-sensitive information from linked employees. Do not upload banking, tax, government identification or other real personal documents.</p>
-  <form id="p4RequestForm" class="form-stack hidden">
-    <label>Request title<input id="p4RequestTitle" maxlength="100" required></label>
-    <label>Instructions<textarea id="p4RequestInstructions" maxlength="800" rows="3" required></textarea></label>
-    <label>Optional due date<input id="p4RequestDue" type="date"></label>
-    <button type="submit" class="btn primary">Send employee request</button>
   </form>
   <div id="p4Requests" class="list"></div>
 </article>
