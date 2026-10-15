@@ -41,6 +41,8 @@ export function createOwnerRecordActions({db,getState,notify,onChanged}){
    for(const c of ["lines","snapshots","revisions"])if(await existsChild(recordRef(kind,record.id),c))
     throw Error("This payroll period has "+c+". Preserve its history or use Owner Controls.");
   }
+  if(["timeCorrections","leaveRequests"].includes(kind)&&record.status==="approved")
+   throw Error("Approved correction and leave records must remain for payroll history; do not delete them.");
   if(kind==="billingInvoices"){
    if(!["draft","void"].includes(record.status))throw Error("Issue/settled invoices must be voided or retained before deletion.");
    if(await existsChild(recordRef(kind,record.id),"events"))throw Error("Invoice ledger entries exist and must be preserved; void this invoice instead.");
