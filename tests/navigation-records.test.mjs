@@ -20,11 +20,12 @@ test("Owner inline delete actions appear in the actual records",()=>{
   assert.ok(app.includes(phrase)||service.includes(phrase),phrase);
  }
  assert.match(manage,/if\(!S\(\)\.platformOwner/);
- assert.match(manage,/ensureSafe\(kind,latest\)/);
- assert.match(manage,/ownerAudit/);
+ assert.match(manage,/createDeletionEngine/);
+ assert.match(manage,/engine\.plan\(kind,record\.id/);
+ assert.match(manage,/engine\.execute\(plan,approval\.reason\)/);
 });
 test("Historical payroll, ledger and communication records cannot be orphaned",()=>{
- const module=read("src/record-actions.js");
+ const module=read("src/deletion-engine.js");
  assert.match(module,/timeCorrections/);
  assert.match(module,/employeeLinks/);
  assert.match(module,/payrollRuns:\["lines","snapshots","revisions"\]/);
@@ -43,7 +44,7 @@ test("Owner deletion uses the shared custom modal with typed phrase",()=>{
  assert.match(dialogs,/deleteRecord/);
  assert.match(dialogs,/saCancel/);
  assert.match(manager,/requestDeletion\(\{/);
- assert.match(manager,/ownerAudit/);
+ assert.match(manager,/engine\.execute\(plan,approval\.reason\)/);
  assert.match(app,/createSterlingModals\(\)/);
 });
 test("Owner page removed without losing contextual authority",()=>{
@@ -65,8 +66,25 @@ test("Directory search uses bounded queries and rejects stale company responses"
 });
 
 test("owner can permanently delete finalized or voided payroll from its run row",()=>{
- const app=read("src/app.js"),owner=read("src/owner.js");
+ const app=read("src/app.js"),engine=read("src/deletion-engine.js");
  assert.match(app,/actions\.push\(button\("Delete permanently",\(\)=>ownerActions\.remove\("payrollRuns",run\)/);
- assert.doesNotMatch(owner,/Void it instead of orphaning history/);
- assert.match(owner,/payrollRuns:\["lines","snapshots","revisions"\]/);
+ assert.match(engine,/payrollRuns:\["lines","snapshots","revisions"\]/);
+ assert.match(engine,/kind==="payrollRuns"/);
+});
+
+test("user workflows hide creation forms until requested and preserve role gating",()=>{
+ const app=read("src/app.js"),portal=read("src/phase4.js"),service=read("src/phase5.js");
+ const html=read("index.html"),deploy=read(".github/workflows/pages.yml");
+ assert.match(app,/compactForm\(\{formId,label,summary\}\)/);
+ assert.match(service,/compactForm\(\{root,formId:"p5InvoiceForm"/);
+ assert.match(service,/compactForm\(\{root,formId:"p5TicketForm"/);
+ assert.match(portal,/buildPortalTabs\(root,/);
+ assert.doesNotMatch(html,/data-page="owner"/);
+ for(const file of ["src/modals.js","src/deletion-engine.js","src/workspace-ui.js"])assert.ok(deploy.includes(file));
+});
+test("employee portal has one requests panel and one request loader",()=>{
+ const html=read("phase4.html"),app=read("src/phase4.js");
+ assert.equal((html.match(/id="p4Requests"/g)||[]).length,1);
+ assert.equal((html.match(/id="p4RequestsPanel"/g)||[]).length,1);
+ assert.equal((app.match(/async function fetchRequests\(/g)||[]).length,1);
 });
