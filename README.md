@@ -17,7 +17,13 @@ Sterling Payroll is a standalone, multi-client roleplay payroll platform. It doe
 Initial foundation includes working versions of client onboarding, employee records and simulated payroll operations so it is useful from the first release; advanced workflows arrive across later phases.
 
 ## Quick start
-See [SETUP.md](./SETUP.md) for Firebase Authentication, Firestore rules deployment and platform owner assignment. **No one becomes platform owner by registering**: assign the intended owner's Firebase Auth UID to `platformAdmins/{uid}` from the trusted Firebase console, then sign in.
+See [SETUP.md](./SETUP.md) for Firebase Authentication, Firestore rules deployment and platform owner assignment. **No one becomes platform owner by registering**: configure the designated verified owner email once in `firestore.rules`, publish those rules, then sign in and use the in-app **Complete owner setup** action. No manual UID entry is required.
+
+## Phase 2 features
+- Client company management: contact, service tier, industry, notes and suspension.
+- Personnel operations: edit records, fictional compensation, lifecycle status and CSV bulk import.
+- Staff permissions: manage roles and suspend members, with self-role changes blocked.
+- Paginated employee, timekeeping and payroll lists; full-list checks before payroll generation.
 
 ## Hosting
 Static web frontend, compatible with GitHub Pages; Firebase project: `sterling-payroll-5d200`.
