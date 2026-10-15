@@ -113,3 +113,12 @@ The Client Services page includes simulated service invoices (draft, issued, set
 Publishing JavaScript to GitHub Pages does not update Firestore authorization. Owner corrections, employee linking and Phase 5 invoicing will fail with `permission-denied` until the current rules are published.
 
 Owner Controls also allow directly overriding time-entry, paid-leave and correction-request approval statuses, with a required reason and an owner action record. Such changes do not retroactively recompute finalized pay lines; use the finalized-period correction editor to revise fictional pay values in place.
+
+
+## Owner second-party approval override
+
+The trusted owner can now bypass normal independent reviewer requirements for fictional payroll periods (draft, submitted, approved, rejected and finalized) and for time entries, correction requests and paid leave (pending, approved and rejected). Every override requires a reason, confirmation and a recorded actor. Payroll signoff changes create a before/after revision linked to the same payroll run. These are owner-only exceptions; ordinary client and payroll accounts must continue to follow separation-of-duties rules.
+
+Go to **Owner Controls** → choose company → **Record type** → select the specific record → choose outcome → enter reason → **Override approval / signoff**. Payroll Runs and Phase 3 review queues also include **Owner signoff / Owner override** shortcuts that open the chosen record directly.
+
+Permanent deletion of finalized payroll runs with associated lines, snapshots and revisions is supported by the owner for a bounded set of child documents in a single Firestore batch. Oversized child collections remain restricted to prevent partial or orphaned records. The updated Firestore Rules must be manually published in Firebase Console; publishing GitHub Pages alone does not grant the new owner signoff or deletion permissions.
