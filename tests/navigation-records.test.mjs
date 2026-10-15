@@ -27,8 +27,8 @@ test("Historical payroll, ledger and communication records cannot be orphaned",(
  const module=read("src/record-actions.js");
  assert.match(module,/timeCorrections/);
  assert.match(module,/employeeLinks/);
- assert.match(module,/for\(const c of \["lines","snapshots","revisions"\]\)/);
- assert.match(module,/events"\)/);
+ assert.match(module,/payrollRuns:\["lines","snapshots","revisions"\]/);
+ assert.match(module,/billingInvoices:\["events"\]/);
  assert.match(module,/internalNotes/);
 });
 test("Deploy bundle contains owner record manager",()=>{
