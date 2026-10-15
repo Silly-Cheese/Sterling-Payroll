@@ -306,7 +306,7 @@ $("timeForm").addEventListener("submit",async event=>{
   await addDoc(sub("timeEntries"),{
    employeeId,workDate:$("timeDate").value,
    regularHours:hoursValue($("timeRegular").value),overtimeHours:hoursValue($("timeOvertime").value),
-   note:$("timeNote").value.trim(),createdAt:serverTimestamp(),createdBy:state.user.uid
+   note:$("timeNote").value.trim(),createdAt:serverTimestamp(),createdBy:state.user.uid,status:"pending",approvedBy:""
   });
   $("timeRegular").value="8";$("timeOvertime").value="0";$("timeNote").value="";
   await refreshCompany();toast("Simulated time entry recorded.");
@@ -317,7 +317,7 @@ function renderTime(){
  if(!state.time.length)return empty(el,"No time entries have been recorded.");
  for(const entry of state.time.slice(0,100)){
   const employee=state.employees.find(e=>e.id===entry.employeeId);
-  el.append(item(employee?.displayName||"Former employee",entry.workDate+" • "+entry.regularHours+" regular • "+entry.overtimeHours+" overtime"+(entry.note?" • "+entry.note:"")));
+  el.append(item(employee?.displayName||"Former employee",entry.workDate+" • "+entry.regularHours+" regular • "+entry.overtimeHours+" overtime"+(entry.note?" • "+entry.note:""),[],entry.status||"pending"));
  }
 }
 $("runForm").addEventListener("submit",async event=>{
@@ -413,25 +413,26 @@ function renderRunDetails(){
  controls.append(mk("small","fine-print","Approval and finalization require distinct authorized users. All results are fictional."));
 }
 async function generateLines(run){
- const employees=state.employees.filter(e=>e.status==="active"),lines=[];
- if(state.moreEmployees||state.moreTime)throw Error("Payroll source data is not fully loaded. Use Load more on Employees and Timekeeping to include all records.");
- if(employees.length>250)throw Error("Run exceeds the current 250-employee safeguard");
- for(const e of employees){
-  const relevant=state.time.filter(t=>t.employeeId===e.id&&t.workDate>=run.periodStart&&t.workDate<=run.periodEnd);
-  const regular=relevant.reduce((n,t)=>n+Number(t.regularHours||0),0);
-  const overtime=relevant.reduce((n,t)=>n+Number(t.overtimeHours||0),0);
-  if(e.payType==="hourly"&&regular+overtime===0)continue;
-  lines.push(calculateLine({employee:e,regularHours:Math.round(regular*100)/100,overtimeHours:Math.round(overtime*100)/100}));
- }
- if(!lines.length)throw Error("No active employees have eligible simulated compensation or hours for this period");
- const counts=summarizeLines(lines);
- if(!await confirmAction("Generate payroll preview","Generate "+counts.employees+" employee pay lines with fictional gross pay "+money(counts.grossCents)+"? Existing draft lines will be replaced."))return;
- const base=collection(db,"tenants",state.tenantId,"payrollRuns",run.id,"lines");
+ if(!canPayroll()||!phase3)throw Error("Payroll permissions or Phase 3 module unavailable");
+ const tenantId=state.tenantId;
+ const {preview,policy}=await phase3.buildPreview(run);
+ if(preview.issues.length)throw Error("Resolve "+preview.issues.length+" time and payroll exceptions before generating");
+ const lines=preview.lines;
+ if(!lines.length)throw Error("No approved simulated earnings for this period");
+ if(lines.length>250)throw Error("Draft exceeds 250-employee safety limit");
+ if(!await confirmAction("Generate payroll preview","Generate "+lines.length+" reviewed pay lines with "+money(preview.totals.grossCents)+" fictional gross pay? Existing draft lines will be replaced."))return;
+ if(tenantId!==state.tenantId)throw Error("Company changed during payroll preparation");
+ const base=collection(db,"tenants",tenantId,"payrollRuns",run.id,"lines");
+ const oldSnapshot=await getDocs(query(base,limit(251)));
+ if(oldSnapshot.size>250)throw Error("Existing lines exceed safe batch limit");
  const batch=writeBatch(db);
- for(const old of state.lines)if(!lines.some(x=>x.employeeId===old.employeeId))batch.delete(doc(base,old.employeeId));
+ const keys=new Set(lines.map(x=>x.employeeId));
+ for(const prior of oldSnapshot.docs)if(!keys.has(prior.id))batch.delete(doc(base,prior.id));
  for(const line of lines)batch.set(doc(base,line.employeeId),line);
  await batch.commit();
- await selectRun(run.id);toast("Simulated pay lines generated. Review before submitting.");
+ await phase3.saveSnapshot(run,{preview,policy});
+ await selectRun(run.id);
+ toast("Reviewed fictional payroll lines generated with a versioned snapshot.");
 }
 async function moveRun(run,next){
  if(!canTransition(run.status,next,state.user.uid,run,state.role,state.platform))throw Error("Your role or approval separation prevents this transition");
@@ -522,8 +523,9 @@ onAuthStateChanged(auth,async user=>{
   await loadTenantDirectory();
   await initializePhase2();
   if(!staffUI)staffUI=mountStaffAccounts({db,getState:()=>state,notify:toast,confirmAction});
-  if(!phase3)phase3=mountPhase3({db,getState:()=>state,refreshCompany,notify:toast,confirmAction});
+  if(!phase3)phase3=await mountPhase3({db,getState:()=>state,refreshCompany,notify:toast,confirmAction});
   if(state.platformOwner)await staffUI?.refresh();
+  if(state.tenantId)await phase3?.refresh();
   go("dashboard");
   if(!state.platform&&!state.tenants.length)toast("Client account ready. Sterling can assign you access to a company.");
  }catch(e){fail(e,"Workspace authorization failed");go("dashboard")}
