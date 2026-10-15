@@ -4,6 +4,7 @@ import {getFirestore,collection,doc,getDoc,getDocs,addDoc,setDoc,updateDoc,query
 import {calculateLine,summarizeLines,toCents,money,hoursValue,canTransition,validPeriod,cleanEmail} from "./payroll-core.js";
 import {mountStaffAccounts} from "./staff.js";
 import {mountPhase3} from "./phase3.js";
+import {mountPhase4} from "./phase4.js";
 import {buildPayrollPreview,DEFAULT_POLICY} from "./phase3-core.js";
 import {mountPhase2} from "./phase2.js";
 
@@ -18,6 +19,7 @@ const app=initializeApp({
 const auth=getAuth(app),db=getFirestore(app),$=id=>document.getElementById(id);
 const state={user:null,platform:false,platformOwner:false,platformWrite:false,platformRole:"client",tenants:[],tenantId:"",role:"",employees:[],time:[],runs:[],selectedRun:null,lines:[],page:"dashboard",register:false,moreEmployees:false,moreTime:false,moreRuns:false,employeeCursor:null,timeCursor:null,runCursor:null,clientCursor:null,moreClients:false};
 const titles={
+ employeePortal:["Employee Portal","Private fictional pay statements, profile preferences and company communications."],
  staff:["Staff & Accounts","Assign Sterling staff privileges and company memberships."],
  dashboard:["Executive overview","Everything you need to manage simulated payroll across client businesses."],
  clients:["Client companies","Manage the businesses using Sterling Payroll."],
@@ -56,6 +58,8 @@ function go(page){
  if(!titles[page])page="dashboard";
  if(page==="clients"&&!state.platform)page="dashboard";
  if(page==="staff"&&!state.platformOwner)page="dashboard";
+ if(page==="employeePortal"&&!state.tenantId)page="dashboard";
+ if(state.role==="employee"&&["employees","operations","time","payroll","access","clients"].includes(page))page=state.tenantId?"employeePortal":"dashboard";
  if(["employees","operations","time","payroll","access"].includes(page)&&!state.tenantId)page="dashboard";
  if(page==="access"&&!canAdmin())page="dashboard";
  state.page=page;
@@ -67,6 +71,7 @@ function go(page){
  document.getElementById("phase3Time")?.classList.toggle("hidden",page!=="time"||!state.tenantId);
  document.getElementById("phase3Payroll")?.classList.toggle("hidden",page!=="payroll"||!state.tenantId);
  if(page==="staff")void staffUI?.refresh();
+ if(page==="employeePortal")void phase4?.refresh();
  if(page==="dashboard")renderDashboard();
  if(page==="clients")renderClients();
  if(page==="employees")renderEmployees();
@@ -148,6 +153,12 @@ async function chooseTenant(id,writeStorage=true){
  }
  $("noClient").classList.toggle("hidden",!!id);
  document.querySelectorAll(".client-only").forEach(node=>node.classList.toggle("hidden",!id));
+ const employeeOnly=state.role==="employee";
+ for(const nav of document.querySelectorAll("#nav [data-page]")){
+  if(["employees","operations","time","payroll","access"].includes(nav.dataset.page)&&employeeOnly)nav.classList.add("hidden");
+ }
+ const portalNav=document.querySelector("#nav [data-page=employeePortal]");
+ if(portalNav)portalNav.classList.toggle("hidden",!id||!(employeeOnly||canAdmin()));
  document.querySelectorAll(".admin-only").forEach(node=>node.classList.toggle("hidden",!id||!canAdmin()));
  document.querySelectorAll(".platform-only").forEach(node=>node.classList.toggle("hidden",!state.platform));
  document.querySelectorAll(".owner-only").forEach(node=>node.classList.toggle("hidden",!state.platformOwner));
@@ -155,12 +166,13 @@ async function chooseTenant(id,writeStorage=true){
  const editOnly=document.querySelectorAll("#employeeForm,#timeForm,#runForm");
  editOnly.forEach(form=>form.classList.toggle("hidden",!canPayroll()));
  if(!id){state.employees=[];state.time=[];state.runs=[];state.selectedRun=null;go("dashboard");return}
+ if(employeeOnly){await phase4?.refresh();go("employeePortal");return}
  await refreshCompany();
  if(state.page==="clients"&&state.platform)go("clients");else go(state.page==="dashboard"?"dashboard":state.page);
 }
 $("companySelect").addEventListener("change",()=>chooseTenant($("companySelect").value).catch(e=>fail(e,"Company selection failed")));
 async function refreshCompany(){
- if(!state.tenantId)return;
+ if(!state.tenantId||state.role==="employee")return;
  const id=state.tenantId;
  try{
   const [employees,time,runs]=await Promise.all([
@@ -493,7 +505,7 @@ async function confirmAction(title,message){
   modal.addEventListener("close",()=>resolve(modal.returnValue==="confirm"),{once:true});
  });
 }
-let phase2=null,phase2Pending=null,phase3=null,staffUI=null;
+let phase2=null,phase2Pending=null,phase3=null,phase4=null,staffUI=null;
 async function initializePhase2(){
  if(phase2)return phase2;
  if(!phase2Pending){
@@ -519,14 +531,14 @@ onAuthStateChanged(auth,async user=>{
   state.platform=state.platformWrite||["payroll_operator","support"].includes(state.platformRole);
   const accountRef=doc(db,"accounts",user.uid);
   if(!(await getDoc(accountRef)).exists())await setDoc(accountRef,{email:user.email||"",displayName:user.displayName||"",accountType:"client",createdAt:serverTimestamp()});
-  if(location.hash.startsWith("#join="))$("joinCode").value=decodeURIComponent(location.hash.slice(6));
   await loadTenantDirectory();
   await initializePhase2();
   if(!staffUI)staffUI=mountStaffAccounts({db,getState:()=>state,notify:toast,confirmAction});
   if(!phase3)phase3=await mountPhase3({db,getState:()=>state,refreshCompany,notify:toast,confirmAction});
+  if(!phase4)phase4=await mountPhase4({db,getState:()=>state,notify:toast,confirmAction});
   if(state.platformOwner)await staffUI?.refresh();
-  if(state.tenantId)await phase3?.refresh();
-  go("dashboard");
+  if(state.tenantId&&state.role!=="employee")await phase3?.refresh();
+  go(state.role==="employee"?"employeePortal":"dashboard");
   if(!state.platform&&!state.tenants.length)toast("Client account ready. Sterling can assign you access to a company.");
  }catch(e){fail(e,"Workspace authorization failed");go("dashboard")}
 });
