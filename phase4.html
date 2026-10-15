@@ -70,3 +70,14 @@
   </form>
   <div id="p4Requests" class="list"></div>
 </article>
+<article class="panel phase4-spaced" id="p4RequestsPanel">
+  <div class="section-heading"><div><div class="eyebrow">EMPLOYEE SELF-SERVICE</div><h2>Information requests</h2></div><span class="subtle-pill">TEXT ONLY</span></div>
+  <p class="muted">Employers can request non-sensitive information from linked employees. Do not upload banking, tax, government identification or other real personal documents.</p>
+  <form id="p4RequestForm" class="form-stack hidden">
+    <label>Request title<input id="p4RequestTitle" maxlength="100" required></label>
+    <label>Instructions<textarea id="p4RequestInstructions" maxlength="800" rows="3" required></textarea></label>
+    <label>Optional due date<input id="p4RequestDue" type="date"></label>
+    <button type="submit" class="btn primary">Send employee request</button>
+  </form>
+  <div id="p4Requests" class="list"></div>
+</article>
