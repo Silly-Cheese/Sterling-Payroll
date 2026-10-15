@@ -1,5 +1,5 @@
 import {collection,doc,getDoc,getDocs,query,where,limit,writeBatch,serverTimestamp} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
-export function createOwnerRecordActions({db,getState,notify,onChanged}){
+export function createOwnerRecordActions({db,getState,notify,onChanged,confirmAction}){
  const S=()=>getState();
  const dialog=document.createElement("dialog");dialog.className="sterling-dialog record-action-dialog";
  dialog.innerHTML='<h2>Delete record</h2><p id="recordDeleteSummary"></p><p class="fine-print">This action is owner-only. Related historical records must be preserved.</p><form method="dialog" id="recordDeleteForm"><label>Reason for deletion<textarea id="recordDeleteReason" maxlength="500" minlength="10" required placeholder="Why should this fictional record be deleted?"></textarea></label><div class="actions"><button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn danger" value="confirm">Delete record</button></div></form>';
@@ -76,6 +76,7 @@ export function createOwnerRecordActions({db,getState,notify,onChanged}){
  async function archiveEmployee(record){
   if(!S().platformOwner||!tenant())throw Error("Owner access is required");
   const current=await getDoc(recordRef("employees",record.id));if(!current.exists())throw Error("Employee record no longer exists");
+  if(!await confirmAction("Archive employee","Archive "+(record.displayName||"this employee")+" while preserving their fictional payroll history?"))return false;
   const batch=writeBatch(db);
   batch.update(current.ref,{status:"inactive",updatedAt:serverTimestamp()});
   batch.set(doc(collectionRef("ownerAudit")),{action:"archive",entityType:"employees",entityId:record.id,reason:"Owner archived fictional employee to preserve historical payroll records",actor:S().user.uid,at:serverTimestamp(),before:current.data()});
