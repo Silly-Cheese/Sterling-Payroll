@@ -30,5 +30,24 @@ jobs:
           node --check src/owner-core.js
           node --check src/phase5.js
           node --check src/phase5-core.js
+          node --check src/phase6.js
+          node --check src/phase6-core.js
       - name: Payroll engine tests
         run: node --test tests/*.test.mjs
+
+  firestore-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install Firebase emulator testing dependencies
+        run: npm install --no-package-lock --no-audit --no-fund
+      - name: Validate Firestore rules against real emulator
+        run: npm run test:rules
