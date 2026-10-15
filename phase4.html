@@ -46,3 +46,15 @@
     <p class="fine-print">Only the linked employee and authorized client administrators can read this conversation.</p>
   </article>
 </div>
+<article class="panel phase4-requests" id="p4RequestsPanel">
+  <div class="section-heading"><div><div class="eyebrow">SELF SERVICE / REQUESTS</div><h2>Forms & acknowledgments</h2></div>
+  <span id="p4RequestBadge" class="subtle-pill">NO PENDING ITEMS</span></div>
+  <p class="muted">Employer-assigned fictional forms, policy acknowledgments and information requests. Never submit sensitive tax, identity or banking documents here.</p>
+  <form id="p4RequestCreate" class="form-stack hidden">
+    <label>Request title<input id="p4RequestTitle" required maxlength="100" placeholder="Example: Confirm handbook receipt"></label>
+    <label>Instructions<textarea id="p4RequestInstructions" required maxlength="800" rows="3"></textarea></label>
+    <label>Due date (optional)<input id="p4RequestDue" type="date"></label>
+    <button class="btn primary" type="submit">Assign request to selected employee</button>
+  </form>
+  <div id="p4Requests" class="list"></div>
+</article>
