@@ -180,13 +180,13 @@ export async function mountPhase5({db,getState,notify,confirmAction,ownerDelete}
   if(!admin())throw Error("Client administrator required");
   const input=invoiceInput($("p5Description").value,$("p5Amount").value,$("p5Due").value),newRef=doc(coll("billingInvoices"));
   await auditedWrite(batch=>batch.set(newRef,{...input,status:"draft",createdBy:S().user.uid,createdAt:serverTimestamp(),updatedAt:serverTimestamp()}),"invoice-create","billing",newRef.id,input.description);
-  $("p5InvoiceForm").reset();await refresh();notify("Fictional invoice created.");
+  $("p5InvoiceForm").reset();event.target.dispatchEvent(new Event("sterling:complete"));await refresh();notify("Fictional invoice created.");
  }catch(e){err("Invoice creation failed",e)}};
  $("p5TicketForm").onsubmit=async event=>{event.preventDefault();try{
   if(!member())throw Error("Authorized client membership required");
   const input=ticketInput($("p5Subject").value,$("p5Details").value,$("p5Priority").value,$("p5Category").value),newRef=doc(coll("supportTickets"));
   await auditedWrite(batch=>batch.set(newRef,{...input,status:"open",assignedUid:"",createdBy:S().user.uid,createdAt:serverTimestamp(),updatedAt:serverTimestamp()}),"ticket-create","support",newRef.id,input.subject);
-  $("p5TicketForm").reset();await refresh();notify("Support case opened.");
+  $("p5TicketForm").reset();event.target.dispatchEvent(new Event("sterling:complete"));await refresh();notify("Support case opened.");
  }catch(e){err("Case creation failed",e)}};
  $("p5AgreementForm").onsubmit=async event=>{event.preventDefault();try{
   if(!admin())throw Error("Client administrator required");
