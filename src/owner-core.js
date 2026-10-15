@@ -3,7 +3,7 @@ export function correctedLine(previous,input){
  if(!previous||!previous.employeeId)throw Error("Select a payroll line first");
  const regularCents=toCents(input.regular),overtimeCents=toCents(input.overtime);
  const bonusCents=toCents(input.bonus),deductionCents=toCents(input.deduction);
- const grossCents=regularCents+overtimeCents+bonusCents;
+ const grossCents=regularCents+overtimeCents+bonusCents+(previous.commissionCents||0);
  if(grossCents>1000000000||deductionCents>grossCents)throw Error("Invalid revised fictional gross or deductions");
  return {...previous,regularCents,overtimeCents,bonusCents,deductionCents,grossCents,
   netCents:grossCents-deductionCents,
