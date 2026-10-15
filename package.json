@@ -1,11 +1,17 @@
 {
   "name": "sterling-payroll",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "description": "Standalone Sterling Group simulated multi-client payroll system",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check src/app.js && node --check src/payroll-core.js"
+    "check": "node --check src/app.js && node --check src/phase5.js && node --check src/phase6.js",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-sterling-payroll \"node --test tests/firestore-rules.emulator.mjs\""
+  },
+  "devDependencies": {
+    "firebase": "^12.4.0",
+    "@firebase/rules-unit-testing": "^5.0.0",
+    "firebase-tools": "^14.17.0"
   }
 }
