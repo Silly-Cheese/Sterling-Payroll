@@ -626,6 +626,7 @@ async function generateLines(run){
  if(lines.length>250)throw Error("Draft exceeds 250-employee safety limit");
  if(lines.length+commission.claim.length+commission.release.length>440)throw Error("Too many commission and pay-line writes for one atomic batch. Split the pay period.");
  if(!await confirmAction("Generate payroll preview","Generate "+lines.length+" reviewed pay lines with "+money(preview.totals.grossCents)+" fictional gross pay (including "+money(commission.commissionCents)+" commissions)? Existing draft lines will be replaced."))return;
+ if(commission.notice)toast(commission.notice,true);
  if(tenantId!==state.tenantId)throw Error("Company changed during payroll preparation");
  const base=collection(db,"tenants",tenantId,"payrollRuns",run.id,"lines");
  const oldSnapshot=await getDocs(query(base,limit(251)));
