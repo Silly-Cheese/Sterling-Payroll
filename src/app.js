@@ -96,6 +96,14 @@ function go(page){
 }
 for(const nav of document.querySelectorAll("[data-page]"))nav.addEventListener("click",()=>go(nav.dataset.page));
 $("mobileMenu").addEventListener("click",()=>document.querySelector(".sidebar").classList.toggle("open"));
+document.body.dataset.density=localStorage.getItem("sterling-payroll-density")==="comfortable"?"comfortable":"compact";
+function updateDensityLabel(){$("densityToggle").textContent=document.body.dataset.density==="compact"?"Comfortable view":"Compact view"}
+updateDensityLabel();
+$("densityToggle").onclick=()=>{
+ document.body.dataset.density=document.body.dataset.density==="compact"?"comfortable":"compact";
+ localStorage.setItem("sterling-payroll-density",document.body.dataset.density);
+ updateDensityLabel();
+};
 const quickDialog=$("quickNav"),quickInput=$("quickNavSearch"),quickResults=$("quickNavResults");
 function renderQuickNav(){
  const search=quickInput.value.toLowerCase().trim();quickResults.replaceChildren();
@@ -254,6 +262,21 @@ function renderDashboard(){
   ["Payroll runs",state.tenantId?state.runs.length:"—","Simulated processing periods"],
   ["Awaiting approval",state.tenantId?state.runs.filter(r=>r.status==="submitted").length:"—","Pending client authorization"]
  ];
+ const attention=$("attentionQueue");attention.replaceChildren();
+ const pendingTime=state.time.filter(t=>(t.status||"pending")==="pending").length;
+ const pendingRuns=state.runs.filter(r=>r.status==="submitted").length;
+ const flagged=[
+  ["Pending time approvals",pendingTime,"time"],
+  ["Payroll awaiting approval",pendingRuns,"payroll"],
+  ["Active fictional employees",state.employees.filter(e=>e.status==="active").length,"employees"]
+ ];
+ if(!state.tenantId)attention.append(mk("p","muted","Select a company to display its operational queue."));
+ else for(const [label,num,page] of flagged)attention.append(item(label,num+" currently loaded",[
+  button("Review",()=>go(page),"small")]));
+ const recent=$("recentPayroll");recent.replaceChildren();
+ if(!state.runs.length)recent.append(mk("p","muted","No payroll runs loaded for this company."));
+ else for(const run of state.runs.slice(0,5))recent.append(item(run.periodStart+" — "+run.periodEnd,
+  run.status+" · "+run.payDate,[button("Open",()=>{go("payroll");return selectRun(run.id)},"small")]));
  for(const [name,value,subtitle] of metrics){
   const box=mk("article","metric");box.append(mk("div","metric-label",name),mk("strong","",value),mk("small","",subtitle));el.append(box);
  }
@@ -261,11 +284,27 @@ function renderDashboard(){
 function renderClients(){
  if(!state.platform)return;
  const el=$("clientList");el.replaceChildren();
- if(!state.tenants.length)return empty(el,"No client companies yet.");
- for(const c of state.tenants){
-  el.append(item(c.name,"Client workspace • "+c.id,[button("Manage",async()=>{await chooseTenant(c.id);go("employees")},"small")],c.status,c.status==="active"?"success":"danger"));
+ const q=$("clientSearch").value.toLowerCase().trim();
+ const clients=state.tenants.filter(c=>[c.name,c.industry,c.contactEmail,c.status].join(" ").toLowerCase().includes(q));
+ $("clientCount").textContent=clients.length+" displayed · "+state.tenants.length+" loaded"+(state.moreClients?"+":"");
+ if(!clients.length)return empty(el,"No clients match this search.");
+ const frag=document.createDocumentFragment();
+ for(const c of clients.slice(0,250)){
+  const actions=[button("Open",async()=>{await chooseTenant(c.id);go("employees")},"small")];
+  if(state.platformWrite)actions.push(button(c.status==="active"?"Suspend":"Reactivate",async()=>{
+   const status=c.status==="active"?"suspended":"active";
+   if(!await confirmAction("Client company status","Set "+c.name+" to "+status+"?"))return;
+   const batch=writeBatch(db);
+   batch.update(doc(db,"tenants",c.id),{status});
+   batch.set(doc(db,"tenants",c.id,"auditEvents"),{category:"client",action:"company-status",subject:c.id,detail:c.status+" → "+status,actor:state.user.uid,at:serverTimestamp()});
+   await batch.commit();await loadTenantDirectory();renderClients();toast("Client status updated.");
+  },"small"));
+  frag.append(item(c.name,[c.industry,c.contactEmail,c.servicePlan].filter(Boolean).join(" • ")||"Client company",actions,c.status,c.status==="active"?"success":"danger"));
  }
+ el.append(frag);
+ if(clients.length>250)el.append(mk("p","fine-print","Showing 250 matches. Narrow your search to inspect another record."));
 }
+$("clientSearch").addEventListener("input",renderClients);
 $("loadMoreClients").addEventListener("click",async()=>{
  if(!state.platform||!state.clientCursor)return;
  $("loadMoreClients").disabled=true;
@@ -316,13 +355,15 @@ $("employeeForm").addEventListener("submit",async event=>{
  }catch(e){fail(e,"Employee creation failed")}
 });
 $("empSearch").addEventListener("input",renderEmployees);
+$("empStatus").addEventListener("change",renderEmployees);
 function renderEmployees(){
  const el=$("employeeList");el.replaceChildren();
  const q=$("empSearch").value.trim().toLowerCase();
- const employees=state.employees.filter(e=>[e.displayName,e.jobTitle,e.department].join(" ").toLowerCase().includes(q));
- $("empCount").textContent=state.employees.length+" EMPLOYEES";
+ const status=$("empStatus").value;
+ const employees=state.employees.filter(e=>(status==="all"||e.status===status)&&[e.displayName,e.jobTitle,e.department].join(" ").toLowerCase().includes(q));
+ $("empCount").textContent=employees.length+" shown / "+state.employees.length+" loaded"+(state.moreEmployees?"+":"");
  if(!employees.length)empty(el,"No employee records match this search.");
- for(const e of employees){
+ for(const e of employees.slice(0,250)){
   const description=[e.jobTitle,e.department,e.payType==="hourly"?money(e.hourlyRateCents)+"/hr":money(e.annualSalaryCents)+"/year"].filter(Boolean).join(" • ");
   const actions=canPayroll()?[button(e.status==="active"?"Place on leave":"Reactivate",async()=>{
    const status=e.status==="active"?"leave":"active";
@@ -333,6 +374,7 @@ function renderEmployees(){
   if(state.platformOwner)actions.push(button("Archive",()=>ownerActions.archiveEmployee(e),"small"),button("Delete",()=>ownerActions.remove("employees",e),"small danger"));
   el.append(item(e.displayName,description,actions,e.status,e.status==="active"?"success":""));
  }
+ if(employees.length>250)el.append(mk("p","fine-print","First 250 matching employees shown. Refine your search or load more records."));
  const selector=$("timeEmployee");const old=selector.value;selector.replaceChildren(new Option("Select an employee",""));
  for(const e of state.employees.filter(e=>e.status==="active"))selector.append(new Option(e.displayName,e.id));
  selector.value=old&&state.employees.some(e=>e.id===old&&e.status==="active")?old:"";
@@ -381,13 +423,25 @@ $("timeForm").addEventListener("submit",async event=>{
 });
 function renderTime(){
  const el=$("timeList");el.replaceChildren();
- if(!state.time.length)return empty(el,"No time entries have been recorded.");
- for(const entry of state.time.slice(0,100)){
+ const q=$("timeSearch").value.trim().toLowerCase(),status=$("timeStatus").value;
+ const filtered=state.time.filter(entry=>{
+  const employee=state.employees.find(e=>e.id===entry.employeeId);
+  return (status==="all"||(entry.status||"pending")===status)&&
+   [employee?.displayName,entry.workDate,entry.note].join(" ").toLowerCase().includes(q);
+ });
+ $("timeCount").textContent=filtered.length+" matching / "+state.time.length+" loaded"+(state.moreTime?"+":"");
+ if(!filtered.length)return empty(el,"No time entries match these filters.");
+ const frag=document.createDocumentFragment();
+ for(const entry of filtered.slice(0,250)){
   const employee=state.employees.find(e=>e.id===entry.employeeId);
   const actions=state.platformOwner?[button("Delete",()=>ownerActions.remove("timeEntries",entry),"small danger")]:[];
-  el.append(item(employee?.displayName||"Former employee",entry.workDate+" • "+entry.regularHours+" regular • "+entry.overtimeHours+" overtime"+(entry.note?" • "+entry.note:""),actions,entry.status||"pending"));
+  frag.append(item(employee?.displayName||"Former employee",entry.workDate+" • "+entry.regularHours+" regular • "+entry.overtimeHours+" overtime"+(entry.note?" • "+entry.note:""),actions,entry.status||"pending"));
  }
+ el.append(frag);
+ if(filtered.length>250)el.append(mk("p","fine-print","Displaying the first 250 matches. Refine the filter."));
 }
+$("timeSearch").addEventListener("input",renderTime);
+$("timeStatus").addEventListener("change",renderTime);
 $("runForm").addEventListener("submit",async event=>{
  event.preventDefault();if(!canPayroll()||!state.tenantId)return;
  const periodStart=$("periodStart").value,periodEnd=$("periodEnd").value,payDate=$("payDate").value;
@@ -401,14 +455,25 @@ $("runForm").addEventListener("submit",async event=>{
 });
 function renderRuns(){
  const el=$("runList");el.replaceChildren();
- if(!state.runs.length)empty(el,"No payroll runs yet. Create a draft to get started.");
- for(const run of state.runs){
+ const q=$("runSearch").value.toLowerCase().trim(),status=$("runStatus").value;
+ const filtered=state.runs.filter(r=>(status==="all"||r.status===status)&&[r.periodStart,r.periodEnd,r.payDate,r.status].join(" ").toLowerCase().includes(q));
+ $("runCount").textContent=filtered.length+" matching / "+state.runs.length+" loaded"+(state.moreRuns?"+":"");
+ if(!filtered.length)empty(el,"No payroll periods match these filters.");
+ const frag=document.createDocumentFragment();
+ for(const run of filtered.slice(0,250)){
   const css=run.status==="finalized"?"success":run.status==="rejected"?"danger":"";
-  el.append(item(run.periodStart+" — "+run.periodEnd,"Pay date "+run.payDate,
-   [button("Open",()=>selectRun(run.id),"small"),...(state.platformOwner?[run.status==="draft"||run.status==="rejected"?button("Delete",()=>ownerActions.remove("payrollRuns",run),"small danger"):button("Correct / void",()=>go("owner"),"small")]:[])],run.status,css));
+  const actions=[button("Open",()=>selectRun(run.id),"small")];
+  if(state.platformOwner)actions.push(["draft","rejected"].includes(run.status)?
+   button("Delete",()=>ownerActions.remove("payrollRuns",run),"small danger"):
+   button("Correct / void",()=>go("owner"),"small"));
+  frag.append(item(run.periodStart+" — "+run.periodEnd,"Simulated payday: "+run.payDate,actions,run.status,css));
  }
+ el.append(frag);
+ if(filtered.length>250)el.append(mk("p","fine-print","Displaying the first 250 matches. Refine the filter."));
  if(!state.selectedRun||!state.runs.some(r=>r.id===state.selectedRun))$("runDetails").classList.add("hidden");
 }
+$("runSearch").addEventListener("input",renderRuns);
+$("runStatus").addEventListener("change",renderRuns);
 async function selectRun(id){
  if(!state.tenantId)return;
  const run=state.runs.find(r=>r.id===id);if(!run)return;
