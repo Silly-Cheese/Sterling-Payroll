@@ -1,7 +1,7 @@
 # Sterling Payroll — Six-Phase Delivery Plan
 
 ## Phase 1 — Platform foundation and working starter
-**Status: committed to main; live Firebase and Pages onboarding pending.**
+**Status: implementation committed; browser authorization tests still required.**
 
 Deliverables:
 - Independent Sterling Payroll GitHub repository and project configuration
@@ -17,12 +17,14 @@ Deliverables:
 Acceptance criteria: GitHub checks pass, owner can create client, invited verified user joins, unauthorized user receives permission denial, payroll can be calculated and approved by distinct accounts. Last four require live verification.
 
 ## Phase 2 — Full client & employee operations
+**Status: implementation committed; live security and onboarding tests pending.**
 - Client account life cycle, contact data, suspended clients and service tiers
 - Employee directory improvements, editing and bulk imports
 - Advanced departments, jobs, pay policies and employee lifecycle
 - Secure staff invitations, membership revocation and role management
 - Better forms, custom confirmation dialogs, inline field validation, mobile polish
-- Full pagination and robust search
+- Employee/time/payroll list pagination and scoped personnel search
+- Verified-email, one-time owner bootstrap with anti-takeover allowlist
 
 Acceptance criteria: no manual Firebase IDs in routine operations, owner can manage client lifecycle and staff records entirely from the UI, no cross-tenant data access.
 
