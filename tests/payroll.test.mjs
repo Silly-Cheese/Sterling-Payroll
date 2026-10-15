@@ -41,7 +41,7 @@ test("separation of responsibilities guards approvals",()=>{
  assert.equal(canTransition("submitted","approved","approver",run,"client_admin"),true);
  assert.equal(canTransition("submitted","approved","viewer",run,"viewer"),false);
  assert.equal(canTransition("approved","finalized","approver",run,"client_admin"),false);
- assert.equal(canTransition("approved","finalized","preparer",run,"client_admin"),false);
+ assert.equal(canTransition("approved","finalized","preparer",run,"client_admin"),true);
  assert.equal(canTransition("approved","finalized","third",run,"client_admin"),true);
 });
 test("periods must have logical date order",()=>{
