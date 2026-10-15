@@ -100,3 +100,22 @@ test("client viewer can open a scoped support ticket without permission to fake 
   category:"support",action:"fake",subject:"client-case",detail:"not allowed",actor:"viewer",at:serverTimestamp()
  }));
 });
+
+test("record-level deletion requires trusted owner and leaves owner activity history",async()=>{
+ const target="tenants/north/supportTickets/owner-removable";
+ await env.withSecurityRulesDisabled(async context=>{
+  await setDoc(doc(context.firestore(),target),{subject:"Fictional empty case",status:"closed",details:"No child conversation"});
+ });
+ const viewer=as("viewer");
+ await assertFails(deleteDoc(doc(viewer,target)));
+ const owner=as("owner"),recordRef=doc(owner,target),batch=writeBatch(owner);
+ batch.delete(recordRef);
+ batch.set(doc(owner,"tenants","north","ownerAudit","deletion-test"),{
+  action:"delete",entityType:"supportTickets",entityId:"owner-removable",
+  reason:"Remove empty fictional test case",actor:"owner",at:serverTimestamp(),
+  before:{subject:"Fictional empty case",status:"closed",details:"No child conversation"}
+ });
+ await assertSucceeds(batch.commit());
+ assert.equal((await getDoc(recordRef)).exists(),false);
+ await assertSucceeds(getDoc(doc(owner,"tenants","north","ownerAudit","deletion-test")));
+});
