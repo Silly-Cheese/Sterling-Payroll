@@ -37,21 +37,9 @@ export function createOwnerRecordActions({db,getState,notify,onChanged,confirmAc
    const corrections=await getDocs(query(collectionRef("timeCorrections"),where("timeEntryId","==",record.id),limit(1)));
    if(!corrections.empty)throw Error("This time entry has corrections and must remain available.");
   }
-  if(kind==="payrollRuns"){
-   if(!["draft","rejected"].includes(record.status))throw Error("Only unfinalized draft/rejected payroll can be deleted. Void or correct finalized periods in Owner Controls.");
-   for(const c of ["lines","snapshots","revisions"])if(await existsChild(recordRef(kind,record.id),c))
-    throw Error("This payroll period has "+c+". Preserve its history or use Owner Controls.");
-  }
   if(["timeCorrections","leaveRequests"].includes(kind)&&record.status==="approved")
    throw Error("Approved correction and leave records must remain for payroll history; do not delete them.");
-  if(kind==="billingInvoices"){
-   if(!["draft","void"].includes(record.status))throw Error("Issue/settled invoices must be voided or retained before deletion.");
-   if(await existsChild(recordRef(kind,record.id),"events"))throw Error("Invoice ledger entries exist and must be preserved; void this invoice instead.");
-  }
-  if(kind==="supportTickets"){
-   for(const c of ["updates","internalNotes"])if(await existsChild(recordRef(kind,record.id),c))
-    throw Error("This case contains conversation history. Close it instead.");
-  }
+
  }
  async function remove(kind,record){
   if(!S().platformOwner||!S().user)throw Error("Only the trusted Sterling owner may delete records");
@@ -67,6 +55,15 @@ export function createOwnerRecordActions({db,getState,notify,onChanged,confirmAc
   const latest={id:record.id,...data.data()};
   await ensureSafe(kind,latest);
   const batch=writeBatch(db);
+  const nested={payrollRuns:["lines","snapshots","revisions"],billingInvoices:["events"],supportTickets:["updates","internalNotes"]};
+  let dependentCount=0;
+  for(const child of nested[kind]||[]){
+   const result=await getDocs(query(collection(data.ref,child),limit(101)));
+   if(result.size>100)throw Error("Large deletion needs administrator review: more than 100 "+child+" records.");
+   dependentCount+=result.size;
+   if(dependentCount>400)throw Error("Too many dependent records to remove in one atomic operation.");
+   result.docs.forEach(entry=>batch.delete(entry.ref));
+  }
   batch.delete(data.ref);
   batch.set(doc(collectionRef("ownerAudit")),{action:"delete",entityType:kind,entityId:record.id,reason:why,actor:S().user.uid,at:serverTimestamp(),before:data.data()});
   batch.set(doc(collectionRef("auditEvents")),{category:"owner",action:"record-delete",subject:record.id,detail:kind+" · "+why.slice(0,240),actor:S().user.uid,at:serverTimestamp()});
