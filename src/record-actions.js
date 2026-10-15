@@ -1,5 +1,5 @@
 import {collection,doc,getDoc,getDocs,query,where,limit,writeBatch,serverTimestamp} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
-import {DELETE_CONFIRMATION,requireConfirmation} from "./deletion-contract.js";
+const requireConfirmation=(phrase,reason)=>{if(phrase!=="DELETE PERMANENTLY")throw Error("Type DELETE PERMANENTLY to confirm.");if(reason.length<10)throw Error("Please provide a deletion reason of at least 10 characters.");return reason};
 export function createOwnerRecordActions({db,getState,notify,onChanged,confirmAction}){
  const S=()=>getState();
  const dialog=document.createElement("dialog");dialog.className="sterling-dialog record-action-dialog";
