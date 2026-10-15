@@ -221,3 +221,50 @@ test("ordinary client admin cannot use the owner exception to approve their own 
  await assertFails(updateDoc(doc(admin,"tenants","north","timeEntries","admin-self"),
   {status:"approved",approvedBy:"admin"}));
 });
+
+test("owner deletion receipt is protected and progresses without allowing client modification",async()=>{
+ const owner=as("owner"),viewer=as("viewer");
+ const receipt=doc(owner,"deletionReceipts","receipt-test");
+ const data={kind:"payrollRuns",tenantId:"north",recordPath:"tenants/north/payrollRuns/p1",
+  actor:"owner",reason:"Owner permanently removed fictional payroll data",status:"running",planned:3,completed:0,
+  createdAt:serverTimestamp(),updatedAt:serverTimestamp()};
+ await assertFails(setDoc(doc(viewer,"deletionReceipts","forged"),{...data,actor:"viewer"}));
+ await assertSucceeds(setDoc(receipt,data));
+ await assertFails(getDoc(doc(viewer,"deletionReceipts","receipt-test")));
+ await assertSucceeds(updateDoc(receipt,{completed:2,updatedAt:serverTimestamp()}));
+ await assertSucceeds(updateDoc(receipt,{completed:3,status:"completed",updatedAt:serverTimestamp()}));
+ await assertFails(deleteDoc(receipt));
+ assert.equal((await getDoc(receipt)).data().completed,3);
+});
+test("owner can delete linked employee conversations and company membership; viewer remains restricted",async()=>{
+ await env.withSecurityRulesDisabled(async c=>{
+  const db=c.firestore();
+  await setDoc(doc(db,"tenants","north","employeeConversations","employee"),{kind:"private"});
+  await setDoc(doc(db,"tenants","north","employeeConversations","employee","messages","m1"),{body:"Fictional private message"});
+  await setDoc(doc(db,"userTenants","employee","items","north"),{tenantId:"north"});
+ });
+ const owner=as("owner"),viewer=as("viewer");
+ await assertFails(deleteDoc(doc(viewer,"tenants","north","employeeConversations","employee","messages","m1")));
+ const batch=writeBatch(owner);
+ for(const path of [
+  "tenants/north/employeeConversations/employee/messages/m1",
+  "tenants/north/employeeConversations/employee",
+  "tenants/north/employeeLinks/employee",
+  "tenants/north/members/employee",
+  "userTenants/employee/items/north"
+ ])batch.delete(doc(owner,path));
+ await assertSucceeds(batch.commit());
+});
+test("owner may remove complete fictional tenant tree but client viewers cannot",async()=>{
+ await env.withSecurityRulesDisabled(async c=>{
+  const db=c.firestore();
+  await setDoc(doc(db,"tenants","south","announcements","example"),{title:"Roleplay"});
+ });
+ const viewer=as("viewer"),owner=as("owner");
+ await assertFails(deleteDoc(doc(viewer,"tenants","south")));
+ const batch=writeBatch(owner);
+ batch.delete(doc(owner,"tenants","south","announcements","example"));
+ batch.delete(doc(owner,"tenants","south"));
+ await assertSucceeds(batch.commit());
+ assert.equal((await getDoc(doc(owner,"tenants","south"))).exists(),false);
+});
