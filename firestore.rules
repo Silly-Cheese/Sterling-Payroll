@@ -515,12 +515,19 @@ service cloud.firestore {
        ||
        (owner() && validRevision(t,r,'period',r) &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-         'periodStart','periodEnd','payDate','status','lastRevisionId','lastCorrectedBy','lastCorrectedAt']) &&
+         'periodStart','periodEnd','payDate','status','submittedBy','approvedBy','finalizedBy','lastRevisionId','lastCorrectedBy','lastCorrectedAt']) &&
         date(request.resource.data.periodStart) && date(request.resource.data.periodEnd) &&
         date(request.resource.data.payDate) &&
         request.resource.data.periodStart <= request.resource.data.periodEnd &&
         request.resource.data.periodEnd <= request.resource.data.payDate &&
         request.resource.data.status in ['draft','submitted','approved','finalized','rejected','voided'] &&
+        request.resource.data.get('submittedBy','') is string &&
+        request.resource.data.get('approvedBy','') is string &&
+        request.resource.data.get('finalizedBy','') is string &&
+        (request.resource.data.status != 'approved' || request.resource.data.get('approvedBy','') != '') &&
+        (request.resource.data.status != 'finalized' ||
+         (request.resource.data.get('approvedBy','') != '' &&
+          request.resource.data.get('finalizedBy','') != '')) &&
         request.resource.data.lastCorrectedBy == request.auth.uid &&
         request.resource.data.lastCorrectedAt == request.time)
      );
