@@ -31,6 +31,13 @@ See [SETUP.md](./SETUP.md) for Firebase Authentication, Firestore rules deployme
 - Correction payroll runs, run comparisons and downloadable simulation-labeled CSV statements.
 - Sterling-wide staff roles granted by the existing owner only, with independent client-company memberships.
 
+## Phase 4 — Employee self-service
+- Employer-linked employee accounts; ordinary registration never grants access to payroll data.
+- Private finalized fictional earnings history and printable simulation-labeled paystubs.
+- Employee preferences, company announcements, private employer/employee messages.
+- Text-only fictional forms/acknowledgment requests with in-app pending-item counts.
+- Client admins select known employee records; no manual Firebase UID entry or email-verification gate.
+
 ## Hosting
 Static web frontend, compatible with GitHub Pages; Firebase project: `sterling-payroll-5d200`.
 
