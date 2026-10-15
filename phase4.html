@@ -5,6 +5,18 @@
 </div>
 <div id="p4Notice" class="notice" role="status">Checking approved employee access…</div>
 <div class="metric-grid compact" id="p4Metrics"></div>
+<article class="panel" id="p4LinkPanel" hidden>
+ <div class="eyebrow">EMPLOYER ADMINISTRATION</div><h2>Link an employee portal account</h2>
+ <p class="muted">Link a registered company member to exactly one employee record. No automatic email or name matching.</p>
+ <form id="p4LinkForm" class="form-stack">
+  <div class="two-fields">
+   <label>Company member<select id="p4LinkAccount" required></select></label>
+   <label>HR employee<select id="p4LinkEmployee" required></select></label>
+  </div>
+  <button class="btn primary" type="submit">Link employee identity</button>
+ </form>
+ <div id="p4LinkedPeople" class="list"></div>
+</article>
 <div class="ops-grid phase3-spaced">
   <article class="panel" id="p4MyProfile">
     <div class="section-heading"><h2>My profile</h2><span class="subtle-pill">SELF SERVICE</span></div>
