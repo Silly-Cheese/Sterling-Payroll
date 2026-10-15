@@ -32,7 +32,8 @@ test("Phase 5 simulates service invoices, not payment rails",()=>{
 test("owner revisions and Phase 5 records are access-controlled in Firestore",()=>{
  const rules=fs.readFileSync(new URL("../firestore.rules",import.meta.url),"utf8");
  for(const phrase of ["match /ownerAudit/{auditId}","match /revisions/{revisionId}","validRevision(t,r,'line',employeeId)","match /billingInvoices/{invoiceId}","match /supportTickets/{ticketId}"])assert.ok(rules.includes(phrase));
- assert.ok(rules.includes("allow update,delete: if false;"));
+ assert.match(rules,/match \/deletionReceipts\/\{receiptId\}/);
+ assert.match(rules,/allow update: if false;/);
 });
 test("every dynamically imported Phase 4 and Phase 5 file ships to GitHub Pages",()=>{
  const app=fs.readFileSync(new URL("../src/app.js",import.meta.url),"utf8");
@@ -41,7 +42,8 @@ test("every dynamically imported Phase 4 and Phase 5 file ships to GitHub Pages"
  for(const name of ["src/phase4.js","src/phase4-core.js","src/owner.js","src/owner-core.js","src/phase5.js","src/phase5-core.js"])assert.ok(workflow.includes(name));
  assert.match(app,/import\("\.\/phase4.js/);
  assert.match(app,/import\("\.\/owner.js/);
- assert.match(html,/id="page-owner"/);
+ assert.doesNotMatch(html,/id="page-owner"/);
+ assert.match(html,/id="sterlingRecordDialog"/);
  assert.match(html,/id="page-service"/);
 });
 test("trusted owner may explicitly override review statuses, not ordinary employees",()=>{
