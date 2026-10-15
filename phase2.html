@@ -1,5 +1,5 @@
 <div class="ops-grid">
- <article class="panel"><div class="eyebrow">PERSONNEL OPERATIONS</div><h2>Edit employee</h2><p class="muted">Select a company employee and update their fictional compensation and status.</p>
+ <article class="panel" id="p2EmployeeEditorPanel"><div class="eyebrow">PERSONNEL OPERATIONS</div><h2>Edit employee</h2><p class="muted">Select a company employee and update their fictional compensation and status.</p>
  <label>Employee<select id="p2Person"></select></label>
  <form id="p2EditForm" class="form-stack">
   <label>Full name<input id="p2Name" maxlength="120" required></label>
@@ -9,13 +9,13 @@
   <label>Employment status<select id="p2Status"><option value="active">Active</option><option value="leave">On leave</option><option value="inactive">Inactive</option></select></label>
   <button class="btn primary" type="submit">Save changes</button>
  </form></article>
- <article class="panel"><div class="eyebrow">BULK TOOLS</div><h2>Import employees</h2><p class="muted">Import up to 100 simulated staff records with CSV validation.</p>
+ <article class="panel" id="p2ImportPanel"><div class="eyebrow">BULK TOOLS</div><h2>Import employees</h2><p class="muted">Import up to 100 simulated staff records with CSV validation.</p>
   <label>Choose CSV file<input id="p2Csv" type="file" accept=".csv,text/csv"></label>
   <div class="actions"><button id="p2Preview" class="btn" type="button">Preview CSV</button><button id="p2Commit" class="btn primary" type="button" disabled>Import reviewed records</button></div>
   <div class="notice" id="p2ImportStatus" role="status">Headers: name,title,department,payType,payFrequency,hourlyRate,annualSalary</div>
   <div id="p2PreviewList" class="list"></div>
  </article></div>
-<article class="panel" style="margin-top:18px"><div class="company"><div><div class="eyebrow">MASS OPERATIONS</div><h2>Bulk employee changes</h2></div><label>Search<input id="p2Search" type="search" placeholder="Filter employees"></label></div>
+<article class="panel" id="p2BulkPanel" style="margin-top:18px"><div class="company"><div><div class="eyebrow">MASS OPERATIONS</div><h2>Bulk employee changes</h2></div><label>Search<input id="p2Search" type="search" placeholder="Filter employees"></label></div>
  <div class="bulk-toolbar"><label class="checkline"><input id="p2SelectAll" type="checkbox"> Select displayed</label>
  <select id="p2BulkStatus" aria-label="New employee status"><option value="active">Active</option><option value="leave">On leave</option><option value="inactive">Inactive</option></select>
  <button class="btn" id="p2BulkApply" type="button">Update selected</button><span id="p2SelectedCount" class="muted">0 selected</span></div>
