@@ -25,6 +25,17 @@ service cloud.firestore {
   function date(v){return v is string && v.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');}
   function employeePath(t,e){return /databases/$(database)/documents/tenants/$(t)/employees/$(e);}
   function runPath(t,r){return /databases/$(database)/documents/tenants/$(t)/payrollRuns/$(r);}
+  function revisionPath(t,r,id){return /databases/$(database)/documents/tenants/$(t)/payrollRuns/$(r)/revisions/$(id);}
+  function validRevision(t,r,kind,entityId){
+   return owner() && request.resource.data.get('lastRevisionId','') is string &&
+    request.resource.data.get('lastRevisionId','').size() > 0 &&
+    existsAfter(revisionPath(t,r,request.resource.data.lastRevisionId)) &&
+    getAfter(revisionPath(t,r,request.resource.data.lastRevisionId)).data.actor == request.auth.uid &&
+    getAfter(revisionPath(t,r,request.resource.data.lastRevisionId)).data.kind == kind &&
+    getAfter(revisionPath(t,r,request.resource.data.lastRevisionId)).data.entityId == entityId &&
+    getAfter(revisionPath(t,r,request.resource.data.lastRevisionId)).data.before == resource.data &&
+    getAfter(revisionPath(t,r,request.resource.data.lastRevisionId)).data.after == request.resource.data;
+  }
 
   // Existing owner privileges remain unchanged. No automatic owner claim on registration.
   match /platformAdmins/{uid} {
@@ -107,7 +118,7 @@ service cloud.firestore {
     allow update: if clientAdmin(t) &&
      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role']) &&
      request.resource.data.email == resource.data.email &&
-     request.resource.data.role in ['client_admin','payroll_specialist','viewer'];
+     request.resource.data.role in ['client_admin','payroll_specialist','viewer','employee'];
    allow delete: if clientAdmin(t);
    }
 
@@ -119,11 +130,11 @@ service cloud.firestore {
       exists(/databases/$(database)/documents/accounts/$(uid)) &&
       request.resource.data.keys().hasOnly(['email','role','status','joinedAt']) &&
       request.resource.data.email == get(/databases/$(database)/documents/accounts/$(uid)).data.email &&
-      request.resource.data.role in ['client_admin','payroll_specialist','viewer'] &&
+      request.resource.data.role in ['client_admin','payroll_specialist','viewer','employee'] &&
       request.resource.data.status == 'active';
     allow update: if clientAdmin(t) && uid != request.auth.uid &&
       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role','status']) &&
-      request.resource.data.role in ['client_admin','payroll_specialist','viewer'] &&
+      request.resource.data.role in ['client_admin','payroll_specialist','viewer','employee'] &&
       request.resource.data.status in ['active','suspended'] &&
       resource.data.email == request.resource.data.email;
     allow delete: if false;
@@ -164,7 +175,8 @@ service cloud.firestore {
      text(request.resource.data.body,1800) &&
      request.resource.data.createdAt == request.time &&
      request.resource.data.createdBy == request.auth.uid;
-    allow update, delete: if false;
+    allow update: if false;
+    allow delete: if owner();
    }
    // One employee-specific thread per approved account. No employee can enumerate another's thread.
    match /employeeConversations/{uid}/messages/{messageId} {
@@ -207,6 +219,48 @@ service cloud.firestore {
      );
     allow delete: if false;
    }
+   // Owner operation records remain readable to the owner, but cannot be changed or removed.
+   match /ownerAudit/{auditId} {
+    allow read: if owner();
+    allow create: if owner() &&
+     request.resource.data.keys().hasOnly(['action','entityType','entityId','reason','actor','at','before']) &&
+     text(request.resource.data.action,40) &&
+     text(request.resource.data.entityType,80) &&
+     text(request.resource.data.entityId,128) &&
+     text(request.resource.data.reason,500) && request.resource.data.reason.size() >= 10 &&
+     request.resource.data.actor == request.auth.uid && request.resource.data.at == request.time &&
+     request.resource.data.before is map;
+    allow update,delete: if false;
+   }
+   // Phase 5 — fictional invoices only, no payment processor or real transfers.
+   match /billingInvoices/{invoiceId} {
+    allow read: if clientView(t);
+    allow create: if clientAdmin(t) &&
+     request.resource.data.keys().hasOnly(['description','amountCents','status','createdAt','updatedAt','createdBy']) &&
+     text(request.resource.data.description,160) && cent(request.resource.data.amountCents) &&
+     request.resource.data.status == 'draft' &&
+     request.resource.data.createdBy == request.auth.uid && request.resource.data.createdAt == request.time;
+    allow update: if clientAdmin(t) &&
+     request.resource.data.diff(resource.data).affectedKeys().hasOnly(['description','amountCents','status','updatedAt']) &&
+     text(request.resource.data.description,160) && cent(request.resource.data.amountCents) &&
+     request.resource.data.status in ['draft','issued','settled','void'] &&
+     request.resource.data.updatedAt == request.time;
+    allow delete: if owner();
+   }
+   // Phase 5 — private-to-client support case tracking.
+   match /supportTickets/{ticketId} {
+    allow read: if clientView(t);
+    allow create: if member(t) &&
+     request.resource.data.keys().hasOnly(['subject','details','status','createdBy','createdAt','updatedAt']) &&
+     text(request.resource.data.subject,120) && text(request.resource.data.details,1500) &&
+     request.resource.data.status == 'open' && request.resource.data.createdBy == request.auth.uid &&
+     request.resource.data.createdAt == request.time;
+    allow update: if clientAdmin(t) &&
+     request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt']) &&
+     request.resource.data.status in ['open','in_progress','resolved','closed'] &&
+     request.resource.data.updatedAt == request.time;
+    allow delete: if owner();
+   }
    match /employees/{e} {
     allow get: if clientView(t) || ownsEmployee(t,e);
     allow list: if clientView(t);
@@ -229,7 +283,7 @@ service cloud.firestore {
      request.resource.data.payType in ['hourly','salary'] &&
      request.resource.data.payFrequency in ['weekly','biweekly','semimonthly','monthly'] &&
      cent(request.resource.data.hourlyRateCents) && cent(request.resource.data.annualSalaryCents);
-    allow delete: if false;
+    allow delete: if owner();
    }
 
    match /timeEntries/{id} {
@@ -250,7 +304,7 @@ service cloud.firestore {
      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','approvedBy']) &&
      request.resource.data.status in ['approved','rejected'] &&
      request.resource.data.approvedBy == request.auth.uid;
-    allow delete: if false;
+    allow delete: if owner();
    }
    // Immutable requests, independently reviewed by a different authorized account.
    match /timeCorrections/{id} {
@@ -270,7 +324,7 @@ service cloud.firestore {
      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','reviewedBy']) &&
      request.resource.data.status in ['approved','rejected'] &&
      request.resource.data.reviewedBy == request.auth.uid;
-    allow delete: if false;
+    allow delete: if owner();
    }
    match /leaveRequests/{id} {
     allow read: if clientView(t);
@@ -288,7 +342,7 @@ service cloud.firestore {
      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','reviewedBy']) &&
      request.resource.data.status in ['approved','rejected'] &&
      request.resource.data.reviewedBy == request.auth.uid;
-    allow delete: if false;
+    allow delete: if owner();
    }
    match /payrollPolicies/current {
     allow read: if clientView(t);
@@ -353,9 +407,32 @@ service cloud.firestore {
         request.resource.data.status == 'draft' &&
         request.resource.data.submittedBy == '' && request.resource.data.approvedBy == '' &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','submittedBy','approvedBy']))
+       ||
+       (owner() && validRevision(t,r,'period',r) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+         'periodStart','periodEnd','payDate','status','lastRevisionId','lastCorrectedBy','lastCorrectedAt']) &&
+        date(request.resource.data.periodStart) && date(request.resource.data.periodEnd) &&
+        date(request.resource.data.payDate) &&
+        request.resource.data.periodStart <= request.resource.data.periodEnd &&
+        request.resource.data.periodEnd <= request.resource.data.payDate &&
+        request.resource.data.status in ['draft','submitted','approved','finalized','rejected','voided'] &&
+        request.resource.data.lastCorrectedBy == request.auth.uid &&
+        request.resource.data.lastCorrectedAt == request.time)
      );
-    allow delete: if false;
+    allow delete: if owner();
 
+    match /revisions/{revisionId} {
+     allow read: if clientView(t);
+     allow create: if owner() &&
+      request.resource.data.keys().hasOnly(['kind','entityId','reason','actor','at','before','after']) &&
+      request.resource.data.kind in ['period','line'] &&
+      text(request.resource.data.entityId,128) &&
+      text(request.resource.data.reason,500) && request.resource.data.reason.size() >= 10 &&
+      request.resource.data.actor == request.auth.uid &&
+      request.resource.data.at == request.time &&
+      request.resource.data.before is map && request.resource.data.after is map;
+     allow update,delete: if false;
+    }
     match /snapshots/{snapshotId} {
      allow read: if clientView(t);
      allow create: if payrollStaff(t) &&
@@ -372,7 +449,7 @@ service cloud.firestore {
      allow get: if clientView(t) || (ownsEmployee(t,employeeId) &&
        exists(runPath(t,r)) && get(runPath(t,r)).data.status == 'finalized');
      allow list: if clientView(t);
-     allow create, update: if payrollStaff(t) &&
+     allow create: if payrollStaff(t) &&
        exists(runPath(t,r)) && get(runPath(t,r)).data.status == 'draft' &&
        exists(employeePath(t,employeeId)) &&
        request.resource.data.keys().hasOnly(['employeeId','employeeName','payType','regularHours','overtimeHours',
@@ -389,6 +466,30 @@ service cloud.firestore {
        request.resource.data.get('paidLeaveHours',0) is number &&
        request.resource.data.get('paidLeaveHours',0) >= 0 &&
        request.resource.data.get('paidLeaveHours',0) <= 744;
+     allow update: if (
+      (payrollStaff(t) && exists(runPath(t,r)) && get(runPath(t,r)).data.status == 'draft' &&
+       exists(employeePath(t,employeeId)) &&
+       request.resource.data.employeeId == employeeId &&
+       cent(request.resource.data.regularCents) && cent(request.resource.data.overtimeCents) &&
+       cent(request.resource.data.bonusCents) && cent(request.resource.data.deductionCents) &&
+       cent(request.resource.data.grossCents) && cent(request.resource.data.netCents) &&
+       request.resource.data.netCents == request.resource.data.grossCents - request.resource.data.deductionCents)
+      ||
+      (owner() && get(runPath(t,r)).data.status == 'finalized' &&
+       validRevision(t,r,'line',employeeId) &&
+       request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'regularHours','overtimeHours','regularCents','overtimeCents','bonusCents',
+        'deductionCents','grossCents','netCents','lastRevisionId','lastCorrectedBy','lastCorrectedAt']) &&
+       hours(request.resource.data.regularHours) && hours(request.resource.data.overtimeHours) &&
+       cent(request.resource.data.regularCents) && cent(request.resource.data.overtimeCents) &&
+       cent(request.resource.data.bonusCents) && cent(request.resource.data.deductionCents) &&
+       cent(request.resource.data.grossCents) && cent(request.resource.data.netCents) &&
+       request.resource.data.grossCents == request.resource.data.regularCents +
+        request.resource.data.overtimeCents + request.resource.data.bonusCents &&
+       request.resource.data.netCents == request.resource.data.grossCents - request.resource.data.deductionCents &&
+       request.resource.data.lastCorrectedBy == request.auth.uid &&
+       request.resource.data.lastCorrectedAt == request.time)
+     );
      allow delete: if payrollStaff(t) && exists(runPath(t,r)) &&
        get(runPath(t,r)).data.status == 'draft';
     }
