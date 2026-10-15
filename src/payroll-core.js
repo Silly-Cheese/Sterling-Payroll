@@ -13,7 +13,7 @@ export function toCents(value){
 export const money=cents=>"$"+(Number(cents||0)/100).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
 export function hoursValue(value){
  const num=Number(value);
- if(!Number.isFinite(num)||num<0||num>744||Math.round(num*100)!==num*100)throw Error("Hours must be 0–744, up to two decimal places");
+ if(!Number.isFinite(num)||num<0||num>744||Math.abs(Math.round(num*100)-num*100)>1e-7)throw Error("Hours must be 0–744, up to two decimal places");
  return num;
 }
 export function calculateLine({employee,regularHours=0,overtimeHours=0,bonusCents=0,deductionCents=0}){
