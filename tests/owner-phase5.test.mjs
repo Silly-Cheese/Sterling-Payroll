@@ -44,3 +44,15 @@ test("every dynamically imported Phase 4 and Phase 5 file ships to GitHub Pages"
  assert.match(html,/id="page-owner"/);
  assert.match(html,/id="page-service"/);
 });
+test("trusted owner may explicitly override review statuses, not ordinary employees",()=>{
+ const rules=fs.readFileSync(new URL("../firestore.rules",import.meta.url),"utf8");
+ const ui=fs.readFileSync(new URL("../src/owner.js",import.meta.url),"utf8");
+ assert.match(ui,/ownerOverrideApproval/);
+ assert.match(ui,/auditBatch\(batch,kind,record.id,"override approval"/);
+ for(const section of ["timeEntries","timeCorrections","leaveRequests"]){
+  const start=rules.indexOf("match /"+section+"/{id} {");
+  assert.ok(start>0);
+  const piece=rules.slice(start,rules.indexOf("\n   match /",start+12));
+  assert.match(piece,/allow update: if owner\(\)/);
+ }
+});
