@@ -80,13 +80,63 @@ export async function mountPhase4({db,getState,notify,confirmAction}){
   }
   if(snap.size===50)box.append(E("p","fine-print","Only the first 50 finalized runs were checked; additional history pagination is planned."));
  }
+ async function fetchRequests(uid,version){
+  const box=$("p4Requests");box.replaceChildren();
+  $("p4RequestCreate").classList.toggle("hidden",!admin()||!uid);
+  if(!uid){show(box,admin()?"Choose a linked employee above to manage requests.":"Your employer can assign fictional acknowledgment requests after linking.");$("p4RequestBadge").textContent="NO REQUESTS";return}
+  const snap=await getDocs(query(coll("employeeRequests",uid,"items"),orderBy("createdAt","desc"),limit(60)));
+  if(version!==generation)return;
+  const requests=snap.docs.map(d=>({id:d.id,...d.data()}));
+  const pending=requests.filter(x=>x.status==="pending").length;
+  $("p4RequestBadge").textContent=pending+" NEEDS ATTENTION";
+  if(!admin()&&pending>0&&$("p4Notify").checked)$("p4Notice").textContent="You have "+pending+" open self-service request"+(pending===1?"":"s")+". Review the items below. No sensitive uploads are required.";
+  for(const item of requests){
+   const container=E("div","list-item"),info=E("div");
+   info.append(E("strong","",item.title),E("small","",item.instructions+" • "+item.status+(item.dueDate?" • Due "+item.dueDate:"")));
+   if(item.response)info.append(E("small","", "Response: "+item.response));
+   container.append(info);
+   const controls=E("div","item-actions");
+   if(!admin()&&item.status==="pending"){
+    const input=E("textarea");input.maxLength=500;input.rows=2;input.placeholder="Optional acknowledgment or note";
+    input.setAttribute("aria-label","Response for "+item.title);
+    const btn=E("button","btn small","Submit response");btn.type="button";
+    btn.onclick=async()=>{
+     btn.disabled=true;
+     try{
+      await updateDoc(path("employeeRequests",uid,"items",item.id),{status:"submitted",response:input.value.trim(),updatedAt:serverTimestamp()});
+      notify("Request response submitted.");await fetchRequests(uid,generation);
+     }catch(error){failed("Request response failed",error)}finally{btn.disabled=false}
+    };
+    controls.append(input,btn);
+   }
+   if(admin()&&item.status==="submitted"){
+    for(const [label,next] of [["Complete","completed"],["Reopen","pending"]]){
+     const btn=E("button","btn small",label);btn.type="button";
+     btn.onclick=async()=>{
+      btn.disabled=true;
+      try{
+       await updateDoc(path("employeeRequests",uid,"items",item.id),{status:next,updatedAt:serverTimestamp()});
+       notify("Request marked "+next+".");await fetchRequests(uid,generation);
+      }catch(error){failed("Request review failed",error)}finally{btn.disabled=false}
+     };
+     controls.append(btn);
+    }
+   }
+   if(controls.children.length)container.append(controls);
+   box.append(container);
+  }
+  if(snap.empty)show(box,"No requests have been assigned yet.");
+  if(snap.size===60)box.append(E("p","fine-print","The first 60 requests are shown; full pagination is planned."));
+ }
  async function refresh(){
   const version=++generation,workspace=S().tenantId;
   ownEmployee=null;ownLink=null;threadUid="";runs=[];tenant=workspace;
   $("p4Metrics").replaceChildren();
-  for(const key of ["p4PayHistory","p4Announcements","p4Messages"])$(key).replaceChildren();
+  for(const key of ["p4PayHistory","p4Announcements","p4Messages","p4Requests"])$(key).replaceChildren();
   $("p4ProfileForm").classList.add("hidden");
   $("p4MessageForm").classList.add("hidden");
+  $("p4RequestCreate").classList.add("hidden");
+  $("p4RequestBadge").textContent="NO PENDING ITEMS";
   $("p4AnnouncementForm").classList.toggle("hidden",!admin());
   $("p4ThreadSelectorWrap").classList.toggle("hidden",!admin());
   $("p4AccessChip").textContent="LINK REQUIRED";
@@ -133,10 +183,12 @@ export async function mountPhase4({db,getState,notify,confirmAction}){
    }else if(linked())threadUid=S().user.uid;
    $("p4MessageForm").classList.toggle("hidden",!threadUid);
    if(threadUid)await fetchThread(threadUid,version);else show($("p4Messages"),adminNow?"Choose a linked employee above.":"Messaging becomes available after employer linking.");
+   await fetchRequests(threadUid,version);
   }catch(error){
    if(version!==generation)return;
    ownLink=null;ownEmployee=null;threadUid="";
    $("p4MessageForm").classList.add("hidden");
+   $("p4RequestCreate").classList.add("hidden");
    $("p4ProfileForm").classList.add("hidden");
    $("p4AccessChip").textContent="UNAVAILABLE";
    $("p4Notice").textContent="Private portal data could not be loaded. Previous company information has been cleared.";
@@ -146,7 +198,7 @@ export async function mountPhase4({db,getState,notify,confirmAction}){
  $("p4ThreadSelector").addEventListener("change",async()=>{
   const version=++generation;threadUid=$("p4ThreadSelector").value;
   $("p4MessageForm").classList.toggle("hidden",!threadUid);
-  try{await fetchThread(threadUid,version)}catch(error){failed("Conversation load failed",error)}
+  try{await Promise.all([fetchThread(threadUid,version),fetchRequests(threadUid,version)])}catch(error){failed("Conversation/request load failed",error)}
  });
  $("p4ProfileForm").addEventListener("submit",async event=>{
   event.preventDefault();
@@ -167,6 +219,20 @@ export async function mountPhase4({db,getState,notify,confirmAction}){
    await addDoc(coll("announcements"),{title,body,createdAt:serverTimestamp(),createdBy:S().user.uid});
    $("p4AnnouncementForm").reset();notify("Announcement published.");await fetchAnnouncements(generation);
   }catch(error){failed("Announcement failed",error)}
+ });
+ $("p4RequestCreate").addEventListener("submit",async event=>{
+  event.preventDefault();
+  try{
+   if(!admin()||!threadUid)throw Error("Choose an approved employee account");
+   const title=$("p4RequestTitle").value.trim(),instructions=$("p4RequestInstructions").value.trim(),dueDate=$("p4RequestDue").value||"";
+   if(!title||title.length>100||!instructions||instructions.length>800)throw Error("Enter a valid title and instructions");
+   if(dueDate&&!/^\d{4}-\d\d-\d\d$/.test(dueDate))throw Error("Invalid due date");
+   if(!await confirmAction("Assign fictional request","Assign this acknowledgment request to the selected employee account?"))return;
+   await addDoc(coll("employeeRequests",threadUid,"items"),{
+    title,instructions,dueDate,status:"pending",createdBy:S().user.uid,createdAt:serverTimestamp(),response:"",updatedAt:serverTimestamp()
+   });
+   $("p4RequestCreate").reset();notify("Employee request assigned.");await fetchRequests(threadUid,generation);
+  }catch(error){failed("Request assignment failed",error)}
  });
  $("p4MessageForm").addEventListener("submit",async event=>{
   event.preventDefault();
