@@ -1,0 +1,38 @@
+<div class="service-hero">
+ <div><div class="eyebrow">STERLING CONTROL ROOM / PHASE 6</div><h2>Operations, integrity and accountability.</h2>
+ <p class="muted">Inspect fictional payroll records, review activity, export a scoped data package and check deployment health.</p></div>
+ <div class="service-toolbar"><button id="p6Refresh" class="btn primary">Run health checks</button><button id="p6Export" class="btn">Export client data</button></div>
+</div>
+<div class="metric-grid compact" id="p6Metrics"></div>
+<div class="ops-grid">
+ <article class="panel">
+  <div class="eyebrow">DATA ASSURANCE</div><h2>Integrity report</h2>
+  <p class="muted">Validates loaded source records, available payroll totals, missing employee references and incompatible states. Never changes data automatically.</p>
+  <div id="p6Findings" class="assurance-findings"></div>
+  <p class="fine-print" id="p6Coverage">Coverage will appear after running checks.</p>
+ </article>
+ <article class="panel">
+  <div class="eyebrow">SYSTEM HEALTH</div><h2>Deployment and access</h2>
+  <div id="p6Health" class="list"></div>
+  <div class="data-note"><strong>Simulator scope</strong><small>No actual payroll payments, tax filings, salary reporting or financial compliance certification.</small></div>
+ </article>
+</div>
+<div class="ops-grid phase3-spaced">
+ <article class="panel">
+  <div class="section-heading"><h2>Activity and audit</h2><span class="subtle-pill">APPEND-ONLY RECORDS</span></div>
+  <label>Search activity<input id="p6AuditSearch" type="search" placeholder="Category, action or explanation"></label>
+  <div id="p6Audit" class="list"></div>
+  <button id="p6MoreAudit" class="btn hidden" type="button">Load more activity</button>
+ </article>
+ <article class="panel">
+  <div class="eyebrow">DATA STEWARDSHIP</div><h2>Retention and export</h2>
+  <p class="muted">Client data exports contain fictional operational records only. They exclude authentication secrets, private employee messages and real payment credentials.</p>
+  <form id="p6PolicyForm" class="form-stack">
+   <label>Recommended data retention review period<select id="p6Retention"><option value="90">90 days</option><option value="180">180 days</option><option value="365">1 year</option><option value="730">2 years</option><option value="1825">5 years</option><option value="3650">10 years</option></select></label>
+   <label class="checkline"><input id="p6Hold" type="checkbox"> Preserve all client records (legal hold simulation)</label>
+   <button class="btn primary" type="submit">Save retention preference</button>
+  </form>
+  <p class="fine-print">This setting is advisory only. It does not automatically delete or overwrite any historical records.</p>
+  <h3>Recent export</h3><div id="p6ExportStatus" class="notice">No export performed in this session.</div>
+ </article>
+</div>
