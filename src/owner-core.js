@@ -26,3 +26,37 @@ export function canHardDelete(kind,hasChildren){
  if(["payrollRuns","tenants"].includes(kind))return !hasChildren;
  return ["employees","timeEntries","timeCorrections","leaveRequests","announcements","supportTickets","billingInvoices"].includes(kind);
 }
+export const REVIEW_STATES=Object.freeze({
+ payrollRuns:["draft","submitted","approved","rejected","finalized"],
+ timeEntries:["pending","approved","rejected"],
+ timeCorrections:["pending","approved","rejected"],
+ leaveRequests:["pending","approved","rejected"]
+});
+export function ownerApprovalOverride(kind,previous,status,ownerUid){
+ const allowed=REVIEW_STATES[kind];
+ if(!allowed||!allowed.includes(status)||!ownerUid)throw Error("Unsupported owner approval override");
+ if(!previous||!previous.status)throw Error("Reload the record before overriding its approval");
+ if(kind!=="payrollRuns"){
+  const field=kind==="timeEntries"?"approvedBy":"reviewedBy";
+  return {...previous,status,[field]:status==="pending"?"":ownerUid};
+ }
+ const draft={...previous,status};
+ // An owner's explicit override is a documented exception to normal two-party signoff.
+ // Preserve earlier participants when possible; attribute each newly bypassed step to the owner.
+ if(status==="draft"){
+  draft.submittedBy="";draft.approvedBy="";draft.finalizedBy="";
+ }else if(status==="submitted"){
+  draft.submittedBy=ownerUid;draft.approvedBy="";draft.finalizedBy="";
+ }else if(status==="rejected"){
+  draft.submittedBy=previous.submittedBy||ownerUid;
+  draft.approvedBy=ownerUid;draft.finalizedBy="";
+ }else if(status==="approved"){
+  draft.submittedBy=previous.submittedBy||ownerUid;
+  draft.approvedBy=ownerUid;draft.finalizedBy="";
+ }else if(status==="finalized"){
+  draft.submittedBy=previous.submittedBy||ownerUid;
+  draft.approvedBy=previous.approvedBy||ownerUid;
+  draft.finalizedBy=ownerUid;
+ }
+ return draft;
+}
