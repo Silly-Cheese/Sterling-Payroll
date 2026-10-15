@@ -91,8 +91,7 @@ service cloud.firestore {
    allow delete: if false;
 
    match /invites/{email} {
-    allow get: if clientAdmin(t) || (signedIn() && request.auth.token.email_verified == true &&
-       request.auth.token.email.lower() == email);
+    allow get: if clientAdmin(t);
     allow list: if clientAdmin(t);
     allow create: if clientAdmin(t) &&
       request.resource.data.keys().hasOnly(['email','role','createdBy','createdAt']) &&
@@ -153,21 +152,86 @@ service cloud.firestore {
    match /timeEntries/{id} {
     allow read: if clientView(t);
     allow create: if payrollStaff(t) &&
-     request.resource.data.keys().hasOnly(['employeeId','workDate','regularHours','overtimeHours','note','createdAt','createdBy']) &&
+     request.resource.data.keys().hasOnly(['employeeId','workDate','regularHours','overtimeHours','note','createdAt','createdBy','status','approvedBy']) &&
      text(request.resource.data.employeeId,128) &&
      exists(employeePath(t,request.resource.data.employeeId)) &&
      date(request.resource.data.workDate) &&
      hours(request.resource.data.regularHours) && hours(request.resource.data.overtimeHours) &&
      request.resource.data.note is string && request.resource.data.note.size() <= 250 &&
-     request.resource.data.createdBy == request.auth.uid;
-    allow update,delete: if false;
+     request.resource.data.createdBy == request.auth.uid &&
+     request.resource.data.get('status','pending') == 'pending' &&
+     request.resource.data.get('approvedBy','') == '';
+    allow update: if clientAdmin(t) &&
+     resource.data.get('status','pending') == 'pending' &&
+     resource.data.createdBy != request.auth.uid &&
+     request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','approvedBy']) &&
+     request.resource.data.status in ['approved','rejected'] &&
+     request.resource.data.approvedBy == request.auth.uid;
+    allow delete: if false;
    }
-
+   // Immutable requests, independently reviewed by a different authorized account.
+   match /timeCorrections/{id} {
+    allow read: if clientView(t);
+    allow create: if payrollStaff(t) &&
+     request.resource.data.keys().hasOnly(['timeEntryId','regularHours','overtimeHours','reason','status','createdBy','reviewedBy','createdAt']) &&
+     text(request.resource.data.timeEntryId,128) &&
+     exists(/databases/$(database)/documents/tenants/$(t)/timeEntries/$(request.resource.data.timeEntryId)) &&
+     get(/databases/$(database)/documents/tenants/$(t)/timeEntries/$(request.resource.data.timeEntryId)).data.status == 'approved' &&
+     hours(request.resource.data.regularHours) && hours(request.resource.data.overtimeHours) &&
+     text(request.resource.data.reason,300) &&
+     request.resource.data.reason.size() >= 6 &&
+     request.resource.data.createdBy == request.auth.uid &&
+     request.resource.data.status == 'pending' && request.resource.data.reviewedBy == '';
+    allow update: if clientAdmin(t) &&
+     resource.data.status == 'pending' && resource.data.createdBy != request.auth.uid &&
+     request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','reviewedBy']) &&
+     request.resource.data.status in ['approved','rejected'] &&
+     request.resource.data.reviewedBy == request.auth.uid;
+    allow delete: if false;
+   }
+   match /leaveRequests/{id} {
+    allow read: if clientView(t);
+    allow create: if payrollStaff(t) &&
+     request.resource.data.keys().hasOnly(['employeeId','date','hours','reason','status','createdBy','reviewedBy','createdAt']) &&
+     text(request.resource.data.employeeId,128) &&
+     exists(employeePath(t,request.resource.data.employeeId)) &&
+     date(request.resource.data.date) && hours(request.resource.data.hours) &&
+     request.resource.data.hours > 0 && request.resource.data.hours <= 24 &&
+     text(request.resource.data.reason,250) && request.resource.data.reason.size() >= 5 &&
+     request.resource.data.createdBy == request.auth.uid &&
+     request.resource.data.status == 'pending' && request.resource.data.reviewedBy == '';
+    allow update: if clientAdmin(t) &&
+     resource.data.status == 'pending' && resource.data.createdBy != request.auth.uid &&
+     request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','reviewedBy']) &&
+     request.resource.data.status in ['approved','rejected'] &&
+     request.resource.data.reviewedBy == request.auth.uid;
+    allow delete: if false;
+   }
+   match /payrollPolicies/current {
+    allow read: if clientView(t);
+    allow create: if clientAdmin(t) &&
+     request.resource.data.keys().hasOnly(['version','overtimeMultiplierHundredths','defaultBonusCents','defaultDeductionCents','requireApprovedTime']) &&
+     request.resource.data.version == 2 &&
+     request.resource.data.overtimeMultiplierHundredths is int &&
+     request.resource.data.overtimeMultiplierHundredths >= 100 &&
+     request.resource.data.overtimeMultiplierHundredths <= 300 &&
+     cent(request.resource.data.defaultBonusCents) && cent(request.resource.data.defaultDeductionCents) &&
+     request.resource.data.requireApprovedTime == true;
+    allow update: if clientAdmin(t) &&
+     request.resource.data.keys().hasOnly(['version','overtimeMultiplierHundredths','defaultBonusCents','defaultDeductionCents','requireApprovedTime']) &&
+     request.resource.data.version == resource.data.version + 1 &&
+     request.resource.data.overtimeMultiplierHundredths is int &&
+     request.resource.data.overtimeMultiplierHundredths >= 100 &&
+     request.resource.data.overtimeMultiplierHundredths <= 300 &&
+     cent(request.resource.data.defaultBonusCents) && cent(request.resource.data.defaultDeductionCents) &&
+     request.resource.data.requireApprovedTime == true;
+    allow delete: if false;
+   }
    match /payrollRuns/{r} {
     allow read: if clientView(t);
     allow create: if payrollStaff(t) &&
      request.resource.data.keys().hasOnly(['periodStart','periodEnd','payDate','status','createdAt','createdBy',
-      'submittedBy','approvedBy','finalizedBy']) &&
+      'submittedBy','approvedBy','finalizedBy','correctionOf','correctionReason']) &&
      date(request.resource.data.periodStart) && date(request.resource.data.periodEnd) &&
      date(request.resource.data.payDate) &&
      request.resource.data.periodStart <= request.resource.data.periodEnd &&
@@ -175,7 +239,14 @@ service cloud.firestore {
      request.resource.data.status == 'draft' &&
      request.resource.data.createdBy == request.auth.uid &&
      request.resource.data.submittedBy == '' && request.resource.data.approvedBy == '' &&
-     request.resource.data.finalizedBy == '';
+     request.resource.data.finalizedBy == '' &&
+     request.resource.data.get('correctionOf','') is string &&
+     request.resource.data.get('correctionReason','') is string &&
+     (request.resource.data.get('correctionOf','') == '' ||
+      (request.resource.data.get('correctionReason','').size() >= 6 &&
+       request.resource.data.get('correctionReason','').size() <= 200 &&
+       exists(runPath(t,request.resource.data.correctionOf)) &&
+       get(runPath(t,request.resource.data.correctionOf)).data.status == 'finalized'));
     allow update: if (
        (payrollStaff(t) && resource.data.status == 'draft' &&
         request.resource.data.status == 'submitted' &&
@@ -201,13 +272,25 @@ service cloud.firestore {
      );
     allow delete: if false;
 
+    match /snapshots/{snapshotId} {
+     allow read: if clientView(t);
+     allow create: if payrollStaff(t) &&
+      exists(runPath(t,r)) && get(runPath(t,r)).data.status == 'draft' &&
+      request.resource.data.keys().hasOnly(['policyVersion','sourceCount','employeeCount','grossCents','netCents','generatedAt','generatedBy']) &&
+      request.resource.data.policyVersion is int && request.resource.data.policyVersion >= 1 &&
+      request.resource.data.sourceCount is int && request.resource.data.sourceCount >= 0 &&
+      request.resource.data.employeeCount is int && request.resource.data.employeeCount >= 0 &&
+      cent(request.resource.data.grossCents) && cent(request.resource.data.netCents) &&
+      request.resource.data.generatedBy == request.auth.uid;
+     allow update,delete: if false;
+    }
     match /lines/{employeeId} {
      allow read: if clientView(t);
      allow create, update: if payrollStaff(t) &&
        exists(runPath(t,r)) && get(runPath(t,r)).data.status == 'draft' &&
        exists(employeePath(t,employeeId)) &&
        request.resource.data.keys().hasOnly(['employeeId','employeeName','payType','regularHours','overtimeHours',
-         'regularCents','overtimeCents','bonusCents','deductionCents','grossCents','netCents']) &&
+         'regularCents','overtimeCents','bonusCents','deductionCents','grossCents','netCents','policyVersion','paidLeaveHours']) &&
        request.resource.data.employeeId == employeeId &&
        text(request.resource.data.employeeName,120) &&
        request.resource.data.payType in ['hourly','salary'] &&
@@ -215,7 +298,11 @@ service cloud.firestore {
        cent(request.resource.data.regularCents) && cent(request.resource.data.overtimeCents) &&
        cent(request.resource.data.bonusCents) && cent(request.resource.data.deductionCents) &&
        cent(request.resource.data.grossCents) && cent(request.resource.data.netCents) &&
-       request.resource.data.netCents == request.resource.data.grossCents - request.resource.data.deductionCents;
+       request.resource.data.netCents == request.resource.data.grossCents - request.resource.data.deductionCents &&
+       request.resource.data.get('policyVersion',1) is int &&
+       request.resource.data.get('paidLeaveHours',0) is number &&
+       request.resource.data.get('paidLeaveHours',0) >= 0 &&
+       request.resource.data.get('paidLeaveHours',0) <= 744;
      allow delete: if payrollStaff(t) && exists(runPath(t,r)) &&
        get(runPath(t,r)).data.status == 'draft';
     }
