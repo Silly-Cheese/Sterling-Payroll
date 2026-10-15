@@ -1,4 +1,5 @@
 import {collection,doc,getDoc,getDocs,query,where,limit,writeBatch,serverTimestamp} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
+import {createDeletionEngine,deletionSummary,DELETABLE} from "./deletion-engine.js";
 export function createOwnerRecordActions({db,getState,notify,onChanged,confirmAction,requestDeletion}){
  const S=()=>getState();
  const tenant=()=>S().tenantId;
@@ -24,38 +25,24 @@ export function createOwnerRecordActions({db,getState,notify,onChanged,confirmAc
    if(!corrections.empty)throw Error("This time entry has corrections and must remain available.");
   }
   if(["timeCorrections","leaveRequests"].includes(kind)&&record.status==="approved")
-   throw Error("Approved correction and leave records must remain for payroll history; do not delete them.");
-
- }
+   throw Error("Approved corr const engine=createDeletionEngine({db,getState,notify});
  async function remove(kind,record){
-  if(!S().platformOwner||!S().user)throw Error("Only the trusted Sterling owner may delete records");
-  const supported=["employees","timeEntries","payrollRuns","billingInvoices","supportTickets","announcements","leaveRequests","timeCorrections"];
-  if(!supported.includes(kind)||!record?.id)throw Error("Unsupported record type");
-  const currentTenant=tenant(),label=record.displayName||record.description||record.subject||record.title||record.workDate||record.periodStart||record.id;
-  if(typeof requestDeletion!=="function")throw Error("Confirmation dialog is unavailable");
-  const confirmation=await requestDeletion({title:"Delete "+kind,message:"Permanently delete "+label+" and its related records where supported? This cannot be undone.",recordLabel:label});
-  if(confirmation===null)return false;
-  const why=confirmation.reason;
-  if(why.length>500)throw Error("Deletion reason cannot exceed 500 characters.");
-  if(currentTenant!==tenant()||!S().platformOwner)throw Error("Company or permissions changed; try again.");
-  const data=await getDoc(recordRef(kind,record.id));if(!data.exists())throw Error("Record was already removed. Refresh the list.");
-  const latest={id:record.id,...data.data()};
-  await ensureSafe(kind,latest);
-  const batch=writeBatch(db);
-  const nested={payrollRuns:["lines","snapshots","revisions"],billingInvoices:["events"],supportTickets:["updates","internalNotes"]};
-  let dependentCount=0;
-  for(const child of nested[kind]||[]){
-   const result=await getDocs(query(collection(data.ref,child),limit(101)));
-   if(result.size>100)throw Error("Large deletion needs administrator review: more than 100 "+child+" records.");
-   dependentCount+=result.size;
-   if(dependentCount>400)throw Error("Too many dependent records to remove in one atomic operation.");
-   result.docs.forEach(entry=>batch.delete(entry.ref));
-  }
-  batch.delete(data.ref);
-  batch.set(doc(collectionRef("ownerAudit")),{action:"delete",entityType:kind,entityId:record.id,reason:why,actor:S().user.uid,at:serverTimestamp(),before:data.data()});
-  batch.set(doc(collectionRef("auditEvents")),{category:"owner",action:"record-delete",subject:record.id,detail:kind+" · "+why.slice(0,240),actor:S().user.uid,at:serverTimestamp()});
-  await batch.commit();
-  notify("Record deleted. An owner activity entry has been retained.");
+  if(!S().platformOwner||!S().user)throw Error("Only the Sterling owner can permanently delete records");
+  if(!DELETABLE.includes(kind)||!record?.id)throw Error("Select a supported record");
+  const currentTenant=tenant();
+  // Discover all related records before showing what the owner is authorizing.
+  const operation=await engine.plan(kind,record.id,currentTenant);
+  if(currentTenant!==tenant())throw Error("Company changed during dependency review");
+  if(typeof requestDeletion!=="function")throw Error("Sterling confirmation dialog is unavailable");
+  const confirmed=await requestDeletion({title:"Delete "+operation.title,
+   message:deletionSummary(operation),recordLabel:operation.title});
+  if(!confirmed)return false;
+  if(currentTenant!==tenant())throw Error("Company changed during confirmation");
+  await engine.execute(operation,confirmed.reason);
+  await onChanged?.(kind);
+  return true;
+ }
+er activity entry has been retained.");
   await onChanged?.(kind);
   return true;
  }
