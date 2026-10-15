@@ -3,9 +3,12 @@ import {correctedLine,correctedPeriod,reason,canHardDelete,ownerApprovalOverride
 const E=(tag,cls,txt)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(txt!==undefined)n.textContent=String(txt);return n};
 const opt=(id,label)=>{const n=E("option","",label);n.value=id;return n};
 const kinds=[["employees","Employees"],["timeEntries","Time entries"],["payrollRuns","Payroll periods"],["timeCorrections","Time corrections"],["leaveRequests","Leave requests"],["announcements","Announcements"],["billingInvoices","Simulated invoices"],["supportTickets","Support tickets"]];
-export function mountOwnerControls({db,getState,notify,confirmAction,refreshCompany}){
+export function mountOwnerControls({db,getState,notify,confirmAction,refreshCompany,requestDeletion}){
  const root=document.getElementById("ownerControlCenter");if(!root)return null;
- root.innerHTML='<div class="panel"><div class="eyebrow">OWNER AUTHORITY</div><h2>Owner Control Center</h2><p class="muted">Override or remove records within this simulation. Changes require a reason and are entered in the immutable owner activity log. This does not delete Firebase Authentication users or external data.</p><div class="three-fields"><label>Client<select id="ownerTenant"></select></label><label>Record type<select id="ownerKind"></select></label><label>Record<select id="ownerRecord"></select></label></div><label>Required action reason<textarea id="ownerReason" maxlength="500" minlength="10" placeholder="Explain the override or deletion"></textarea></label><div class="actions"><button id="ownerArchive" class="btn" type="button">Archive / void</button><button id="ownerDelete" class="btn danger" type="button">Delete record</button><select id="ownerApprovalStatus" aria-label="Owner approval override"><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select><button id="ownerOverrideApproval" class="btn primary" type="button">Override approval / signoff</button><button id="ownerReload" class="btn" type="button">Refresh</button></div><p id="ownerMessage" class="fine-print">Owner overrides bypass the normal second-party requirement. Every decision requires a reason, confirmation and recorded owner identity.</p></div><div class="ops-grid phase3-spaced"><article class="panel"><h2>Correct finalized payroll in place</h2><p class="muted">Correct period dates, status and individual simulated pay lines. Every revision preserves the previous and new values.</p><label>Finalized or other period<select id="ownerRun"></select></label><div class="three-fields"><label>Start<input type="date" id="ownerStart"></label><label>End<input type="date" id="ownerEnd"></label><label>Pay date<input type="date" id="ownerPayDate"></label></div><label>Owner override status<select id="ownerRunStatus"><option>draft</option><option>submitted</option><option>approved</option><option>finalized</option><option>rejected</option><option>voided</option></select></label><button id="ownerSavePeriod" class="btn primary" type="button">Correct this same pay period</button><h3>Correct individual pay amounts</h3><label>Employee pay line<select id="ownerLine"></select></label><div class="three-fields"><label>Regular ($)<input id="ownerRegular" type="number" min="0" step=".01"></label><label>Overtime ($)<input id="ownerOvertime" type="number" min="0" step=".01"></label><label>Bonus ($)<input id="ownerBonus" type="number" min="0" step=".01"></label><label>Deduction ($)<input id="ownerDeduction" type="number" min="0" step=".01"></label><label>Regular hours<input id="ownerRegHours" type="number" min="0" step=".01"></label><label>Overtime hours<input id="ownerOtHours" type="number" min="0" step=".01"></label></div><button class="btn primary" id="ownerSaveLine" type="button">Correct finalized pay line in place</button></article><article class="panel"><h2>Recent owner actions</h2><div id="ownerAuditList" class="list"></div></article></div>';
+ const dialog=document.getElementById("sterlingRecordDialog");if(!dialog)throw Error("Record management dialog not deployed");
+ const close=()=>{if(dialog.open)dialog.close()};
+ document.getElementById("closeRecordDialog").onclick=close;
+ root.innerHTML='<div class="panel" id="ownerGeneralPanel"><div class="eyebrow">AUTHORIZED RECORD OPERATIONS</div><h2>Approval decisions</h2><p class="muted">Make an exceptional approval decision on a selected record with a documented reason. Actions are attributed to your owner identity.</p><div class="three-fields"><label>Client<select id="ownerTenant"></select></label><label>Record type<select id="ownerKind"></select></label><label>Record<select id="ownerRecord"></select></label></div><label>Required action reason<textarea id="ownerReason" maxlength="500" minlength="10" placeholder="Explain the override or deletion"></textarea></label><div class="actions"><button id="ownerArchive" class="btn" type="button">Archive / void</button><button id="ownerDelete" class="btn danger" type="button">Delete permanently</button><select id="ownerApprovalStatus" aria-label="Owner approval override"><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select><button id="ownerOverrideApproval" class="btn primary" type="button">Override approval / signoff</button><button id="ownerReload" class="btn" type="button">Refresh</button></div><p id="ownerMessage" class="fine-print">Owner overrides bypass the normal second-party requirement. Every decision requires a reason, confirmation and recorded owner identity.</p></div><div class="ops-grid phase3-spaced"><article class="panel" id="ownerPeriodPanel"><h2>Payroll correction</h2><p class="muted">Correct period dates, status and individual simulated pay lines. Every revision preserves the previous and new values.</p><label>Finalized or other period<select id="ownerRun"></select></label><div class="three-fields"><label>Start<input type="date" id="ownerStart"></label><label>End<input type="date" id="ownerEnd"></label><label>Pay date<input type="date" id="ownerPayDate"></label></div><label>Owner override status<select id="ownerRunStatus"><option>draft</option><option>submitted</option><option>approved</option><option>finalized</option><option>rejected</option><option>voided</option></select></label><button id="ownerSavePeriod" class="btn primary" type="button">Correct this same pay period</button><h3>Correct individual pay amounts</h3><label>Employee pay line<select id="ownerLine"></select></label><div class="three-fields"><label>Regular ($)<input id="ownerRegular" type="number" min="0" step=".01"></label><label>Overtime ($)<input id="ownerOvertime" type="number" min="0" step=".01"></label><label>Bonus ($)<input id="ownerBonus" type="number" min="0" step=".01"></label><label>Deduction ($)<input id="ownerDeduction" type="number" min="0" step=".01"></label><label>Regular hours<input id="ownerRegHours" type="number" min="0" step=".01"></label><label>Overtime hours<input id="ownerOtHours" type="number" min="0" step=".01"></label></div><button class="btn primary" id="ownerSaveLine" type="button">Correct finalized pay line in place</button></article><article class="panel" id="ownerAuditPanel"><h2>Recent owner actions</h2><div id="ownerAuditList" class="list"></div></article></div>';
  const $=id=>root.querySelector("#"+id),S=()=>getState();
  let records=[],runs=[],lines=[],cursorTenant="";
  const tenant=()=>$("ownerTenant").value;
@@ -38,30 +41,44 @@ export function mountOwnerControls({db,getState,notify,confirmAction,refreshComp
   records=snap.docs;
   setOptions($("ownerRecord"),records.map(d=>opt(d.id,textFor(kind,d))),"Choose record");
   setReviewChoices(kind);
+  $("ownerPeriodPanel").classList.toggle("hidden",kind!=="payrollRuns");
  }
  async function openReview(kind,id,tenantId=S().tenantId){
   ensureOwner();
   if(!REVIEW_STATES[kind])throw Error("This record does not have an owner approval workflow");
-  if(!tenantId)throw Error("Select the company containing this record");
+  if(!tenantId)throw Error("Select a company first");
   setOptions($("ownerTenant"),S().tenants.map(t=>opt(t.id,t.name)),"Choose client company");
   $("ownerTenant").value=tenantId;
-  if(tenant()!==tenantId)throw Error("The selected client is not accessible to the owner");
+  if(tenant()!==tenantId)throw Error("You do not have access to this company");
   $("ownerKind").value=kind;
   await readKind();
   const target=await getDoc(doc(db,"tenants",tenantId,kind,id));
-  if(!target.exists())throw Error("This review record no longer exists");
+  if(!target.exists())throw Error("Record no longer exists");
   if(!records.some(d=>d.id===id))records.push(target);
   setOptions($("ownerRecord"),records.map(d=>opt(d.id,textFor(kind,d))),"Choose record");
-  $("ownerRecord").value=id;
-  setReviewChoices(kind);
-  $("ownerMessage").textContent="Review selected: "+textFor(kind,target)+". Choose an outcome, provide your reason, then select Override approval / signoff.";
+  $("ownerRecord").value=id;setReviewChoices(kind);
+  $("ownerPeriodPanel").classList.toggle("hidden",kind!=="payrollRuns");
+  $("ownerMessage").textContent="Selected: "+textFor(kind,target)+". Choose an outcome and provide a reason.";
+  if(kind==="payrollRuns")await selectRunForEditing(target);
+  if(!dialog.open)dialog.showModal();
   $("ownerApprovalStatus").focus();
+ }
+ async function selectRunForEditing(run){
+  const id=run.id;
+  if(!runs.some(x=>x.id===id))runs.push(run);
+  setOptions($("ownerRun"),runs.map(x=>opt(x.id,textFor("payrollRuns",x))),"Choose payroll run");
+  $("ownerRun").value=id;
+  await loadLines();
+ }
+ async function openPeriod(id,tenantId=S().tenantId){
+  await openReview("payrollRuns",id,tenantId);
+  $("ownerPeriodPanel").scrollIntoView({behavior:"smooth",block:"nearest"});
  }
  async function loadRuns(){
   runs=[];lines=[];
   if(!tenant())return;
   const snap=await getDocs(query(collection(db,"tenants",tenant(),"payrollRuns"),limit(200)));
-  if(snap.size>=200)throw Error("Payroll run limit reached. Use a smaller client dataset.");
+  if(snap.size>=200)$("ownerMessage").textContent="Showing 200 payroll periods. Open a record directly from Payroll Runs for records beyond this page.";
   runs=snap.docs;
   setOptions($("ownerRun"),runs.map(d=>opt(d.id,textFor("payrollRuns",d))),"Choose payroll run");
   await loadLines();
@@ -216,5 +233,5 @@ export function mountOwnerControls({db,getState,notify,confirmAction,refreshComp
  setOptions($("ownerKind"),kinds.map(([a,b])=>opt(a,b)),"Choose record type");
  $("ownerKind").value="employees";
  setReviewChoices("employees");
- return {refresh,openReview};
+ return {refresh,openReview,openPeriod};
 }
