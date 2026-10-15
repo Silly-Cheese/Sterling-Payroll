@@ -504,6 +504,7 @@ function renderRuns(){
   const css=run.status==="finalized"?"success":run.status==="rejected"?"danger":"";
   const actions=[button("Open",()=>selectRun(run.id),"small")];
   if(state.platformOwner){
+   actions.push(button("Owner signoff",()=>openOwnerReview("payrollRuns",run.id),"small"));
    if(!["draft","rejected"].includes(run.status))actions.push(button("Correct / void",()=>go("owner"),"small"));
    actions.push(button("Delete permanently",()=>ownerActions.remove("payrollRuns",run),"small danger"));
   }
@@ -515,6 +516,11 @@ function renderRuns(){
 }
 $("runSearch").addEventListener("input",renderRuns);
 $("runStatus").addEventListener("change",renderRuns);
+async function openOwnerReview(kind,id){
+ if(!state.platformOwner||!ownerUI)throw Error("Owner approval tools are not loaded");
+ go("owner");
+ await ownerUI.openReview(kind,id,state.tenantId);
+}
 async function selectRun(id){
  if(!state.tenantId)return;
  const run=state.runs.find(r=>r.id===id);if(!run)return;
@@ -715,7 +721,7 @@ onAuthStateChanged(auth,async user=>{
   await loadTenantDirectory();
   await initializePhase2();
   if(!staffUI)staffUI=mountStaffAccounts({db,getState:()=>state,notify:toast,confirmAction});
-  if(!phase3)phase3=await mountPhase3({db,getState:()=>state,refreshCompany,notify:toast,confirmAction,ownerDelete:(kind,record)=>ownerActions.remove(kind,record)});
+  if(!phase3)phase3=await mountPhase3({db,getState:()=>state,refreshCompany,notify:toast,confirmAction,ownerDelete:(kind,record)=>ownerActions.remove(kind,record),openOwnerReview});
   if(!phase4){
    try{const {mountPhase4}=await import("./phase4.js?v=phase6-final");phase4=await mountPhase4({db,getState:()=>state,notify:toast,confirmAction})}
    catch(error){console.error("Employee portal module unavailable",error);toast("Employee portal assets are still deploying. Please refresh after GitHub Pages finishes.",true)}
