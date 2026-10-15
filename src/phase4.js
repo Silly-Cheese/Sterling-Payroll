@@ -1,4 +1,4 @@
-import {collection,doc,getDoc,getDocs,addDoc,setDoc,query,where,orderBy,limit,serverTimestamp} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
+import {collection,doc,getDoc,getDocs,addDoc,setDoc,updateDoc,query,where,orderBy,limit,serverTimestamp} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 import {paystubHtml,validatePreferences,recentFinalized} from "./phase4-core.js";
 import {money} from "./payroll-core.js";
 const E=(tag,className,text)=>{const n=document.createElement(tag);if(className)n.className=className;if(text!==undefined)n.textContent=String(text);return n};
