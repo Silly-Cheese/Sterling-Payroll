@@ -50,22 +50,23 @@ Acceptance criteria: runs are internally consistent, correction approvals protec
 Acceptance criteria: employees see only their own finalized pay data; company employer/employee records remain isolated. Automated checks are green; live Firestore emulator/second-account acceptance testing still required.
 
 ## Phase 5 — Client plans, billing & support
-**Status: development started; fictional invoices and support-case queues are implemented.**
-- Simulated service plans and client subscription states
-- Mock invoices, payments, adjustments and statements
-- Case/ticket center for payroll support, client SLA dashboards
-- Account-level usage metrics and operational activity queues
+**Status: implemented for simulated client-service workflows; production Firestore rules publication and live acceptance checks remain.**
+- Simulated service plans, annual/monthly agreements, status, seat limits and renewal dates
+- Fictional invoices, payments, credits, adjustments, status transitions and CSV statements
+- Searchable support cases, client-visible updates, private staff notes, assignments, category/priority and elapsed-hour SLA targets
+- Client services summaries, paginated records and append-only action history
 
 Acceptance criteria: all financial amounts clearly flagged simulated; no live payment gateways or card storage.
 
 ## Phase 6 — Audit, automation & hardening
-- Immutable change/audit trails for sensitive client actions
-- Permission rules validation using Firebase emulator
-- Server-side verification for any future high-integrity calculations
-- Advanced analytics, data retention controls, bulk export/import
-- Accessibility audit, load tests, deployment runbooks, backups and releases
+**Status: implemented for the static Firebase Spark simulator; nightly CI and Firestore emulator role testing enabled. Trusted-backend features remain outside this architecture.**
+- Append-only event feed for integrated personnel, payroll and client-service operations (not cryptographically guaranteed for every write)
+- Firebase emulator tests for owner, company, employee, invoice and support authorizations
+- Advisory integrity and assurance reports rather than server-certified payroll recomputation
+- Scoped JSON export with completion flags, advisory retention preferences and responsive interface improvements
+- Nightly GitHub CI, deployment asset checking, user operations runbook and explicit recovery limitations
 
-Acceptance criteria: repeatable end-to-end scenarios pass in test projects, predictable failure recovery, final owner acceptance.
+Acceptance criteria: automated Node tests and emulator authorization tests pass. Live Firebase user testing and owner acceptance still need to be completed; no production backend backup or financial certification is claimed.
 
 ## Design principles
 - No real money transfers, taxes, bank credentials or government payroll filing.
@@ -76,3 +77,6 @@ Acceptance criteria: repeatable end-to-end scenarios pass in test projects, pred
 
 ## Owner controls and finalized-period correction
 Owner can correct existing simulated payroll periods directly, including finalized runs, and correct pay lines in place. Before/after revisions are stored rather than creating an additional payroll period. Owner-controlled deletion supports selected record types; payroll periods with historical children are voided rather than recursively erased. See [SETUP.md](./SETUP.md) for restrictions and required Firestore rules publication.
+
+## Release 6.0
+See [RELEASE_6.md](./RELEASE_6.md) for setup, feature coverage, rules activation, testing and explicit limitations.
