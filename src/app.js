@@ -550,19 +550,19 @@ function renderRunDetails(){
  $("runStatusChip").textContent=run.status.toUpperCase();
  $("runStatusChip").className="status-chip "+(run.status==="finalized"?"success":run.status==="rejected"?"danger":"");
  const totals=summarizeLines(state.lines),box=$("runTotals");box.replaceChildren();
- for(const [title,amount] of [["Employees",totals.employees],["Simulated gross",money(totals.grossCents)],["Simulated net",money(totals.netCents)]]){
+ for(const [title,amount] of [["Employees",totals.employees],["Simulated gross",money(totals.grossCents)],["Commission earnings",money(state.lines.reduce((n,l)=>n+(l.commissionCents||0),0))],["Simulated net",money(totals.netCents)]]){
   const el=mk("div","metric");el.append(mk("div","metric-label",title),mk("strong","",amount));box.append(el);
  }
  const wrap=$("runLines");wrap.replaceChildren();
  if(!state.lines.length)wrap.append(mk("p","muted","No pay lines yet. Generate a preview while this run is in draft."));
  else{
   const table=mk("table"),head=mk("thead"),hrow=mk("tr");
-  for(const label of ["Employee","Regular","Overtime","Bonus","Deductions","Gross","Net","Adjust"] )hrow.append(mk("th","",label));
+  for(const label of ["Employee","Regular","Overtime","Bonus","Commission","Deductions","Gross","Net","Adjust"] )hrow.append(mk("th","",label));
   head.append(hrow);table.append(head);
   const tbody=mk("tbody");
   for(const line of state.lines){
    const row=mk("tr");
-   for(const v of [line.employeeName,money(line.regularCents),money(line.overtimeCents),money(line.bonusCents),
+   for(const v of [line.employeeName,money(line.regularCents),money(line.overtimeCents),money(line.bonusCents),money(line.commissionCents||0),
      money(line.deductionCents),money(line.grossCents),money(line.netCents)])row.append(mk("td","",v));
    const cell=mk("td");
    if(run.status==="draft"&&canPayroll()){
@@ -577,7 +577,7 @@ function renderRunDetails(){
     deduction.setAttribute("aria-label","Deduction: "+line.employeeName);
     cell.append(bonus,deduction,button("Save",async()=>{
      const extra=toCents(bonus.value),less=toCents(deduction.value);
-     const gross=line.regularCents+line.overtimeCents+extra;
+     const gross=line.regularCents+line.overtimeCents+extra+(line.commissionCents||0);
      if(less>gross)throw Error("Deduction exceeds gross");
      const {id:omit,...payload}=line;
      await setDoc(doc(db,"tenants",state.tenantId,"payrollRuns",run.id,"lines",line.employeeId),
