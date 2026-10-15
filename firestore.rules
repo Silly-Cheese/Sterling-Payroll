@@ -10,7 +10,8 @@ service cloud.firestore {
     getAfter(bootstrapPath()).data.ownerUid == uid && getAfter(bootstrapPath()).data.initialized == true;}
   function platform(){return signedIn() && exists(platformPath()) && get(platformPath()).data.active == true;}
   function memberPath(t){return /databases/$(database)/documents/tenants/$(t)/members/$(request.auth.uid);}
-  function member(t){return signedIn() && exists(memberPath(t)) && get(memberPath(t)).data.status == 'active';}
+  function member(t){return signedIn() && exists(memberPath(t)) && get(memberPath(t)).data.status == 'active' &&
+    get(/databases/$(database)/documents/tenants/$(t)).data.status == 'active';}
   function role(t){return get(memberPath(t)).data.role;}
   function clientAdmin(t){return platform() || (member(t) && role(t) == 'client_admin');}
   function payrollStaff(t){return clientAdmin(t) || (member(t) && role(t) == 'payroll_specialist');}
