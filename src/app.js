@@ -4,7 +4,7 @@ import {getFirestore,collection,doc,getDoc,getDocs,addDoc,setDoc,updateDoc,query
 import {calculateLine,summarizeLines,toCents,money,hoursValue,canTransition,validPeriod,cleanEmail} from "./payroll-core.js";
 import {mountStaffAccounts} from "./staff.js";
 import {mountPhase3} from "./phase3.js";
-import {mountPhase4} from "./phase4.js";
+// Phase 4 loads lazily, so a pending Pages deployment cannot break the sign-in screen.
 import {buildPayrollPreview,DEFAULT_POLICY} from "./phase3-core.js";
 import {mountPhase2} from "./phase2.js";
 
@@ -19,6 +19,8 @@ const app=initializeApp({
 const auth=getAuth(app),db=getFirestore(app),$=id=>document.getElementById(id);
 const state={user:null,platform:false,platformOwner:false,platformWrite:false,platformRole:"client",tenants:[],tenantId:"",role:"",employees:[],time:[],runs:[],selectedRun:null,lines:[],page:"dashboard",register:false,moreEmployees:false,moreTime:false,moreRuns:false,employeeCursor:null,timeCursor:null,runCursor:null,clientCursor:null,moreClients:false};
 const titles={
+ owner:["Owner Control Center","Correct finalized fictional payroll in place, override and delete records with audit history."],
+ service:["Client Services","Simulated billing, client service plans and support cases."],
  employeePortal:["Employee Portal","Private fictional pay statements, profile preferences and company communications."],
  staff:["Staff & Accounts","Assign Sterling staff privileges and company memberships."],
  dashboard:["Executive overview","Everything you need to manage simulated payroll across client businesses."],
@@ -58,8 +60,10 @@ function go(page){
  if(!titles[page])page="dashboard";
  if(page==="clients"&&!state.platform)page="dashboard";
  if(page==="staff"&&!state.platformOwner)page="dashboard";
+ if(page==="owner"&&!state.platformOwner)page="dashboard";
+ if(page==="service"&&(!state.tenantId||state.role==="employee"))page="dashboard";
  if(page==="employeePortal"&&!state.tenantId)page="dashboard";
- if(state.role==="employee"&&["employees","operations","time","payroll","access","clients"].includes(page))page=state.tenantId?"employeePortal":"dashboard";
+ if(state.role==="employee"&&["employees","operations","time","payroll","access","service","clients"].includes(page))page=state.tenantId?"employeePortal":"dashboard";
  if(["employees","operations","time","payroll","access"].includes(page)&&!state.tenantId)page="dashboard";
  if(page==="access"&&!canAdmin())page="dashboard";
  state.page=page;
@@ -71,6 +75,8 @@ function go(page){
  document.getElementById("phase3Time")?.classList.toggle("hidden",page!=="time"||!state.tenantId);
  document.getElementById("phase3Payroll")?.classList.toggle("hidden",page!=="payroll"||!state.tenantId);
  if(page==="staff")void staffUI?.refresh();
+ if(page==="owner")void ownerUI?.refresh();
+ if(page==="service")void phase5?.refresh();
  if(page==="employeePortal")void phase4?.refresh();
  if(page==="dashboard")renderDashboard();
  if(page==="clients")renderClients();
@@ -156,7 +162,7 @@ async function chooseTenant(id,writeStorage=true){
  document.querySelectorAll(".client-only").forEach(node=>node.classList.toggle("hidden",!id));
  const employeeOnly=state.role==="employee";
  for(const nav of document.querySelectorAll("#nav [data-page]")){
-  if(["employees","operations","time","payroll","access"].includes(nav.dataset.page)&&employeeOnly)nav.classList.add("hidden");
+  if(["employees","operations","time","payroll","access","service"].includes(nav.dataset.page)&&employeeOnly)nav.classList.add("hidden");
  }
  const portalNav=document.querySelector("#nav [data-page=employeePortal]");
  if(portalNav)portalNav.classList.toggle("hidden",!id||!(employeeOnly||canAdmin()));
@@ -506,7 +512,7 @@ async function confirmAction(title,message){
   modal.addEventListener("close",()=>resolve(modal.returnValue==="confirm"),{once:true});
  });
 }
-let phase2=null,phase2Pending=null,phase3=null,phase4=null,staffUI=null;
+let phase2=null,phase2Pending=null,phase3=null,phase4=null,phase5=null,ownerUI=null,staffUI=null;
 async function initializePhase2(){
  if(phase2)return phase2;
  if(!phase2Pending){
@@ -537,9 +543,20 @@ onAuthStateChanged(auth,async user=>{
   await initializePhase2();
   if(!staffUI)staffUI=mountStaffAccounts({db,getState:()=>state,notify:toast,confirmAction});
   if(!phase3)phase3=await mountPhase3({db,getState:()=>state,refreshCompany,notify:toast,confirmAction});
-  if(!phase4)phase4=await mountPhase4({db,getState:()=>state,notify:toast,confirmAction});
-  if(state.platformOwner)await staffUI?.refresh();
-  if(state.tenantId&&state.role!=="employee")await phase3?.refresh();
+  if(!phase4){
+   try{const {mountPhase4}=await import("./phase4.js?v=phase5a");phase4=await mountPhase4({db,getState:()=>state,notify:toast,confirmAction})}
+   catch(error){console.error("Employee portal module unavailable",error);toast("Employee portal assets are still deploying. Please refresh after GitHub Pages finishes.",true)}
+  }
+  if(!phase5){
+   try{const {mountPhase5}=await import("./phase5.js?v=phase5a");phase5=mountPhase5({db,getState:()=>state,notify:toast,confirmAction})}
+   catch(error){console.error("Client services module unavailable",error);toast("Client services are not yet available; check the deployment.",true)}
+  }
+  if(state.platformOwner&&!ownerUI){
+   try{const {mountOwnerControls}=await import("./owner.js?v=phase5a");ownerUI=mountOwnerControls({db,getState:()=>state,notify:toast,confirmAction,refreshCompany})}
+   catch(error){console.error("Owner control module unavailable",error);toast("Owner controls are not yet deployed.",true)}
+  }
+  if(state.platformOwner){await staffUI?.refresh();await ownerUI?.refresh()}
+  if(state.tenantId&&state.role!=="employee"){await phase3?.refresh();await phase5?.refresh()}
   go(state.role==="employee"?"employeePortal":"dashboard");
   if(!state.platform&&!state.tenants.length)toast("Client account ready. Sterling can assign you access to a company.");
  }catch(e){fail(e,"Workspace authorization failed");go("dashboard")}
