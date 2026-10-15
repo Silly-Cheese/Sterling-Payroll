@@ -1,6 +1,6 @@
 import {initializeApp} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
 import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,signOut} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js";
-import {getFirestore,collection,doc,getDoc,getDocs,addDoc,setDoc,updateDoc,query,limit,writeBatch,serverTimestamp,orderBy,documentId,startAfter} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
+import {getFirestore,collection,doc,getDoc,getDocs,addDoc,setDoc,updateDoc,query,limit,writeBatch,serverTimestamp,orderBy,documentId,startAfter,startAt,endAt} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 import {calculateLine,summarizeLines,toCents,money,hoursValue,canTransition,validPeriod,cleanEmail} from "./payroll-core.js";
 import {mountStaffAccounts} from "./staff.js";
 import {mountPhase3} from "./phase3.js";
@@ -54,6 +54,45 @@ function item(title,description,actions=[],status="",style=""){
  node.append(controls);return node;
 }
 function empty(container,message){container.replaceChildren(mk("p","muted",message))}
+
+let remoteSearchTimer=null,remoteSearchId=0;
+function scheduleDirectorySearch(type){
+ clearTimeout(remoteSearchTimer);
+ const requestId=++remoteSearchId,searchId=type==="clients"?"clientSearch":"empSearch";
+ const input=$(searchId),hint=$(type==="clients"?"clientSearchHint":"empSearchHint");
+ const value=input?.value.trim()||"";
+ if(hint)hint.textContent=value.length<2?"Loaded records are searchable. Enter at least 2 letters to search additional name prefixes.":"Looking up company-wide name prefixes…";
+ if(value.length<2)return;
+ if(type==="clients"&&!state.platform)return;
+ if(type==="employees"&&(!state.tenantId||state.role==="employee"))return;
+ const tenantAtStart=state.tenantId;
+ remoteSearchTimer=setTimeout(async()=>{
+  try{
+   const field=type==="clients"?"name":"displayName";
+   const source=type==="clients"?collection(db,"tenants"):collection(db,"tenants",tenantAtStart,"employees");
+   const variants=[...new Set([value,value.charAt(0).toUpperCase()+value.slice(1)])].slice(0,2);
+   const results=await Promise.all(variants.map(prefix=>getDocs(query(source,orderBy(field),startAt(prefix),endAt(prefix+"\uf8ff"),limit(40)))));
+   if(requestId!==remoteSearchId||state.tenantId!==tenantAtStart||input.value.trim()!==value)return;
+   const rows=results.flatMap(result=>result.docs.map(d=>({id:d.id,...d.data()})));
+   const target=type==="clients"?state.tenants:state.employees,seen=new Set(target.map(x=>x.id));
+   let added=0;
+   for(const row of rows)if(!seen.has(row.id)){target.push(row);seen.add(row.id);added++}
+   target.sort((a,b)=>String(a[field]||"").localeCompare(String(b[field]||"")));
+   if(type==="clients"){
+    const selector=$("companySelect"),old=selector.value;
+    selector.replaceChildren(new Option("Select company",""));
+    for(const t of state.tenants)selector.append(new Option(t.name,t.id));
+    selector.value=old;renderClients();
+   }else renderEmployees();
+   if(hint)hint.textContent="Searched additional name prefixes across the database; "+added+" matching records added. Search by department uses loaded pages.";
+  }catch(error){
+   if(requestId!==remoteSearchId)return;
+   console.warn("Name-prefix search unavailable",error);
+   if(hint)hint.textContent="Additional name lookup unavailable; the loaded records remain searchable.";
+  }
+ },340);
+}
+
 function canPayroll(){return state.platformWrite||state.platformRole==="payroll_operator"||["client_admin","payroll_specialist"].includes(state.role)}
 function canAdmin(){return state.platformWrite||state.role==="client_admin"}
 const tenantDoc=()=>doc(db,"tenants",state.tenantId);
@@ -184,6 +223,7 @@ async function loadTenantDirectory(){
 async function chooseTenant(id,writeStorage=true){
  phase4?.clear();
  state.tenantId=id;state.role="";state.selectedRun=null;state.lines=[];
+ clearTimeout(remoteSearchTimer);remoteSearchId++;
  // Never carry sensitive personnel data from a previous tenant into another workspace.
  state.employees=[];state.time=[];state.runs=[];
  state.employeeCursor=null;state.timeCursor=null;state.runCursor=null;
@@ -304,7 +344,7 @@ function renderClients(){
  el.append(frag);
  if(clients.length>250)el.append(mk("p","fine-print","Showing 250 matches. Narrow your search to inspect another record."));
 }
-$("clientSearch").addEventListener("input",renderClients);
+$("clientSearch").addEventListener("input",()=>{renderClients();scheduleDirectorySearch("clients")});
 $("loadMoreClients").addEventListener("click",async()=>{
  if(!state.platform||!state.clientCursor)return;
  $("loadMoreClients").disabled=true;
@@ -354,7 +394,7 @@ $("employeeForm").addEventListener("submit",async event=>{
   await refreshCompany();toast("Employee saved in this client workspace.");
  }catch(e){fail(e,"Employee creation failed")}
 });
-$("empSearch").addEventListener("input",renderEmployees);
+$("empSearch").addEventListener("input",()=>{renderEmployees();scheduleDirectorySearch("employees")});
 $("empStatus").addEventListener("change",renderEmployees);
 function renderEmployees(){
  const el=$("employeeList");el.replaceChildren();
