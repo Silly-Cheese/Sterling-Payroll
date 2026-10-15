@@ -6,7 +6,7 @@ const opt=(v,text)=>{const a=el("option","",text);a.value=v;return a};
 const display=(container,records,mapper,emptyMessage)=>{container.replaceChildren();if(!records.length)container.append(el("p","muted",emptyMessage));else for(const record of records)container.append(mapper(record))};
 const row=(title,subtitle,actions=[])=>{const a=el("div","list-item"),b=el("div"),c=el("div","item-actions");b.append(el("strong","",title),el("small","",subtitle));for(const x of actions)c.append(x);a.append(b,c);return a};
 const action=(title,cb)=>{const b=el("button","btn small",title);b.type="button";b.onclick=async()=>{b.disabled=true;try{await cb()}finally{b.disabled=false}};return b};
-export async function mountPhase3({db,getState,refreshCompany,notify,confirmAction,ownerDelete}){
+export async function mountPhase3({db,getState,refreshCompany,notify,confirmAction,ownerDelete,openOwnerReview}){
  const time=document.getElementById("phase3Time"),payroll=document.getElementById("phase3Payroll");
  if(!time||!payroll)throw Error("Phase 3 workspace containers missing");
  const html=await Promise.all(["phase3-time.html","phase3-payroll.html"].map(async name=>{
@@ -54,11 +54,13 @@ export async function mountPhase3({db,getState,refreshCompany,notify,confirmActi
   display($("p3TimeQueue"),pending,entry=>{
    const worker=S().employees.find(e=>e.id===entry.employeeId);
    const can=adminAllowed()&&entry.createdBy!==S().user.uid;
-   return row((worker?.displayName||"Employee")+" · "+entry.workDate,
-    entry.regularHours+" regular / "+entry.overtimeHours+" overtime",can?[
+   const actions=can?[
     action("Approve",()=>reviewTime(entry,"approved")),
     action("Reject",()=>reviewTime(entry,"rejected"))
-   ]:[]);
+   ]:[];
+   if(S().platformOwner&&openOwnerReview)actions.push(action("Owner override",()=>openOwnerReview("timeEntries",entry.id)));
+   return row((worker?.displayName||"Employee")+" · "+entry.workDate,
+    entry.regularHours+" regular / "+entry.overtimeHours+" overtime",actions);
   },"No pending time entries in the currently loaded page.");
   display($("p3Corrections"),corrections.filter(x=>x.status==="pending"),x=>{
    const entry=S().time.find(t=>t.id===x.timeEntryId),can=adminAllowed()&&x.createdBy!==S().user.uid;
@@ -66,6 +68,7 @@ export async function mountPhase3({db,getState,refreshCompany,notify,confirmActi
     action("Approve",()=>reviewRequest("timeCorrections",x,"approved")),
     action("Reject",()=>reviewRequest("timeCorrections",x,"rejected"))
    ]:[];
+   if(S().platformOwner&&openOwnerReview)actions.push(action("Owner override",()=>openOwnerReview("timeCorrections",x.id)));
    if(S().platformOwner&&ownerDelete)actions.push(action("Delete",async()=>{try{await ownerDelete("timeCorrections",x);await refresh()}catch(e){describeError("Correction delete failed",e)}}));
    return row((entry?.workDate||"Time entry")+" · "+x.reason,x.regularHours+" regular / "+x.overtimeHours+" overtime",actions);
   },"No correction requests pending review.");
@@ -75,6 +78,7 @@ export async function mountPhase3({db,getState,refreshCompany,notify,confirmActi
     action("Approve",()=>reviewRequest("leaveRequests",x,"approved")),
     action("Reject",()=>reviewRequest("leaveRequests",x,"rejected"))
    ]:[];
+   if(S().platformOwner&&openOwnerReview)actions.push(action("Owner override",()=>openOwnerReview("leaveRequests",x.id)));
    if(S().platformOwner&&ownerDelete)actions.push(action("Delete",async()=>{try{await ownerDelete("leaveRequests",x);await refresh()}catch(e){describeError("Leave delete failed",e)}}));
    return row((worker?.displayName||"Employee")+" · "+x.date,x.hours+" paid leave hours • "+x.reason,actions);
   },"No leave requests pending review.");
