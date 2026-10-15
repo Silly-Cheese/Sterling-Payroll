@@ -40,7 +40,7 @@ See [SETUP.md](./SETUP.md) for Firebase Authentication, Firestore rules deployme
 
 ## Phase 4, 5 and 6 simulated release
 - **Employee Portal:** explicit employer-linked identity, private simulated paystub history, preferences, announcements, secure company messages and employee response requests.
-- **Owner Controls:** trusted owner can correct finalized fictional pay periods and pay lines in place with before/after revisions, archive personnel and delete supported records with an activity log.
+- **Contextual owner actions:** owner-only signoff and finalized-pay corrections open directly from the relevant record. Permanent deletion uses a typed Sterling dialog, dependent-record review, bounded batches and a protected deletion receipt.
 - **Client Services:** fictional agreements and invoice ledger, status transitions, CSV statements, paginated tickets, assignments, SLA-style triage and private staff notes.
 - **Assurance Center:** client-admin integrity reports, scoped export, advisory retention, activity review and asset diagnostics.
 - **Reliability:** improved role-based navigation, quick search, responsive design, append-only event integration and Firebase emulator security tests in nightly GitHub CI.
@@ -56,3 +56,5 @@ Static web frontend, compatible with GitHub Pages; Firebase project: `sterling-p
 - No Firebase Admin SDK credentials in this site or repository.
 
 **Release instructions:** [RELEASE_6.md](./RELEASE_6.md) · **Firestore rules must be published in Firebase Console separately from GitHub Pages.**
+
+**New interface:** record-first views, on-demand creation forms, simplified personnel tools, five employee-portal tabs and separate staff/client access tabs. No standalone Owner Controls page.
