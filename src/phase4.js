@@ -275,5 +275,18 @@ export async function mountPhase4({db,getState,notify,confirmAction}){
    $("p4MessageForm").reset();await fetchThread(uid,generation);notify("Private message sent.");
   }catch(error){failed("Message could not be sent",error)}
  });
- return {refresh};
+ function clear(){
+  ++generation;ownLink=null;ownEmployee=null;threadUid="";runs=[];tenant="";
+  for(const id of ["p4Metrics","p4PayHistory","p4Announcements","p4Messages","p4Requests"]){
+   const node=$(id);if(node)node.replaceChildren();
+  }
+  $("p4ProfileForm").classList.add("hidden");
+  $("p4MessageForm").classList.add("hidden");
+  $("p4RequestCreate").classList.add("hidden");
+  $("p4AccessChip").textContent="LINK REQUIRED";
+  $("p4RequestBadge").textContent="NO PENDING ITEMS";
+  $("p4EmployeeSummary").textContent="Choose a company to view linked employee information.";
+  $("p4Notice").textContent="Choose an authorized company.";
+ }
+ return {refresh,clear};
 }
