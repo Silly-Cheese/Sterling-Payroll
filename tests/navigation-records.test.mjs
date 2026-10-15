@@ -36,3 +36,18 @@ test("Deploy bundle contains owner record manager",()=>{
  assert.match(deploy,/src\/record-actions\.js/);
  assert.match(verify,/node --check src\/record-actions\.js/);
 });
+
+test("Direct record deletion requires a typed phrase and explicit reason",()=>{
+ const modal=read("src/record-actions.js");
+ assert.match(modal,/DELETE PERMANENTLY/);
+ assert.match(modal,/recordDeletePhrase/);
+ assert.match(modal,/requireConfirmation\(confirmation\.phrase,confirmation\.reason\)/);
+ assert.match(modal,/ownerAudit/);
+});
+test("Directory search uses bounded queries and rejects stale company responses",()=>{
+ const app=read("src/app.js");
+ assert.match(app,/function scheduleDirectorySearch\(type\)/);
+ assert.match(app,/startAt\(prefix\)/);
+ assert.match(app,/endAt\(prefix\+"\\uf8ff"\)/);
+ assert.match(app,/requestId!==remoteSearchId/);
+});
