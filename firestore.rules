@@ -74,6 +74,36 @@ service cloud.firestore {
    allow delete: if owner();
   }
   // Private per-user directory of accepted client workspaces; never a permission grant by itself.
+  match /deletionReceipts/{receiptId} {
+   allow get,list: if owner();
+   allow create: if owner() &&
+    request.resource.data.keys().hasOnly(['kind','tenantId','recordPath','actor','reason','status','planned','completed','createdAt','updatedAt']) &&
+    request.resource.data.actor == request.auth.uid &&
+    request.resource.data.status == 'running' &&
+    request.resource.data.reason is string &&
+    request.resource.data.reason.size() >= 10 &&
+    request.resource.data.reason.size() <= 500 &&
+    request.resource.data.kind is string &&
+    request.resource.data.tenantId is string &&
+    request.resource.data.recordPath is string &&
+    request.resource.data.planned is int &&
+    request.resource.data.planned >= 1 && request.resource.data.planned <= 15000 &&
+    request.resource.data.completed == 0 &&
+    request.resource.data.createdAt == request.time &&
+    request.resource.data.updatedAt == request.time;
+   allow update: if owner() &&
+    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','completed','updatedAt']) &&
+    resource.data.actor == request.auth.uid &&
+    resource.data.status in ['running','interrupted'] &&
+    request.resource.data.status in ['running','interrupted','completed'] &&
+    request.resource.data.completed is int &&
+    request.resource.data.completed >= resource.data.completed &&
+    request.resource.data.completed <= resource.data.planned &&
+    request.resource.data.updatedAt == request.time;
+   allow delete: if false;
+  }
+  // Parent documents are occasionally absent while individual employee threads exist.
+  // Never grant client-wide enumeration of another employee's messages.
   match /userTenants/{uid}/items/{t} {
    allow get,list: if signedIn() && request.auth.uid == uid;
    allow create: if clientAdmin(t) &&
@@ -103,7 +133,7 @@ service cloud.firestore {
     request.resource.data.industry is string && request.resource.data.industry.size() <= 100 &&
     request.resource.data.notes is string && request.resource.data.notes.size() <= 500 &&
     request.resource.data.status in ['active','suspended'];
-   allow delete: if false;
+   allow delete: if owner();
 
    match /invites/{email} {
     allow get: if clientAdmin(t);
@@ -137,7 +167,7 @@ service cloud.firestore {
       request.resource.data.role in ['client_admin','payroll_specialist','viewer','employee'] &&
       request.resource.data.status in ['active','suspended'] &&
       resource.data.email == request.resource.data.email;
-    allow delete: if false;
+    allow delete: if owner();
    }
 
    // Explicit employer-approved identity binding. A registered email alone grants no access.
@@ -164,7 +194,7 @@ service cloud.firestore {
      request.resource.data.preferredName.size() <= 80 &&
      request.resource.data.notifications is bool &&
      request.resource.data.updatedAt == request.time;
-    allow delete: if false;
+    allow delete: if owner();
    }
    // All announcements are visible to approved company members, never the public.
    match /announcements/{id} {
@@ -178,6 +208,14 @@ service cloud.firestore {
     allow update: if false;
     allow delete: if owner();
    }
+   match /employeeConversations/{uid} {
+    allow get,list,delete: if owner();
+    allow create,update: if false;
+   }
+   match /employeeRequests/{uid} {
+    allow get,list,delete: if owner();
+    allow create,update: if false;
+   }
    // One employee-specific thread per approved account. No employee can enumerate another's thread.
    match /employeeConversations/{uid}/messages/{messageId} {
     allow get, list: if clientAdmin(t) || (signedIn() && request.auth.uid == uid && employeeLinked(t));
@@ -188,7 +226,8 @@ service cloud.firestore {
      request.resource.data.authorRole == (clientAdmin(t) ? 'employer' : 'employee') &&
      request.resource.data.sentAt == request.time &&
      exists(/databases/$(database)/documents/tenants/$(t)/employeeLinks/$(uid));
-    allow update, delete: if false;
+    allow update: if false;
+    allow delete: if owner();
    }
    // Text-only fictional requests: no uploads, real IDs, or bank/tax data.
    match /employeeRequests/{uid}/items/{requestId} {
@@ -217,7 +256,7 @@ service cloud.firestore {
       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt']) &&
       request.resource.data.updatedAt == request.time)
      );
-    allow delete: if false;
+    allow delete: if owner();
    }
    // Owner operation records remain readable to the owner, but cannot be changed or removed.
    match /ownerAudit/{auditId} {
@@ -230,7 +269,8 @@ service cloud.firestore {
      text(request.resource.data.reason,500) && request.resource.data.reason.size() >= 10 &&
      request.resource.data.actor == request.auth.uid && request.resource.data.at == request.time &&
      request.resource.data.before is map;
-    allow update,delete: if false;
+    allow update: if false;
+    allow delete: if owner();
    }
    // Append-only operational event feed. This is a client-action log, not a trusted
    // independently administered audit service; a privileged browser can still omit it.
@@ -255,7 +295,8 @@ service cloud.firestore {
      request.resource.data.detail is string && request.resource.data.detail.size() <= 300 &&
      request.resource.data.actor == request.auth.uid &&
      request.resource.data.at == request.time;
-    allow update,delete: if false;
+    allow update: if false;
+    allow delete: if owner();
    }
    match /serviceAgreements/current {
     allow read: if clientView(t);
