@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import {correctedLine,correctedPeriod,reason,canHardDelete} from "../src/owner-core.js";
+import {correctedLine,correctedPeriod,reason,canHardDelete,ownerApprovalOverride,REVIEW_STATES} from "../src/owner-core.js";
 import {invoiceInput,ticketInput,summarizeInvoices} from "../src/phase5-core.js";
 test("owner can revise finalized fictional payroll amount with balanced gross/net",()=>{
  const previous={employeeId:"a",employeeName:"Lee",regularCents:10000,overtimeCents:0,bonusCents:0,deductionCents:0,grossCents:10000,netCents:10000,regularHours:5,overtimeHours:0};
@@ -54,5 +54,31 @@ test("trusted owner may explicitly override review statuses, not ordinary employ
   assert.ok(start>0);
   const piece=rules.slice(start,rules.indexOf("\n   match /",start+12));
   assert.match(piece,/allow update: if owner\(\)/);
+ }
+});
+
+test("owner may bypass every independent fictional payroll signoff explicitly",()=>{
+ const run={periodStart:"2026-10-01",periodEnd:"2026-10-14",status:"draft",submittedBy:"",approvedBy:"",finalizedBy:""};
+ const approved=ownerApprovalOverride("payrollRuns",run,"approved","owner");
+ assert.equal(approved.submittedBy,"owner");
+ assert.equal(approved.approvedBy,"owner");
+ assert.equal(approved.finalizedBy,"");
+ const finalized=ownerApprovalOverride("payrollRuns",run,"finalized","owner");
+ assert.equal(finalized.status,"finalized");
+ assert.equal(finalized.approvedBy,"owner");
+ assert.equal(finalized.finalizedBy,"owner");
+ assert.equal(run.status,"draft");
+ assert.equal(ownerApprovalOverride("payrollRuns",finalized,"draft","owner").approvedBy,"");
+ assert.equal(ownerApprovalOverride("payrollRuns",finalized,"rejected","owner").finalizedBy,"");
+ assert.throws(()=>ownerApprovalOverride("payrollRuns",run,"invalid","owner"));
+ assert.deepEqual(REVIEW_STATES.payrollRuns,["draft","submitted","approved","rejected","finalized"]);
+});
+test("owner may approve self-authored time, corrections and leave",()=>{
+ for(const kind of ["timeEntries","timeCorrections","leaveRequests"]){
+  const earlier={status:"pending",createdBy:"owner",approvedBy:"",reviewedBy:""};
+  const approved=ownerApprovalOverride(kind,earlier,"approved","owner");
+  assert.equal(approved.status,"approved");
+  assert.equal(approved[kind==="timeEntries"?"approvedBy":"reviewedBy"],"owner");
+  assert.equal(ownerApprovalOverride(kind,approved,"pending","owner")[kind==="timeEntries"?"approvedBy":"reviewedBy"],"");
  }
 });
