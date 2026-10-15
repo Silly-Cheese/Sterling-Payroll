@@ -343,6 +343,7 @@ function renderRunDetails(){
 }
 async function generateLines(run){
  const employees=state.employees.filter(e=>e.status==="active"),lines=[];
+ if(state.employees.length>=250||state.time.length>=500)throw Error("Employee/time listing may be incomplete; payroll generation is paused until pagination is available");
  if(employees.length>250)throw Error("Run exceeds the current 250-employee safeguard");
  for(const e of employees){
   const relevant=state.time.filter(t=>t.employeeId===e.id&&t.workDate>=run.periodStart&&t.workDate<=run.periodEnd);
