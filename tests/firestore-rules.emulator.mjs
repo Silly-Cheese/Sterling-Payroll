@@ -76,3 +76,16 @@ test("a client viewer cannot forge an operational audit record or retention sett
  await assertFails(setDoc(doc(db,"tenants","north","auditEvents","x"),{category:"billing",action:"fake",subject:"invoice",detail:"fake",actor:"viewer",at:serverTimestamp()}));
  await assertFails(setDoc(doc(db,"tenants","north","assuranceSettings","current"),{reviewAfterDays:365,legalHold:false,updatedBy:"viewer",updatedAt:serverTimestamp()}));
 });
+
+test("trusted owner can correct a finalized pay line in place only with a linked immutable revision",async()=>{
+ const db=as("owner"),lineRef=doc(db,"tenants","north","payrollRuns","p1","lines","e1");
+ const original=(await getDoc(lineRef)).data();
+ const revisionId="revision-one",changed={...original,regularCents:1500,grossCents:1500,netCents:1500,
+  lastRevisionId:revisionId,lastCorrectedBy:"owner",lastCorrectedAt:serverTimestamp()};
+ const batch=writeBatch(db);
+ batch.set(doc(db,"tenants","north","payrollRuns","p1","revisions",revisionId),{
+  kind:"line",entityId:"e1",reason:"Owner corrected fictional regular earnings",actor:"owner",at:serverTimestamp(),before:original,after:changed});
+ batch.update(lineRef,changed);
+ await assertSucceeds(batch.commit());
+ assert.equal((await getDoc(lineRef)).data().netCents,1500);
+});
