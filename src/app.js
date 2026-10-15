@@ -8,6 +8,7 @@ import {mountPhase3} from "./phase3.js";
 import {buildPayrollPreview,DEFAULT_POLICY} from "./phase3-core.js";
 import {mountPhase2} from "./phase2.js";
 import {createOwnerRecordActions} from "./record-actions.js";
+import {createSterlingModals} from "./modals.js";
 
 const app=initializeApp({
  apiKey:"AIzaSyBAAAUc0nDiiD7zfURjohVj1UBA-1yQmV0",
@@ -20,7 +21,6 @@ const app=initializeApp({
 const auth=getAuth(app),db=getFirestore(app),$=id=>document.getElementById(id);
 const state={user:null,platform:false,platformOwner:false,platformWrite:false,platformRole:"client",tenants:[],tenantId:"",role:"",employees:[],time:[],runs:[],selectedRun:null,lines:[],page:"dashboard",register:false,moreEmployees:false,moreTime:false,moreRuns:false,employeeCursor:null,timeCursor:null,runCursor:null,clientCursor:null,moreClients:false};
 const titles={
- owner:["Owner Control Center","Correct finalized fictional payroll in place, override and delete records with audit history."],
  service:["Client Services","Subscription terms, fictional invoicing, service history and support."],
  assurance:["Assurance Center","Integrity checks, activity review, exports and system health."],
  employeePortal:["Employee Portal","Private fictional pay statements, profile preferences and company communications."],
@@ -104,7 +104,6 @@ function go(page){
  if(!titles[page])page="dashboard";
  if(page==="clients"&&!state.platform)page="dashboard";
  if(page==="staff"&&!state.platformOwner)page="dashboard";
- if(page==="owner"&&!state.platformOwner)page="dashboard";
  if(page==="service"&&(!state.tenantId||state.role==="employee"))page="dashboard";
  if(page==="assurance"&&(!state.tenantId||!canAdmin()))page="dashboard";
  if(page==="employeePortal"&&!state.tenantId)page="dashboard";
@@ -120,7 +119,6 @@ function go(page){
  document.getElementById("phase3Time")?.classList.toggle("hidden",page!=="time"||!state.tenantId);
  document.getElementById("phase3Payroll")?.classList.toggle("hidden",page!=="payroll"||!state.tenantId);
  if(page==="staff")void staffUI?.refresh();
- if(page==="owner")ownerRefreshPromise=ownerUI?.refresh()||Promise.resolve();
  if(page==="service")void phase5?.refresh();
  if(page==="assurance")void phase6?.refresh();
  if(page==="employeePortal")void phase4?.refresh();
@@ -505,7 +503,7 @@ function renderRuns(){
   const actions=[button("Open",()=>selectRun(run.id),"small")];
   if(state.platformOwner){
    actions.push(button("Owner signoff",()=>openOwnerReview("payrollRuns",run.id),"small"));
-   if(!["draft","rejected"].includes(run.status))actions.push(button("Correct / void",()=>go("owner"),"small"));
+   if(!["draft","rejected"].includes(run.status))actions.push(button("Correct / void",()=>openPayrollEditor(run.id),"small"));
    actions.push(button("Delete permanently",()=>ownerActions.remove("payrollRuns",run),"small danger"));
   }
   frag.append(item(run.periodStart+" — "+run.periodEnd,"Simulated payday: "+run.payDate,actions,run.status,css));
@@ -517,10 +515,12 @@ function renderRuns(){
 $("runSearch").addEventListener("input",renderRuns);
 $("runStatus").addEventListener("change",renderRuns);
 async function openOwnerReview(kind,id){
- if(!state.platformOwner||!ownerUI)throw Error("Owner approval tools are not loaded");
- go("owner");
- await ownerRefreshPromise;
+ if(!state.platformOwner||!ownerUI)throw Error("Owner record management is not available yet");
  await ownerUI.openReview(kind,id,state.tenantId);
+}
+async function openPayrollEditor(id){
+ if(!state.platformOwner||!ownerUI)throw Error("Owner record management is not available yet");
+ await ownerUI.openPeriod(id,state.tenantId);
 }
 async function selectRun(id){
  if(!state.tenantId)return;
@@ -680,18 +680,12 @@ $("timeDate").value=localDate(new Date());
 const now=new Date(),before=new Date();before.setDate(now.getDate()-13);
 $("periodStart").value=localDate(before);$("periodEnd").value=localDate(now);
 const payday=new Date();payday.setDate(now.getDate()+3);$("payDate").value=localDate(payday);
-async function confirmAction(title,message){
- const modal=$("sterlingDialog");
- if(!modal?.showModal)return false;
- $("dialogTitle").textContent=title;$("dialogText").textContent=message;
- modal.showModal();
- return await new Promise(resolve=>{
-  modal.addEventListener("close",()=>resolve(modal.returnValue==="confirm"),{once:true});
- });
+const sterlingModals=createSterlingModals();
+async function confirmAction(title,message,options={}){
+ return sterlingModals.confirm({title,message,...options});
 }
 let phase2=null,phase2Pending=null,phase3=null,phase4=null,phase5=null,phase6=null,ownerUI=null,staffUI=null;
-let ownerRefreshPromise=Promise.resolve();
-const ownerActions=createOwnerRecordActions({db,getState:()=>state,notify:toast,confirmAction,
+const ownerActions=createOwnerRecordActions({db,getState:()=>state,notify:toast,confirmAction,requestDeletion:sterlingModals.deleteRecord,
  onChanged:async kind=>{if(["billingInvoices","supportTickets"].includes(kind))await phase5?.refresh?.();else await refreshCompany()}
 });
 async function initializePhase2(){
@@ -737,10 +731,10 @@ onAuthStateChanged(auth,async user=>{
    catch(error){console.error("Assurance module unavailable",error);toast("Assurance tools are not yet deployed.",true)}
   }
   if(state.platformOwner&&!ownerUI){
-   try{const {mountOwnerControls}=await import("./owner.js?v=phase6-final");ownerUI=mountOwnerControls({db,getState:()=>state,notify:toast,confirmAction,refreshCompany})}
-   catch(error){console.error("Owner control module unavailable",error);toast("Owner controls are not yet deployed.",true)}
+   try{const {mountOwnerControls}=await import("./owner.js?v=sterling-ui-v2");ownerUI=mountOwnerControls({db,getState:()=>state,notify:toast,confirmAction,refreshCompany})}
+   catch(error){console.error("Owner control module unavailable",error);toast("Record management tools are not yet deployed.",true)}
   }
-  if(state.platformOwner){await staffUI?.refresh();await ownerUI?.refresh()}
+  if(state.platformOwner)await staffUI?.refresh();
   if(state.tenantId&&state.role!=="employee"){await phase3?.refresh();await phase5?.refresh()}
   go(state.role==="employee"?"employeePortal":"dashboard");
   if(!state.platform&&!state.tenants.length)toast("Client account ready. Sterling can assign you access to a company.");
