@@ -14,8 +14,8 @@ export async function mountPhase2({db,getState,refreshCompany,loadTenantDirector
  $("phase2ClientTools").append($("p2ClientTemplate").content.cloneNode(true));
  $("phase2AccessTools").append($("p2AccessTemplate").content.cloneNode(true));
  const S=()=>getState();
- const canWrite=()=>S().platform||["client_admin","payroll_specialist"].includes(S().role);
- const canAdmin=()=>S().platform||S().role==="client_admin";
+ const canWrite=()=>S().platformWrite||S().platformRole==="payroll_operator"||["client_admin","payroll_specialist"].includes(S().role);
+ const canAdmin=()=>S().platformWrite||S().role==="client_admin";
  const employees=()=>S().employees,active=()=>employees().find(e=>e.id===$("p2Person").value);
  let preview=[],possible=[],checked=new Set();
  const notifyError=(prefix,e)=>notify(prefix+": "+(e.code||e.message||e),true);
@@ -124,7 +124,7 @@ export async function mountPhase2({db,getState,refreshCompany,loadTenantDirector
  $("p2ClientForm").addEventListener("submit",async event=>{
   event.preventDefault();
   try{
-   if(!S().platform)throw Error("Only Sterling administrators can change client contracts");
+   if(!S().platformWrite)throw Error("Only Sterling administrators can change client contracts");
    const tenant=selectedTenant();if(!tenant)throw Error("Select a client");
    const changes={name:$("p2ClientName").value.trim(),industry:$("p2Industry").value.trim(),
     contactEmail:$("p2ContactEmail").value.trim(),servicePlan:$("p2Plan").value,
@@ -175,7 +175,7 @@ export async function mountPhase2({db,getState,refreshCompany,loadTenantDirector
   $("p2BulkApply").disabled=!writable;
   $("p2BulkStatus").disabled=!writable;
   $("p2SelectAll").disabled=!writable;
-  $("p2ClientForm").classList.toggle("hidden",!s.platform);
+  $("p2ClientForm").classList.toggle("hidden",!s.platformWrite);
   void renderMembers().catch(e=>notifyError("Membership display failed",e));
  }
  return {refresh,renderMembers};
