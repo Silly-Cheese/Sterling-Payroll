@@ -533,7 +533,8 @@ service cloud.firestore {
       request.resource.data.actor == request.auth.uid &&
       request.resource.data.at == request.time &&
       request.resource.data.before is map && request.resource.data.after is map;
-     allow update,delete: if false;
+     allow update: if false;
+     allow delete: if owner();
     }
     match /snapshots/{snapshotId} {
      allow read: if clientView(t);
@@ -545,7 +546,8 @@ service cloud.firestore {
       request.resource.data.employeeCount is int && request.resource.data.employeeCount >= 0 &&
       cent(request.resource.data.grossCents) && cent(request.resource.data.netCents) &&
       request.resource.data.generatedBy == request.auth.uid;
-     allow update,delete: if false;
+     allow update: if false;
+     allow delete: if owner();
     }
     match /lines/{employeeId} {
      allow get: if clientView(t) || (ownsEmployee(t,employeeId) &&
@@ -592,8 +594,8 @@ service cloud.firestore {
        request.resource.data.lastCorrectedBy == request.auth.uid &&
        request.resource.data.lastCorrectedAt == request.time)
      );
-     allow delete: if payrollStaff(t) && exists(runPath(t,r)) &&
-       get(runPath(t,r)).data.status == 'draft';
+     allow delete: if owner() || (payrollStaff(t) && exists(runPath(t,r)) &&
+       get(runPath(t,r)).data.status == 'draft');
     }
    }
    match /{other=**} {allow read,write: if false;}
