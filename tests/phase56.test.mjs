@@ -69,7 +69,7 @@ test("deployment publishes all Phase 5/6 templates and source code",()=>{
 test("Phase 5/6 Security Rules restrict internal notes and immutable transactions",()=>{
  const rules=fs.readFileSync(new URL("../firestore.rules",import.meta.url),"utf8");
  assert.match(rules,/match \/internalNotes\/\{noteId\} \{\s*allow read: if clientAdmin\(t\)/);
- assert.match(rules,/match \/events\/\{eventId\} \{[\s\S]*?allow update,delete: if false;/);
+ assert.match(rules,/match \/events\/\{eventId\} \{[\s\S]*?allow update: if false;\s*allow delete: if owner\(\);/);
  assert.match(rules,/match \/assuranceSettings\/current/);
  assert.match(rules,/match \/auditEvents\/\{eventId\}/);
 });
