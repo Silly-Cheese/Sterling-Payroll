@@ -135,9 +135,13 @@ export function mountOwnerControls({db,getState,notify,confirmAction,refreshComp
     }else throw Error("Archive is available for employees and payroll periods; choose Delete for leaf records");
    }else{
     if(kind==="payrollRuns"){
+     let total=0;
      for(const child of ["lines","snapshots","revisions"]){
-      const count=await getDocs(query(collection(record.ref,child),limit(1)));
-      if(!count.empty)throw Error("Payroll run has "+child+". Void it instead of orphaning history.");
+      const docs=await getDocs(query(collection(record.ref,child),limit(101)));
+      if(docs.size>100)throw Error("More than 100 "+child+" records; use a managed bulk deletion for this period.");
+      total+=docs.size;
+      if(total>400)throw Error("This period contains too many dependent records for one atomic deletion.");
+      for(const item of docs.docs)batch.delete(item.ref);
      }
     }
     if(!canHardDelete(kind,false))throw Error("This record must be archived rather than deleted");
