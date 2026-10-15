@@ -1,5 +1,5 @@
 import {doc,getDoc,writeBatch,serverTimestamp} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
-import {reload,getIdToken} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js";
+import {reload,getIdToken,sendEmailVerification} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js";
 
 /** A public first-registrant owner claim is never permitted. Firestore rules require
  * the configured verified owner email and an unclaimed bootstrap document.
@@ -16,7 +16,9 @@ export async function mountOwnerBootstrap({auth,db,user,onClaim,notify}){
  const action=document.createElement("button");action.type="button";action.className="btn primary";action.textContent="Verify and complete owner setup";
  const status=document.createElement("p");status.className="fine-print";status.setAttribute("role","status");
  status.textContent="The designated owner email must be configured in the deployed Firestore rules before this button can succeed.";
- root.append(heading,message,action,status);root.classList.remove("hidden");
+ const resend=document.createElement("button");resend.type="button";resend.className="btn";resend.textContent="Resend verification email";
+ resend.addEventListener("click",async()=>{resend.disabled=true;try{await sendEmailVerification(user);status.textContent="Verification email sent. Open it, then select Complete owner setup.";}catch(error){status.textContent="Could not send verification email: "+(error.code||error.message)}finally{resend.disabled=false}});
+ root.append(heading,message,action,resend,status);root.classList.remove("hidden");
  action.addEventListener("click",async()=>{
   action.disabled=true;
   try{
