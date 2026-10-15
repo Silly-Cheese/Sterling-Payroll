@@ -111,3 +111,5 @@ The Client Services page includes simulated service invoices (draft, issued, set
 **After every update to `firestore.rules`, publish the repository contents manually in** https://console.firebase.google.com/project/sterling-payroll-5d200/firestore/rules
 
 Publishing JavaScript to GitHub Pages does not update Firestore authorization. Owner corrections, employee linking and Phase 5 invoicing will fail with `permission-denied` until the current rules are published.
+
+Owner Controls also allow directly overriding time-entry, paid-leave and correction-request approval statuses, with a required reason and an owner action record. Such changes do not retroactively recompute finalized pay lines; use the finalized-period correction editor to revise fictional pay values in place.
