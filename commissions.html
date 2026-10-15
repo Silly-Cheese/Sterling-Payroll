@@ -1,0 +1,40 @@
+<section class="commission-top panel">
+ <div><span class="eyebrow">OPTIONAL CLIENT FEATURE • ROLEPLAY ONLY</span><h2>Sales commissions</h2>
+ <p class="muted">Assign a percentage or fixed payout to an employee, record what they sold, and approve the fictional commission for payroll. Companies that do not use commissions can leave this disabled.</p></div>
+ <div id="commissionStatus" class="commission-flag"></div>
+</section>
+<div class="commission-actions panel" id="commissionSettings">
+ <div><strong>Commission program</strong><small>Only client administrators or Sterling management can enable commissions.</small></div>
+ <button id="commissionToggle" class="btn primary" type="button">Enable commissions</button>
+</div>
+<div id="commissionContent" class="hidden">
+ <div class="commission-actions"><div><span class="eyebrow">EMPLOYEE COMMISSION PLANS</span><h2>Who earns commission?</h2></div><button id="commissionPlanNew" class="btn primary" type="button">Assign plan</button></div>
+ <p class="fine-print">Changes to a plan apply to future sales; approved past sale amounts stay unchanged.</p>
+ <div id="commissionPlans" class="commission-records"></div>
+ <div class="commission-actions"><div><span class="eyebrow">SALES REGISTER</span><h2>Recorded sales</h2></div><button id="commissionSaleNew" class="btn primary" type="button">Record sale</button></div>
+ <div class="list-toolbar"><select id="commissionFilter" aria-label="Filter sale status"><option value="all">All sales</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select><input type="search" id="commissionSearch" class="search-input" placeholder="Find an employee or sale"></div>
+ <p id="commissionCount" class="fine-print"></p><div id="commissionSales" class="commission-records"></div>
+ <button id="commissionMore" type="button" class="btn hidden">Load more sales</button>
+</div>
+<dialog id="commissionPlanDialog" class="workspace-form-dialog" aria-labelledby="commissionPlanTitle">
+ <header><h2 id="commissionPlanTitle">Commission plan</h2><button type="button" data-close="commissionPlanDialog" class="workspace-form-close" aria-label="Close">✕</button></header>
+ <div class="commission-dialog-body"><form id="commissionPlanForm" class="form-stack">
+  <label>Employee<select id="commissionEmployee" required></select></label>
+  <label>How is commission calculated?<select id="commissionType"><option value="percent">Percentage of each sale</option><option value="fixed">Fixed amount per sale</option></select></label>
+  <label id="commissionRateWrap">Commission rate (%)<input id="commissionRate" type="number" min="0" max="100" step=".01" value="10" required></label>
+  <label id="commissionFixedWrap" class="hidden">Fixed commission per sale ($)<input id="commissionFixed" type="number" min="0" max="10000000" step=".01" value="25"></label>
+  <label class="checkline"><input id="commissionActive" type="checkbox" checked> Active commission plan</label>
+  <button class="btn primary" type="submit">Save plan</button>
+ </form></div>
+</dialog>
+<dialog id="commissionSaleDialog" class="workspace-form-dialog" aria-labelledby="commissionSaleTitle">
+ <header><h2 id="commissionSaleTitle">Record a fictional sale</h2><button type="button" data-close="commissionSaleDialog" class="workspace-form-close" aria-label="Close">✕</button></header>
+ <div class="commission-dialog-body"><form id="commissionSaleForm" class="form-stack">
+  <label>Employee<select id="commissionSaleEmployee" required></select></label>
+  <label>Sale date<input id="commissionDate" type="date" required></label>
+  <label>Amount sold ($)<input id="commissionAmount" type="number" min=".01" max="10000000" step=".01" required placeholder="250.00"></label>
+  <label>Sale description<input id="commissionDescription" maxlength="160" required placeholder="Fictional product or service"></label>
+  <div id="commissionPreview" class="data-note"></div>
+  <button class="btn primary" type="submit">Record sale for approval</button>
+ </form></div>
+</dialog>
