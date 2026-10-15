@@ -39,6 +39,7 @@ Acceptance criteria: no manual Firebase IDs in routine operations, owner can man
 Acceptance criteria: runs are internally consistent, correction approvals protected by Firestore, no real payments. Cross-account browser and Firestore emulator testing still required.
 
 ## Phase 4 — Employee & client self-service
+**Status: initial employee-portal release implemented and deployed; live Firestore acceptance testing pending.**
 **Status: implemented in repository; GitHub deployment and end-to-end Firebase security testing required.**
 - Employee-scoped private portal that restricts access to employer-linked HR identities
 - Company announcements, employee/employer private messages, fictional text-only acknowledgment requests and in-app attention counts
@@ -49,6 +50,7 @@ Acceptance criteria: runs are internally consistent, correction approvals protec
 Acceptance criteria: employees see only their own finalized pay data; company employer/employee records remain isolated. Automated checks are green; live Firestore emulator/second-account acceptance testing still required.
 
 ## Phase 5 — Client plans, billing & support
+**Status: development started; fictional invoices and support-case queues are implemented.**
 - Simulated service plans and client subscription states
 - Mock invoices, payments, adjustments and statements
 - Case/ticket center for payroll support, client SLA dashboards
@@ -71,3 +73,6 @@ Acceptance criteria: repeatable end-to-end scenarios pass in test projects, pred
 - Client data segregation is non-negotiable.
 - No automatic trust for matching employee email or display name across companies.
 - Only claim features live after an actual Firebase/Pages test succeeds.
+
+## Owner controls and finalized-period correction
+Owner can correct existing simulated payroll periods directly, including finalized runs, and correct pay lines in place. Before/after revisions are stored rather than creating an additional payroll period. Owner-controlled deletion supports selected record types; payroll periods with historical children are voided rather than recursively erased. See [SETUP.md](./SETUP.md) for restrictions and required Firestore rules publication.
