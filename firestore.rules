@@ -298,6 +298,81 @@ service cloud.firestore {
     allow update: if false;
     allow delete: if owner();
    }
+
+   // Optional roleplay commissions. Disabled by default in each independent client workspace.
+   match /commissionSettings/current {
+    allow get,list: if payrollStaff(t);
+    allow create,update: if clientAdmin(t) &&
+     request.resource.data.keys().hasOnly(['enabled','updatedBy','updatedAt']) &&
+     request.resource.data.enabled is bool &&
+     request.resource.data.updatedBy == request.auth.uid &&
+     request.resource.data.updatedAt == request.time;
+    allow delete: if owner();
+   }
+   match /commissionPlans/{employeeId} {
+    allow get,list: if payrollStaff(t);
+    allow create,update: if clientAdmin(t) &&
+     exists(employeePath(t,employeeId)) &&
+     exists(/databases/$(database)/documents/tenants/$(t)/commissionSettings/current) &&
+     get(/databases/$(database)/documents/tenants/$(t)/commissionSettings/current).data.enabled == true &&
+     request.resource.data.keys().hasOnly(['employeeId','type','rateBasisPoints','fixedCents','active','updatedBy','updatedAt']) &&
+     request.resource.data.employeeId == employeeId &&
+     request.resource.data.type in ['percent','fixed'] &&
+     request.resource.data.rateBasisPoints is int &&
+     request.resource.data.rateBasisPoints >= 0 && request.resource.data.rateBasisPoints <= 10000 &&
+     cent(request.resource.data.fixedCents) &&
+     (request.resource.data.type == 'percent' ? request.resource.data.fixedCents == 0 : request.resource.data.rateBasisPoints == 0) &&
+     request.resource.data.active is bool &&
+     request.resource.data.updatedBy == request.auth.uid &&
+     request.resource.data.updatedAt == request.time;
+    allow delete: if owner();
+   }
+   match /commissionSales/{saleId} {
+    allow get,list: if payrollStaff(t);
+    allow create: if payrollStaff(t) &&
+     exists(/databases/$(database)/documents/tenants/$(t)/commissionSettings/current) &&
+     get(/databases/$(database)/documents/tenants/$(t)/commissionSettings/current).data.enabled == true &&
+     request.resource.data.keys().hasOnly(['employeeId','saleDate','description','saleAmountCents',
+      'commissionCents','type','rateBasisPoints','fixedCents','status','approvedBy','paidRunId','createdBy','createdAt']) &&
+     request.resource.data.employeeId is string &&
+     exists(employeePath(t,request.resource.data.employeeId)) &&
+     exists(/databases/$(database)/documents/tenants/$(t)/commissionPlans/$(request.resource.data.employeeId)) &&
+     get(/databases/$(database)/documents/tenants/$(t)/commissionPlans/$(request.resource.data.employeeId)).data.active == true &&
+     request.resource.data.type == get(/databases/$(database)/documents/tenants/$(t)/commissionPlans/$(request.resource.data.employeeId)).data.type &&
+     request.resource.data.rateBasisPoints == get(/databases/$(database)/documents/tenants/$(t)/commissionPlans/$(request.resource.data.employeeId)).data.rateBasisPoints &&
+     request.resource.data.fixedCents == get(/databases/$(database)/documents/tenants/$(t)/commissionPlans/$(request.resource.data.employeeId)).data.fixedCents &&
+     request.resource.data.type in ['percent','fixed'] &&
+     date(request.resource.data.saleDate) && text(request.resource.data.description,160) &&
+     request.resource.data.description.size() >= 3 &&
+     cent(request.resource.data.saleAmountCents) && request.resource.data.saleAmountCents > 0 &&
+     cent(request.resource.data.commissionCents) &&
+     (request.resource.data.type == 'fixed' ?
+      request.resource.data.commissionCents == request.resource.data.fixedCents :
+      request.resource.data.commissionCents == math.round(request.resource.data.saleAmountCents * request.resource.data.rateBasisPoints / 10000)) &&
+     request.resource.data.status == 'pending' &&
+     request.resource.data.approvedBy == '' && request.resource.data.paidRunId == '' &&
+     request.resource.data.createdBy == request.auth.uid &&
+     request.resource.data.createdAt == request.time;
+    allow update: if
+     (clientAdmin(t) && resource.data.status == 'pending' &&
+      (owner() || resource.data.createdBy != request.auth.uid) &&
+      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','approvedBy','reviewedAt']) &&
+      request.resource.data.status in ['approved','rejected'] &&
+      request.resource.data.approvedBy == request.auth.uid &&
+      request.resource.data.reviewedAt == request.time)
+     ||
+     (payrollStaff(t) && resource.data.status == 'approved' &&
+      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['paidRunId']) &&
+      request.resource.data.paidRunId is string &&
+      (request.resource.data.paidRunId == '' ?
+       (owner() || (resource.data.paidRunId != '' &&
+        exists(runPath(t,resource.data.paidRunId)) &&
+        get(runPath(t,resource.data.paidRunId)).data.status == 'draft')) :
+       (resource.data.paidRunId == '' &&
+        exists(runPath(t,request.resource.data.paidRunId)) &&
+        get(runPath(t,request.resource.data.paidRunId)).data.status == 'draft')));
+    allow delete: if owner();
+   }
    match /serviceAgreements/current {
     allow read: if clientView(t);
     allow create,update: if clientAdmin(t) &&
@@ -608,7 +683,7 @@ service cloud.firestore {
        exists(runPath(t,r)) && get(runPath(t,r)).data.status == 'draft' &&
        exists(employeePath(t,employeeId)) &&
        request.resource.data.keys().hasOnly(['employeeId','employeeName','payType','regularHours','overtimeHours',
-         'regularCents','overtimeCents','bonusCents','deductionCents','grossCents','netCents','policyVersion','paidLeaveHours']) &&
+         'regularCents','overtimeCents','bonusCents','deductionCents','grossCents','netCents','policyVersion','paidLeaveHours','commissionCents']) &&
        request.resource.data.employeeId == employeeId &&
        text(request.resource.data.employeeName,120) &&
        request.resource.data.payType in ['hourly','salary'] &&
@@ -616,6 +691,10 @@ service cloud.firestore {
        cent(request.resource.data.regularCents) && cent(request.resource.data.overtimeCents) &&
        cent(request.resource.data.bonusCents) && cent(request.resource.data.deductionCents) &&
        cent(request.resource.data.grossCents) && cent(request.resource.data.netCents) &&
+       cent(request.resource.data.get('commissionCents',0)) &&
+       request.resource.data.grossCents == request.resource.data.regularCents +
+        request.resource.data.overtimeCents + request.resource.data.bonusCents +
+        request.resource.data.get('commissionCents',0) &&
        request.resource.data.netCents == request.resource.data.grossCents - request.resource.data.deductionCents &&
        request.resource.data.get('policyVersion',1) is int &&
        request.resource.data.get('paidLeaveHours',0) is number &&
@@ -628,19 +707,24 @@ service cloud.firestore {
        cent(request.resource.data.regularCents) && cent(request.resource.data.overtimeCents) &&
        cent(request.resource.data.bonusCents) && cent(request.resource.data.deductionCents) &&
        cent(request.resource.data.grossCents) && cent(request.resource.data.netCents) &&
+       cent(request.resource.data.get('commissionCents',0)) &&
+       request.resource.data.grossCents == request.resource.data.regularCents +
+        request.resource.data.overtimeCents + request.resource.data.bonusCents +
+        request.resource.data.get('commissionCents',0) &&
        request.resource.data.netCents == request.resource.data.grossCents - request.resource.data.deductionCents)
       ||
       (owner() && get(runPath(t,r)).data.status == 'finalized' &&
        validRevision(t,r,'line',employeeId) &&
        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
         'regularHours','overtimeHours','regularCents','overtimeCents','bonusCents',
-        'deductionCents','grossCents','netCents','lastRevisionId','lastCorrectedBy','lastCorrectedAt']) &&
+        'deductionCents','grossCents','netCents','commissionCents','lastRevisionId','lastCorrectedBy','lastCorrectedAt']) &&
        hours(request.resource.data.regularHours) && hours(request.resource.data.overtimeHours) &&
        cent(request.resource.data.regularCents) && cent(request.resource.data.overtimeCents) &&
        cent(request.resource.data.bonusCents) && cent(request.resource.data.deductionCents) &&
        cent(request.resource.data.grossCents) && cent(request.resource.data.netCents) &&
        request.resource.data.grossCents == request.resource.data.regularCents +
-        request.resource.data.overtimeCents + request.resource.data.bonusCents &&
+        request.resource.data.overtimeCents + request.resource.data.bonusCents +
+        request.resource.data.get('commissionCents',0) &&
        request.resource.data.netCents == request.resource.data.grossCents - request.resource.data.deductionCents &&
        request.resource.data.lastCorrectedBy == request.auth.uid &&
        request.resource.data.lastCorrectedAt == request.time)
