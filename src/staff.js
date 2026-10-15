@@ -1,11 +1,12 @@
 import {collection,doc,getDocs,getDoc,setDoc,updateDoc,writeBatch,serverTimestamp,query,limit} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
+import {buildPortalTabs} from "./workspace-ui.js";
 const ROLES=[["administrator","Administrator"],["payroll_operator","Payroll operator"],["support","Support (read only)"]];
 const CLIENT_ROLES=[["client_admin","Client administrator"],["payroll_specialist","Payroll specialist"],["viewer","Viewer"],["employee","Employee portal"]];
 const make=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e};
 const fill=(select,values)=>select.replaceChildren(...values.map(v=>{const e=make("option",v[1]);e.value=v[0];return e}));
 export function mountStaffAccounts({db,getState,notify,confirmAction}){
  const root=document.getElementById("staffAccounts");if(!root)return null;
- root.innerHTML='<div class="ops-grid"><article class="panel"><div class="eyebrow">STERLING HEADQUARTERS</div><h2>Staff permissions</h2><p class="muted">Accounts begin as clients. Only the owner can assign Sterling-wide staff access.</p><label>Registered account<select id="staffAccount"></select></label><label>Staff permission<select id="staffRole"></select></label><div class="actions"><button class="btn primary" id="staffGrant">Assign staff</button><button class="btn danger" id="staffRevoke">Revoke staff</button></div><h3>Existing staff</h3><div id="staffCurrent" class="list"></div></article><article class="panel"><div class="eyebrow">CLIENT ACCESS</div><h2>Assign company membership</h2><p class="muted">Choose the registered account and client company. No email verification, invitation link, or UID entry.</p><label>Registered account<select id="clientAccount"></select></label><label>Company<select id="clientCompany"></select></label><label>Company role<select id="clientRole"></select></label><div class="actions"><button class="btn primary" id="clientAssign">Grant company access</button><button class="btn danger" id="clientSuspend">Suspend access</button></div><p class="fine-print">Roles are enforced in Firestore, not merely hidden in the interface.</p></article></div>';
+ root.innerHTML='<div class="ops-grid"><article class="panel" id="staffPermissionsPanel"><div class="eyebrow">STERLING HEADQUARTERS</div><h2>Staff permissions</h2><p class="muted">Accounts begin as clients. Only the owner can assign Sterling-wide staff access.</p><label>Registered account<select id="staffAccount"></select></label><label>Staff permission<select id="staffRole"></select></label><div class="actions"><button class="btn primary" id="staffGrant">Assign staff</button><button class="btn danger" id="staffRevoke">Revoke staff</button></div><h3>Existing staff</h3><div id="staffCurrent" class="list"></div></article><article class="panel" id="staffClientAccessPanel"><div class="eyebrow">CLIENT ACCESS</div><h2>Assign company membership</h2><p class="muted">Choose the registered account and client company. No email verification, invitation link, or UID entry.</p><label>Registered account<select id="clientAccount"></select></label><label>Company<select id="clientCompany"></select></label><label>Company role<select id="clientRole"></select></label><div class="actions"><button class="btn primary" id="clientAssign">Grant company access</button><button class="btn danger" id="clientSuspend">Suspend access</button></div><p class="fine-print">Roles are enforced in Firestore, not merely hidden in the interface.</p></article></div>';
  const $=id=>root.querySelector("#"+id);
  let accounts=[],staff=[];
  fill($("staffRole"),ROLES);fill($("clientRole"),CLIENT_ROLES);
@@ -70,5 +71,6 @@ export function mountStaffAccounts({db,getState,notify,confirmAction}){
   if(!await confirmAction("Suspend client membership","Suspend this company access?"))return;
   await updateDoc(ref,{status:"suspended"});notify("Client access suspended.");
  });
+ buildPortalTabs(root,[["staffPermissionsPanel","Sterling staff"],["staffClientAccessPanel","Company access"]]);
  return {refresh};
 }
