@@ -1,102 +1,53 @@
-# Sterling Payroll — Installation and First Owner
+# Sterling Payroll — Phase 3 Setup
 
-**Firebase project:** sterling-payroll-5d200  
+**Website:** https://silly-cheese.github.io/Sterling-Payroll/  
 **Repository:** https://github.com/Silly-Cheese/Sterling-Payroll  
-**Expected GitHub Pages URL:** https://silly-cheese.github.io/Sterling-Payroll/
+**Firebase project:** `sterling-payroll-5d200`
 
-This is **roleplay/simulated payroll only**. Never enter real bank details, SSNs, tax identifiers or genuinely sensitive employee data.
+Sterling Payroll is a **simulation only**. Do not enter real taxpayer or bank details, SSNs, or actual employee payroll records.
 
-## 1. Enable Firebase Authentication
+## Required deployment step — Firestore rules
 
-In [Firebase Console](https://console.firebase.google.com/project/sterling-payroll-5d200/authentication/providers), enable Email/Password.
+The GitHub Pages workflow publishes web files only. **It does not publish Firebase Firestore Rules.**
 
-Under Authentication → Settings → Authorized domains, add silly-cheese.github.io if it is not already authorized.
+1. Open https://console.firebase.google.com/project/sterling-payroll-5d200/firestore/rules
+2. Copy the complete rules from [firestore.rules](./firestore.rules).
+3. Publish those rules and reload the website.
 
-## 2. Deploy Firestore Rules
+## Registration and Sterling staff permissions
 
-Open the project's Firestore Database, create it if necessary, and publish the contents of [firestore.rules](./firestore.rules) from the repository using Firestore → Rules → Publish.
+New users register with Firebase email/password. Normal onboarding **does not require email verification**. All new registrations create a private `accounts/{uid}` record whose type is `client`. This is not permission to see any company's records.
 
-GitHub commits **do not automatically publish** Firestore security rules.
+The existing platform owner retains the trusted authorization in `platformAdmins/{uid}`. **Registration cannot claim platform ownership** or change that document; only an owner with an existing valid grant sees **Staff & Accounts**.
 
-## 3. One-time owner bootstrap — no manual UID configuration
+From **Staff & Accounts**, select an already registered account (no UID typing), then assign:
 
-The platform now includes **Verify and complete owner setup** for its designated owner.
+- **Administrator** — manages client companies and staff, except granting Sterling-wide staff roles.
+- **Payroll operator** — works with simulated payroll across companies.
+- **Support** — reads company workspaces but cannot modify pay or employees.
 
-**Before the very first claim**, replace the placeholder address in the `ownerEmail()` function near the top of [firestore.rules](./firestore.rules) with the exact email of the intended owner account, then publish those rules in Firebase Console → Firestore Database → Rules. This is a one-time allowlist configuration; the email must match the **Firebase Authentication verified email**, not merely a typed email field.
+Only the existing owner can grant or revoke Sterling-wide staff status. These grants are stored in `platformStaff/{uid}`. The same page lets the owner grant a registered account a **client company** role: Client administrator, Payroll specialist, or Viewer. Membership records are stored in `tenants/{tenantId}/members/{uid}` and the user's private company index.
 
-1. Open the Sterling Payroll website and register or sign in with that email.
-2. Verify your email address using Firebase Authentication's verification message.
-3. Return to the website and select **Verify and complete owner setup**.
-4. Corporate setup atomically creates `system/bootstrap` and `platformAdmins/{your signed-in UID}`; it fails if already initialized.
-5. Your account receives the Sterling owner role without manually copying any UID into Firestore.
+**Owner account prerequisite:** If your existing account is registered but does **not** already have a trusted `platformAdmins/{uid}` grant, registering does not turn it into an owner. You must provision this one initial grant through a trusted Firebase administrative action. This is intentionally never an automatic first-user claim.
 
-**Why the email allowlist is essential:** Allowing the first arbitrary visitor to claim owner on a public GitHub Pages site would expose every client's HR and fictional payroll data. Until `ownerEmail()` is configured and the updated rules are published, the owner claim is deliberately blocked. Never use a shared address controlled by someone else.
+**Security tradeoff:** Unverified accounts can register and be assigned permissions without emailing a confirmation link. The Sterling owner must independently verify whom they are granting staff access; a registered email alone is not proof that its holder controls that mailbox. Password-reset email functionality remains available.
 
-If a platform administrator already exists, the system will keep its existing authorization. The one-time bootstrap is not a backdoor that can reset ownership.
+## Phase 3 simulated payroll
 
-## 4. Publish on GitHub Pages
+- **Timekeeping:** New entries start pending. Another authorized client administrator must approve or reject each before payroll generation.
+- **Corrections:** Original approved entries remain intact. Corrections require a reason and independent approval.
+- **Leave:** Fictional paid leave is requested and approved independently, then included in reviewed pay totals.
+- **Policy:** Authorized client admins can set the overtime multiplier (1×–3×) and default fictional bonuses and deductions.
+- **Payroll:** Generating a draft uses reviewed time, approved corrections and paid leave. Missing approvals and multiple contradictory corrections stop generation.
+- **Snapshots:** Each draft generation saves a summary of policy version and simulated totals; there is no privileged server recomputation or certified audit guarantee.
+- **Statements:** Export simulated payroll summaries as a CSV explicitly marked fictional.
+- **Correction runs:** Create a separate draft referencing a finalized original. Finalized payroll runs are never edited.
+- **Comparison:** Compare fictional net values between payroll runs.
 
-In the repository go to Settings → Pages → Build and deployment → Source → GitHub Actions. The included Pages workflow can publish the root static site. No Firebase Hosting or paid Firebase backend is required.
+Two different authorized accounts remain required for preparing and approving payroll. Roleplay calculations are **not financial-grade**, and the system does not transfer money or file taxes.
 
-## 5. Create companies and invite teammates
+## Known limitations
 
-1. Platform owner signs in, opens Client Companies and creates a client.
-2. Choose the company and open Team Access.
-3. Invite a verified email address as Client administrator, Payroll specialist or Read-only viewer.
-4. Give the invitee the company link shown. Invitations are stored in Firestore, but **this release does not email them automatically**.
-5. The invitee registers or signs in, verifies their email, opens the company link and accepts their invitation.
+The web app is static and uses browser-side calculations. Firestore rules protect tenant and staff access plus basic transition constraints, but do not independently recalculate gross/net pay. Time entries, corrections and leave are bounded to protect free-tier Firestore resources; large client histories need further pagination. Existing time entries created before Phase 3 may not yet have review statuses and should be reviewed before payroll.
 
-A company workspace identifier is not an authentication credential. Verified email and a matching invitation are required.
-
-## 6. Run simulated payroll
-
-1. Client → Employees: add a salaried or hourly worker.
-2. For hourly staff, record time in Timekeeping.
-3. Payroll Runs → Create draft.
-4. Open the run → Generate simulated pay lines → Review.
-5. Submit for approval; a **different authorized client administrator** must approve.
-6. Finalization requires an authorized user different from the approver.
-
-Simulation uses a 1.5× overtime multiplier for illustration and subtracts fictional deductions from fictional gross wages. This is **not legal payroll or tax computation** and cannot send real money.
-
-## Current release limitations
-
-- No real payments, tax filings, direct deposits, real employee banking data, or financial compliance certification.
-- No automatic invitation emails or self-service employee sign-in links yet.
-- No complete correction and bulk-import workflows; advanced reporting and full data pagination come in later phases.
-- Browser-computed payroll amounts are not independently recomputed by a trusted server. Firestore rules enforce role checks and allowed status changes, **not certified financial calculations**.
-- Workspaces are separated by Firestore Security Rules. User-visible company names and IDs are not proof of authorization.
-- Approval actions are immutable after finalization. Client/team administrative controls will be expanded in later phases.
-
-## Troubleshooting
-
-**Permission denied:** Confirm Firestore rules are published and the signed-in user's role grant exists in the correct tenant or platformAdmins collection.
-
-**No clients visible:** The intended platform owner must be granted manually. Everyone else must accept a verified-email invitation.
-
-**Can't sign in from GitHub Pages:** Add silly-cheese.github.io to Firebase Authentication authorized domains.
-
-**Blank page:** Verify the Pages deploy succeeded and the browser loaded Firebase CDN JavaScript from www.gstatic.com.
-
-## Files
-
-- index.html — client and administration workspaces
-- styles.css — Sterling Group black-and-cream UI
-- src/app.js — Firebase Authentication + Firestore client
-- src/payroll-core.js — simulation calculations
-- firestore.rules — tenant isolation and approval restrictions
-- tests/payroll.test.mjs — test coverage
-- .github/workflows/verify.yml — CI
-- .github/workflows/pages.yml — static hosting
-
-## Phase 2 — Clients, personnel and team administration
-
-- **Client Companies** includes client editing (name, industry, contact, service tier, internal notes and active/suspended status).
-- **Personnel Operations** includes employee editing, pay frequency changes, CSV import preview, and multi-select employment status updates.
-- **Team Access** includes member role changes and staff suspension, subject to tenant authorization rules.
-- Employee, timekeeping and payroll lists support bounded **Load more** pagination. For safety, payroll generation is blocked when not all employee/time records have been loaded.
-- Client-role updates are not available to the affected member themselves. When a client is suspended, ordinary client members lose access while Sterling platform administrators retain oversight.
-
-**Required Firebase update:** Re-publish the latest `firestore.rules` from the repository. GitHub Pages does not deploy Firestore Security Rules.
-
-**Phase 2 does not create real employment records or pay anyone.** Do not upload real taxpayer identifiers or banking data to this simulator.
+Staff and Phase 3 functions require **real browser and Firebase rules tests** before declaring production-readiness.
