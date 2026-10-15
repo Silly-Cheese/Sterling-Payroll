@@ -65,3 +65,12 @@ This is a completed simulated frontend and test-tooling release, **not** a certi
 The sign-in Phase 5 initialization bug is fixed. Navigation is more compact, with optional Comfortable view, searchable and filterable large registers, and bounded Firestore prefix lookups for client/employee names. Inline owner actions are present for supported employee, timekeeping, payroll draft, invoice and case records. The direct deletion dialog requires a reason and the phrase `DELETE PERMANENTLY`.
 
 **Current deletion limit:** Full dependency-aware permanent deletion of payroll runs with existing lines/revisions, invoices with ledger events, cases with conversation history, and company-wide recursive deletion is **not yet enabled**. Do not remove a Firestore parent document without processing its descendants; this creates orphaned records. These cases require a verified batched owner cascade workflow. Existing in-place payroll correction and void actions remain available.
+
+
+## Owner second-party approval override
+
+The trusted owner can now bypass normal independent reviewer requirements for fictional payroll periods (draft, submitted, approved, rejected and finalized) and for time entries, correction requests and paid leave (pending, approved and rejected). Every override requires a reason, confirmation and a recorded actor. Payroll signoff changes create a before/after revision linked to the same payroll run. These are owner-only exceptions; ordinary client and payroll accounts must continue to follow separation-of-duties rules.
+
+Go to **Owner Controls** → choose company → **Record type** → select the specific record → choose outcome → enter reason → **Override approval / signoff**. Payroll Runs and Phase 3 review queues also include **Owner signoff / Owner override** shortcuts that open the chosen record directly.
+
+Permanent deletion of finalized payroll runs with associated lines, snapshots and revisions is supported by the owner for a bounded set of child documents in a single Firestore batch. Oversized child collections remain restricted to prevent partial or orphaned records. The updated Firestore Rules must be manually published in Firebase Console; publishing GitHub Pages alone does not grant the new owner signoff or deletion permissions.
