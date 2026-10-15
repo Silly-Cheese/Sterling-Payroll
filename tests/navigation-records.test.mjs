@@ -51,3 +51,10 @@ test("Directory search uses bounded queries and rejects stale company responses"
  assert.match(app,/endAt\(prefix\+"\\uf8ff"\)/);
  assert.match(app,/requestId!==remoteSearchId/);
 });
+
+test("owner can permanently delete finalized or voided payroll from its run row",()=>{
+ const app=read("src/app.js"),owner=read("src/owner.js");
+ assert.match(app,/actions\.push\(button\("Delete permanently",\(\)=>ownerActions\.remove\("payrollRuns",run\)/);
+ assert.doesNotMatch(owner,/Void it instead of orphaning history/);
+ assert.match(owner,/payrollRuns:\["lines","snapshots","revisions"\]/);
+});
