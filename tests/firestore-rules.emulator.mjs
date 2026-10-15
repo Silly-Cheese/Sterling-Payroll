@@ -119,3 +119,40 @@ test("record-level deletion requires trusted owner and leaves owner activity his
  assert.equal((await getDoc(recordRef)).exists(),false);
  await assertSucceeds(getDoc(doc(owner,"tenants","north","ownerAudit","deletion-test")));
 });
+
+test("owner can delete finalized pay period with lines, snapshots and revisions atomically",async()=>{
+ await env.withSecurityRulesDisabled(async c=>{
+  const d=c.firestore();
+  await setDoc(doc(d,"tenants","north","payrollRuns","p1","snapshots","s1"),{sample:"fictional"});
+  await setDoc(doc(d,"tenants","north","payrollRuns","p1","revisions","v1"),{sample:"fictional"});
+ });
+ const owner=as("owner"),viewer=as("viewer");
+ const paths=["tenants/north/payrollRuns/p1/lines/e1","tenants/north/payrollRuns/p1/lines/e2",
+  "tenants/north/payrollRuns/p1/snapshots/s1","tenants/north/payrollRuns/p1/revisions/v1",
+  "tenants/north/payrollRuns/p1"];
+ const denied=writeBatch(viewer);
+ for(const p of paths)denied.delete(doc(viewer,p));
+ await assertFails(denied.commit());
+ const permitted=writeBatch(owner);
+ for(const p of paths)permitted.delete(doc(owner,p));
+ permitted.set(doc(owner,"tenants","north","ownerAudit","deleted-period"),{
+  action:"delete",entityType:"payrollRuns",entityId:"p1",reason:"Owner removed fictional test payroll period",
+  actor:"owner",at:serverTimestamp(),before:{status:"finalized"}
+ });
+ await assertSucceeds(permitted.commit());
+ for(const p of paths)assert.equal((await getDoc(doc(owner,p))).exists(),false);
+ await assertSucceeds(getDoc(doc(owner,"tenants","north","ownerAudit","deleted-period")));
+});
+test("owner can delete simulated invoice events and support conversations",async()=>{
+ await env.withSecurityRulesDisabled(async c=>{
+  const db=c.firestore();
+  await setDoc(doc(db,"tenants","north","billingInvoices","i1","events","e1"),{type:"payment",amountCents:500});
+  await setDoc(doc(db,"tenants","north","supportTickets","s1","updates","u1"),{body:"Fictional update"});
+ });
+ const owner=as("owner");
+ const batch=writeBatch(owner);
+ for(const p of ["tenants/north/billingInvoices/i1/events/e1","tenants/north/billingInvoices/i1",
+  "tenants/north/supportTickets/s1/internalNotes/n1","tenants/north/supportTickets/s1/updates/u1",
+  "tenants/north/supportTickets/s1"])batch.delete(doc(owner,p));
+ await assertSucceeds(batch.commit());
+});
