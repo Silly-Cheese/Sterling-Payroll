@@ -120,7 +120,7 @@ function go(page){
  document.getElementById("phase3Time")?.classList.toggle("hidden",page!=="time"||!state.tenantId);
  document.getElementById("phase3Payroll")?.classList.toggle("hidden",page!=="payroll"||!state.tenantId);
  if(page==="staff")void staffUI?.refresh();
- if(page==="owner")void ownerUI?.refresh();
+ if(page==="owner")ownerRefreshPromise=ownerUI?.refresh()||Promise.resolve();
  if(page==="service")void phase5?.refresh();
  if(page==="assurance")void phase6?.refresh();
  if(page==="employeePortal")void phase4?.refresh();
@@ -519,6 +519,7 @@ $("runStatus").addEventListener("change",renderRuns);
 async function openOwnerReview(kind,id){
  if(!state.platformOwner||!ownerUI)throw Error("Owner approval tools are not loaded");
  go("owner");
+ await ownerRefreshPromise;
  await ownerUI.openReview(kind,id,state.tenantId);
 }
 async function selectRun(id){
@@ -689,6 +690,7 @@ async function confirmAction(title,message){
  });
 }
 let phase2=null,phase2Pending=null,phase3=null,phase4=null,phase5=null,phase6=null,ownerUI=null,staffUI=null;
+let ownerRefreshPromise=Promise.resolve();
 const ownerActions=createOwnerRecordActions({db,getState:()=>state,notify:toast,confirmAction,
  onChanged:async kind=>{if(["billingInvoices","supportTickets"].includes(kind))await phase5?.refresh?.();else await refreshCompany()}
 });
