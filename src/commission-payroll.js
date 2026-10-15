@@ -1,7 +1,8 @@
 import {collection,doc,getDoc,getDocs,query,where,limit} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 import {attachApprovedSales} from "./commission-core.js";
+import {calculateLine} from "./payroll-core.js";
 const MAX_SALES=140;
-export async function prepareRunCommissions(db,tenantId,run,lines){
+export async function prepareRunCommissions(db,tenantId,run,lines,employees=[]){
  const settings=await getDoc(doc(db,"tenants",tenantId,"commissionSettings","current"));
  const enabled=settings.exists()&&settings.data().enabled===true;
  const ref=collection(db,"tenants",tenantId,"commissionSales");
@@ -15,7 +16,21 @@ export async function prepareRunCommissions(db,tenantId,run,lines){
  const candidate=enabled?[...claimed,...waiting]:[];
  const eligible=candidate.filter(s=>s.status==="approved"&&s.saleDate>=run.periodStart&&s.saleDate<=run.periodEnd);
  if(eligible.length>MAX_SALES)throw Error("Too many approved commissions in one period; use a smaller pay period.");
- const prepared=attachApprovedSales(lines,eligible,run.periodStart,run.periodEnd);
+ const filled=[...lines],included=new Set(filled.map(x=>x.employeeId));
+ for(const sale of eligible){
+  if(included.has(sale.employeeId))continue;
+  let employee=employees.find(e=>e.id===sale.employeeId);
+  if(!employee){
+   const record=await getDoc(doc(db,"tenants",tenantId,"employees",sale.employeeId));
+   if(!record.exists())throw Error("An approved sale references a removed employee. Review commission history.");
+   employee={id:record.id,...record.data()};
+  }
+  if(employee.status!=="active")throw Error("An approved sale references an inactive employee. Review it before payroll.");
+  const line=calculateLine({employee,regularHours:0,overtimeHours:0,bonusCents:0,deductionCents:0});
+  line.policyVersion=1;line.paidLeaveHours=0;
+  filled.push(line);included.add(employee.id);
+ }
+ const prepared=attachApprovedSales(filled,eligible,run.periodStart,run.periodEnd);
  const retained=new Set(prepared.applied.map(s=>s.id));
  const release=claimed.filter(s=>!retained.has(s.id));
  const claim=waiting.filter(s=>retained.has(s.id));
