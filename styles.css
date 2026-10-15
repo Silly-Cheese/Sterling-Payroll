@@ -77,3 +77,29 @@ input,select{border-radius:10px;padding:11px 12px;color:var(--ink);background:#0
  #staffAccounts .panel{padding:17px}
  #staffAccounts .actions .btn{flex:1}
 }
+
+/* Phase 4 employee portal */
+#page-employeePortal .panel{min-width:0}
+#page-employeePortal .phase4-hero{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:16px;background:linear-gradient(115deg,#19211e,#151918 60%,#242117)}
+#page-employeePortal .phase4-hero h2{font-size:30px;margin:7px 0}
+#page-employeePortal .phase4-hero p{max-width:700px}
+#page-employeePortal #p4Notice{font-size:12px;line-height:1.7;padding:12px 15px;background:#1d2520;border:1px solid #334839;border-radius:10px;margin-bottom:18px}
+#page-employeePortal .metric-grid{margin-bottom:20px}
+#page-employeePortal .data-note{margin-top:8px}
+#page-employeePortal #p4Announcements .list-item{display:block}
+#page-employeePortal #p4Announcements .list-item strong{color:#eee2c8}
+#page-employeePortal #p4Announcements .list-item small{white-space:pre-wrap;line-height:1.7}
+#page-employeePortal .p4-thread{min-height:160px;max-height:420px;overflow:auto;border:1px solid #2d383a;border-radius:12px;padding:15px;background:#0e1316;display:flex;flex-direction:column;align-items:flex-start;gap:10px}
+#page-employeePortal .p4-bubble{padding:10px 13px;background:#1e2728;border:1px solid #384044;border-radius:12px;max-width:94%;overflow-wrap:anywhere}
+#page-employeePortal .p4-bubble.mine{align-self:flex-end;background:#28271f;border-color:#5b4f37}
+#page-employeePortal .p4-bubble small{display:block;color:var(--gold);font-size:10px}
+#page-employeePortal .p4-bubble p{white-space:pre-wrap;margin:4px 0 0;font-size:12px}
+#page-employeePortal textarea{font:inherit;color:var(--ink);background:#0d1115;border:1px solid #343d42;border-radius:10px;width:100%;padding:11px;resize:vertical;min-height:78px}
+#page-employeePortal textarea:focus{outline:2px solid var(--gold-2);outline-offset:2px}
+#page-employeePortal #p4MessageForm{margin-top:15px}
+#page-employeePortal .checkline{display:flex;flex-direction:row;align-items:center}
+#page-employeePortal .checkline input{width:auto}
+#page-employeePortal #p4ThreadSelectorWrap{margin-bottom:15px}
+#page-employeePortal #p4PayHistory .item-actions .btn{white-space:nowrap}
+@media(max-width:740px){#page-employeePortal .phase4-hero{align-items:flex-start;flex-direction:column}#page-employeePortal #p4PayHistory .list-item{align-items:flex-start;flex-direction:column}#page-employeePortal .metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:420px){#page-employeePortal .metric-grid{grid-template-columns:1fr}#page-employeePortal .phase4-hero h2{font-size:25px}}
