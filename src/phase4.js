@@ -5,7 +5,7 @@ import {compactForm,buildPortalTabs} from "./workspace-ui.js";
 const E=(tag,className,text)=>{const n=document.createElement(tag);if(className)n.className=className;if(text!==undefined)n.textContent=String(text);return n};
 const option=(value,text)=>{const o=E("option","",text);o.value=value;return o};
 const card=(title,detail)=>{const node=E("article","list-item"),body=E("div");body.append(E("strong","",title),E("small","",detail));node.append(body);return node};
-export async function mountPhase4({db,getState,notify,confirmAction}){
+export async function mountPhase4({db,getState,notify,confirmAction,ownerDelete}){
  const response=await fetch("./phase4.html");
  if(!response.ok)throw Error("Phase 4 employee portal template unavailable");
  const root=document.getElementById("employeePortal");
@@ -41,6 +41,12 @@ export async function mountPhase4({db,getState,notify,confirmAction}){
   for(const d of snap.docs){
    const message=d.data(),row=card(message.title,message.body);
    row.classList.add("p4-announcement");
+   if(S().platformOwner&&ownerDelete){
+    const remove=E("button","btn small danger","Delete");
+    remove.type="button";
+    remove.onclick=async()=>{try{await ownerDelete("announcements",{id:d.id,...message});await fetchAnnouncements(generation)}catch(e){failed("Announcement deletion failed",e)}};
+    row.append(remove);
+   }
    box.append(row);
   }
   if(snap.empty)show(box,"No company announcements yet.");
