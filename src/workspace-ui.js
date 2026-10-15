@@ -39,7 +39,10 @@ export function compactForm({root=document,formId,label,summary="",mode="dialog"
   [...layout.children].find(element=>element!==panel);
  if(next)next.prepend(action);else layout.prepend(action);
  panel.remove();panel.classList.add("workspace-form-panel");
- dialog.append(panel);root.append(dialog);
+ dialog.append(panel);
+ const mount=root.nodeType===9?root.body:root;
+ if(!mount||mount.nodeType!==1)throw Error("Workspace forms require an HTML element mount");
+ mount.append(dialog);
  if(layout.classList.contains("two-col")||layout.classList.contains("ops-grid"))layout.classList.add("workspace-list-wide");
  const sync=()=>{
   open.hidden=form.classList.contains("hidden");
