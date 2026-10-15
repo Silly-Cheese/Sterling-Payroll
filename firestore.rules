@@ -303,7 +303,8 @@ service cloud.firestore {
       cent(request.resource.data.amountCents) && request.resource.data.amountCents > 0 &&
       text(request.resource.data.note,300) && request.resource.data.note.size() >= 6 &&
       request.resource.data.createdBy == request.auth.uid && request.resource.data.createdAt == request.time;
-     allow update,delete: if false;
+     allow update: if false;
+     allow delete: if owner();
     }
    }
    // Client ticket queue, scoped public updates and separately private internal notes.
@@ -335,7 +336,8 @@ service cloud.firestore {
       text(request.resource.data.body,1600) &&
       request.resource.data.createdBy == request.auth.uid &&
       request.resource.data.createdAt == request.time;
-     allow update,delete: if false;
+     allow update: if false;
+     allow delete: if owner();
     }
     match /internalNotes/{noteId} {
      allow read: if clientAdmin(t);
@@ -345,7 +347,8 @@ service cloud.firestore {
       text(request.resource.data.body,1600) &&
       request.resource.data.createdBy == request.auth.uid &&
       request.resource.data.createdAt == request.time;
-     allow update,delete: if false;
+     allow update: if false;
+     allow delete: if owner();
     }
    }
    match /employees/{e} {
