@@ -1,8 +1,10 @@
 import {initializeApp} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
-import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendEmailVerification,sendPasswordResetEmail,signOut,reload,getIdToken} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js";
+import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,signOut} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js";
 import {getFirestore,collection,doc,getDoc,getDocs,addDoc,setDoc,updateDoc,query,limit,writeBatch,serverTimestamp,orderBy,documentId,startAfter} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 import {calculateLine,summarizeLines,toCents,money,hoursValue,canTransition,validPeriod,cleanEmail} from "./payroll-core.js";
-import {mountOwnerBootstrap} from "./bootstrap.js";
+import {mountStaffAccounts} from "./staff.js";
+import {mountPhase3} from "./phase3.js";
+import {buildPayrollPreview,DEFAULT_POLICY} from "./phase3-core.js";
 import {mountPhase2} from "./phase2.js";
 
 const app=initializeApp({
@@ -14,8 +16,9 @@ const app=initializeApp({
  appId:"1:755423368876:web:da8513d0923f1d14033109"
 });
 const auth=getAuth(app),db=getFirestore(app),$=id=>document.getElementById(id);
-const state={user:null,platform:false,tenants:[],tenantId:"",role:"",employees:[],time:[],runs:[],selectedRun:null,lines:[],page:"dashboard",register:false,moreEmployees:false,moreTime:false,moreRuns:false,employeeCursor:null,timeCursor:null,runCursor:null,clientCursor:null,moreClients:false};
+const state={user:null,platform:false,platformOwner:false,platformWrite:false,platformRole:"client",tenants:[],tenantId:"",role:"",employees:[],time:[],runs:[],selectedRun:null,lines:[],page:"dashboard",register:false,moreEmployees:false,moreTime:false,moreRuns:false,employeeCursor:null,timeCursor:null,runCursor:null,clientCursor:null,moreClients:false};
 const titles={
+ staff:["Staff & Accounts","Assign Sterling staff privileges and company memberships."],
  dashboard:["Executive overview","Everything you need to manage simulated payroll across client businesses."],
  clients:["Client companies","Manage the businesses using Sterling Payroll."],
  employees:["Employee management","Compensation and employment records for the selected company."],
@@ -45,13 +48,14 @@ function item(title,description,actions=[],status="",style=""){
  node.append(controls);return node;
 }
 function empty(container,message){container.replaceChildren(mk("p","muted",message))}
-function canPayroll(){return state.platform||["client_admin","payroll_specialist"].includes(state.role)}
-function canAdmin(){return state.platform||state.role==="client_admin"}
+function canPayroll(){return state.platformWrite||state.platformRole==="payroll_operator"||["client_admin","payroll_specialist"].includes(state.role)}
+function canAdmin(){return state.platformWrite||state.role==="client_admin"}
 const tenantDoc=()=>doc(db,"tenants",state.tenantId);
 const sub=(name)=>collection(db,"tenants",state.tenantId,name);
 function go(page){
  if(!titles[page])page="dashboard";
  if(page==="clients"&&!state.platform)page="dashboard";
+ if(page==="staff"&&!state.platformOwner)page="dashboard";
  if(["employees","operations","time","payroll","access"].includes(page)&&!state.tenantId)page="dashboard";
  if(page==="access"&&!canAdmin())page="dashboard";
  state.page=page;
@@ -60,12 +64,15 @@ function go(page){
  $("pageName").textContent=titles[page][0];$("pageTitle").textContent=titles[page][0];$("pageDescription").textContent=titles[page][1];
  $("pageEyebrow").textContent=page==="clients"?"STERLING PAYROLL / HEADQUARTERS":"STERLING PAYROLL / "+(state.tenantId?state.tenants.find(t=>t.id===state.tenantId)?.name||"CLIENT WORKSPACE":"COMMAND CENTER").toUpperCase();
  document.querySelector(".sidebar")?.classList.remove("open");
+ document.getElementById("phase3Time")?.classList.toggle("hidden",page!=="time"||!state.tenantId);
+ document.getElementById("phase3Payroll")?.classList.toggle("hidden",page!=="payroll"||!state.tenantId);
+ if(page==="staff")void staffUI?.refresh();
  if(page==="dashboard")renderDashboard();
  if(page==="clients")renderClients();
  if(page==="employees")renderEmployees();
  if(page==="operations")phase2?.refresh();
- if(page==="time")renderTime();
- if(page==="payroll")renderRuns();
+ if(page==="time"){renderTime();void phase3?.refresh();}
+ if(page==="payroll"){renderRuns();void phase3?.refresh();}
  if(page==="access")void renderAccess();
  window.scrollTo({top:0});
 }
@@ -78,16 +85,15 @@ $("authToggle").addEventListener("click",()=>{
  $("authSubmit").textContent=state.register?"Create account":"Sign in";
  $("authToggle").textContent=state.register?"Already have an account? Sign in":"Create an account";
  $("authPassword").autocomplete=state.register?"new-password":"current-password";
- $("authNotice").textContent=state.register?"Registration creates an account only. Company access requires an administrator invitation.":"Accounts do not automatically receive access to any client's data.";
+ $("authNotice").textContent=state.register?"Registration creates a client account. Sterling assigns company and staff permissions.":"Accounts do not automatically receive access to any client's data.";
 });
 $("authForm").addEventListener("submit",async event=>{
  event.preventDefault();const email=$("authEmail").value.trim(),pass=$("authPassword").value;
  $("authSubmit").disabled=true;
  try{
   if(state.register){
-   const credential=await createUserWithEmailAndPassword(auth,email,pass);
-   await sendEmailVerification(credential.user);
-   toast("Account created. Check your email verification message before accepting invitations.");
+   await createUserWithEmailAndPassword(auth,email,pass);
+   toast("Account created. Your account starts as a client until Sterling assigns access.");
   }else await signInWithEmailAndPassword(auth,email,pass);
   $("authPassword").value="";
  }catch(e){fail(e,"Authentication failed")}finally{$("authSubmit").disabled=false}
@@ -133,7 +139,7 @@ async function chooseTenant(id,writeStorage=true){
  if(state.user&&writeStorage)localStorage.setItem("sterling-payroll-company-"+state.user.uid,id);
  $("companySelect").value=id;
  if(id){
-  if(state.platform)state.role="platform_admin";
+  if(state.platform)state.role=state.platformWrite?"platform_admin":state.platformRole;
   else{
    const membership=await getDoc(doc(db,"tenants",id,"members",state.user.uid));
    if(!membership.exists()||membership.data().status!=="active")throw Error("No authorized membership for this company");
@@ -144,6 +150,8 @@ async function chooseTenant(id,writeStorage=true){
  document.querySelectorAll(".client-only").forEach(node=>node.classList.toggle("hidden",!id));
  document.querySelectorAll(".admin-only").forEach(node=>node.classList.toggle("hidden",!id||!canAdmin()));
  document.querySelectorAll(".platform-only").forEach(node=>node.classList.toggle("hidden",!state.platform));
+ document.querySelectorAll(".owner-only").forEach(node=>node.classList.toggle("hidden",!state.platformOwner));
+ $("clientForm").classList.toggle("hidden",!state.platformWrite);
  const editOnly=document.querySelectorAll("#employeeForm,#timeForm,#runForm");
  editOnly.forEach(form=>form.classList.toggle("hidden",!canPayroll()));
  if(!id){state.employees=[];state.time=[];state.runs=[];state.selectedRun=null;go("dashboard");return}
@@ -151,27 +159,6 @@ async function chooseTenant(id,writeStorage=true){
  if(state.page==="clients"&&state.platform)go("clients");else go(state.page==="dashboard"?"dashboard":state.page);
 }
 $("companySelect").addEventListener("change",()=>chooseTenant($("companySelect").value).catch(e=>fail(e,"Company selection failed")));
-$("joinForm").addEventListener("submit",async event=>{
- event.preventDefault();if(!state.user)return;
- const id=$("joinCode").value.trim();
- if(!/^[a-zA-Z0-9_-]{10,40}$/.test(id)){toast("Enter the exact workspace code provided with your invitation.",true);return}
- await reload(state.user);
- await getIdToken(state.user,true);
- if(!state.user.emailVerified){toast("Verify your account email before accepting invitations.",true);return}
- try{
-  const email=cleanEmail(state.user.email),invite=await getDoc(doc(db,"tenants",id,"invites",email));
-  if(!invite.exists())throw Error("No invitation exists for this verified email address and company");
-  const membershipRef=doc(db,"tenants",id,"members",state.user.uid);
-  const existing=await getDoc(membershipRef);
-  const batch=writeBatch(db);
-  if(!existing.exists())batch.set(membershipRef,{email,role:invite.data().role,status:"active",joinedAt:serverTimestamp()});
-  batch.set(doc(db,"userTenants",state.user.uid,"items",id),{tenantId:id,joinedAt:serverTimestamp()});
-  await batch.commit();
-  toast("Company invitation accepted.");$("joinCode").value="";
-  await loadTenantDirectory();
-  await chooseTenant(id);
- }catch(e){fail(e,"Invitation acceptance failed")}
-});
 async function refreshCompany(){
  if(!state.tenantId)return;
  const id=state.tenantId;
@@ -505,7 +492,7 @@ async function confirmAction(title,message){
   modal.addEventListener("close",()=>resolve(modal.returnValue==="confirm"),{once:true});
  });
 }
-let phase2=null,phase2Pending=null;
+let phase2=null,phase2Pending=null,phase3=null,staffUI=null;
 async function initializePhase2(){
  if(phase2)return phase2;
  if(!phase2Pending){
@@ -517,21 +504,27 @@ async function initializePhase2(){
  return phase2Pending;
 }
 onAuthStateChanged(auth,async user=>{
- state.user=user;state.tenantId="";state.platform=false;state.tenants=[];state.role="";
+ state.user=user;state.tenantId="";state.platform=false;state.tenants=[];state.role="";state.platformOwner=false;state.platformWrite=false;state.platformRole="client";
  $("authScreen").classList.toggle("hidden",!!user);$("shell").classList.toggle("hidden",!user);
  if(!user)return;
  $("signedInName").textContent=user.email||"Payroll Account";
  $("avatar").textContent=(user.email||"SP").slice(0,2).toUpperCase();
  try{
   const grant=await getDoc(doc(db,"platformAdmins",user.uid));
-  state.platform=grant.exists()&&grant.data()?.active===true;
-  $("ownerBootstrap").classList.add("hidden");
+  state.platformOwner=grant.exists()&&grant.data()?.active===true;
+  const staffGrant=await getDoc(doc(db,"platformStaff",user.uid));
+  state.platformRole=state.platformOwner?"owner":staffGrant.exists()&&staffGrant.data()?.active===true?staffGrant.data().role:"client";
+  state.platformWrite=state.platformOwner||state.platformRole==="administrator";
+  state.platform=state.platformWrite||["payroll_operator","support"].includes(state.platformRole);
+  const accountRef=doc(db,"accounts",user.uid);
+  if(!(await getDoc(accountRef)).exists())await setDoc(accountRef,{email:user.email||"",displayName:user.displayName||"",accountType:"client",createdAt:serverTimestamp()});
   if(location.hash.startsWith("#join="))$("joinCode").value=decodeURIComponent(location.hash.slice(6));
   await loadTenantDirectory();
   await initializePhase2();
-  if(!state.platform)await mountOwnerBootstrap({auth,db,user,
-    onClaim:async()=>{state.platform=true;await loadTenantDirectory();go("clients");toast("Welcome to Sterling Payroll headquarters.");},notify:toast});
+  if(!staffUI)staffUI=mountStaffAccounts({db,getState:()=>state,notify:toast,confirmAction});
+  if(!phase3)phase3=mountPhase3({db,getState:()=>state,refreshCompany,notify:toast,confirmAction});
+  if(state.platformOwner)await staffUI?.refresh();
   go("dashboard");
-  if(!state.platform&&!state.tenants.length)toast("Sign in successful. Enter your company code to accept an invitation.");
+  if(!state.platform&&!state.tenants.length)toast("Client account ready. Sterling can assign you access to a company.");
  }catch(e){fail(e,"Workspace authorization failed");go("dashboard")}
 });
