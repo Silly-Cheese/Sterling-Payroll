@@ -139,6 +139,7 @@ export async function mountPhase4({db,getState,notify,confirmAction}){
   $("p4RequestBadge").textContent="NO PENDING ITEMS";
   $("p4AnnouncementForm").classList.toggle("hidden",!admin());
   $("p4ThreadSelectorWrap").classList.toggle("hidden",!admin());
+  $("p4LinkPanel").hidden=!admin();
   $("p4AccessChip").textContent="LINK REQUIRED";
   $("p4Notice").textContent="Checking current company access…";
   if(!workspace)return;
@@ -180,6 +181,25 @@ export async function mountPhase4({db,getState,notify,confirmAction}){
     $("p4ThreadSelector").replaceChildren(option("","Choose employee conversation"),
       ...links.docs.map(d=>option(d.id,names.get(d.id)||"Employee account")).sort((a,b)=>a.text.localeCompare(b.text)));
     threadUid=$("p4ThreadSelector").value||"";
+    const accounts=$("p4LinkAccount"),employees=$("p4LinkEmployee"),oldAccount=accounts.value,oldEmployee=employees.value;
+    const currentLinks=new Map(links.docs.map(d=>[d.id,d.data().employeeId]));
+    accounts.replaceChildren(option("","Select member"),...members.docs.filter(d=>d.data().status==="active").map(d=>option(d.id,d.data().email||"Company member")));
+    employees.replaceChildren(option("","Select employee"),...S().employees.map(e=>option(e.id,e.displayName)));
+    accounts.value=members.docs.some(d=>d.id===oldAccount)?oldAccount:"";
+    employees.value=S().employees.some(e=>e.id===oldEmployee)?oldEmployee:"";
+    const linked=$("p4LinkedPeople");linked.replaceChildren();
+    for(const [uid,employeeId] of currentLinks){
+     const node=card(names.get(uid)||"Registered member",S().employees.find(e=>e.id===employeeId)?.displayName||"Employee record");
+     const unlink=E("button","btn small danger","Unlink");
+     unlink.type="button";
+     unlink.onclick=async()=>{
+      try{
+       if(!await confirmAction("Unlink employee","Remove this portal's access to their fictional pay records?"))return;
+       await deleteDoc(path("employeeLinks",uid));notify("Employee link removed.");await refresh();
+      }catch(error){failed("Unlink failed",error)}
+     };
+     node.append(unlink);linked.append(node);
+    }
    }else if(linked())threadUid=S().user.uid;
    $("p4MessageForm").classList.toggle("hidden",!threadUid);
    if(threadUid)await fetchThread(threadUid,version);else show($("p4Messages"),adminNow?"Choose a linked employee above.":"Messaging becomes available after employer linking.");
@@ -195,6 +215,17 @@ export async function mountPhase4({db,getState,notify,confirmAction}){
    failed("Employee portal unavailable",error);
   }
  }
+ $("p4LinkForm").addEventListener("submit",async event=>{
+  event.preventDefault();
+  try{
+   if(!admin())throw Error("Only an authorized company administrator can link employee identities");
+   const uid=$("p4LinkAccount").value,employeeId=$("p4LinkEmployee").value;
+   if(!uid||!employeeId||!S().employees.some(e=>e.id===employeeId))throw Error("Choose a member and an employee");
+   if(!await confirmAction("Link employee portal","Give this registered member access to the selected employee's fictional pay records?"))return;
+   await setDoc(path("employeeLinks",uid),{employeeId,linkedBy:S().user.uid,linkedAt:serverTimestamp()});
+   notify("Employee portal identity linked.");await refresh();
+  }catch(error){failed("Employee linking failed",error)}
+ });
  $("p4ThreadSelector").addEventListener("change",async()=>{
   const version=++generation;threadUid=$("p4ThreadSelector").value;
   $("p4MessageForm").classList.toggle("hidden",!threadUid);
