@@ -420,3 +420,10 @@ body:has(.sterling-record-dialog[open]) .topbar{filter:brightness(.75)}
 #staffAccounts .portal-view-content>.panel{width:100%;max-width:100%;min-width:0}
 #staffAccounts .portal-view-content .form-stack,
 #staffAccounts .portal-view-content label{max-width:690px}
+
+#phase2Operations .ops-grid:has(>.portal-view-tabs){display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:0!important}
+#phase2Operations .ops-grid:has(>.portal-view-tabs)>.portal-view-tabs,
+#phase2Operations .ops-grid:has(>.portal-view-tabs)>.portal-view-content{grid-column:1/-1;min-width:0}
+#phase2Operations .portal-view-content>.panel{min-height:270px;margin:0 0 18px}
+#phase2Operations .portal-view-content .list{max-height:65vh;overflow:auto}
+#phase2Operations .workspace-form-dialog .form-stack{max-width:none}
