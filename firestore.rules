@@ -232,34 +232,110 @@ service cloud.firestore {
      request.resource.data.before is map;
     allow update,delete: if false;
    }
-   // Phase 5 — fictional invoices only, no payment processor or real transfers.
-   match /billingInvoices/{invoiceId} {
+   // Append-only operational event feed. This is a client-action log, not a trusted
+   // independently administered audit service; a privileged browser can still omit it.
+   match /auditEvents/{eventId} {
+    allow read: if clientAdmin(t) || platformView();
+    allow create: if clientView(t) &&
+     request.resource.data.keys().hasOnly(['category','action','subject','detail','actor','at']) &&
+     text(request.resource.data.category,50) &&
+     text(request.resource.data.action,60) &&
+     text(request.resource.data.subject,160) &&
+     request.resource.data.detail is string && request.resource.data.detail.size() <= 300 &&
+     request.resource.data.actor == request.auth.uid &&
+     request.resource.data.at == request.time;
+    allow update,delete: if false;
+   }
+   match /serviceAgreements/current {
     allow read: if clientView(t);
-    allow create: if clientAdmin(t) &&
-     request.resource.data.keys().hasOnly(['description','amountCents','status','createdAt','updatedAt','createdBy']) &&
-     text(request.resource.data.description,160) && cent(request.resource.data.amountCents) &&
-     request.resource.data.status == 'draft' &&
-     request.resource.data.createdBy == request.auth.uid && request.resource.data.createdAt == request.time;
-    allow update: if clientAdmin(t) &&
-     request.resource.data.diff(resource.data).affectedKeys().hasOnly(['description','amountCents','status','updatedAt']) &&
-     text(request.resource.data.description,160) && cent(request.resource.data.amountCents) &&
-     request.resource.data.status in ['draft','issued','settled','void'] &&
+    allow create,update: if clientAdmin(t) &&
+     request.resource.data.keys().hasOnly(['tier','billingCycle','status','renewalDate','seatLimit','rateCents','updatedBy','updatedAt']) &&
+     request.resource.data.tier in ['starter','standard','enterprise'] &&
+     request.resource.data.billingCycle in ['monthly','annual'] &&
+     request.resource.data.status in ['trial','active','paused','cancelled'] &&
+     request.resource.data.renewalDate is string &&
+     (request.resource.data.renewalDate == '' || date(request.resource.data.renewalDate)) &&
+     request.resource.data.seatLimit is int && request.resource.data.seatLimit >= 0 && request.resource.data.seatLimit <= 100000 &&
+     cent(request.resource.data.rateCents) &&
+     request.resource.data.updatedBy == request.auth.uid &&
      request.resource.data.updatedAt == request.time;
     allow delete: if owner();
    }
-   // Phase 5 — private-to-client support case tracking.
-   match /supportTickets/{ticketId} {
+   // All invoices and "payments" are explicitly fictional. Invoice state transitions
+   // are enforced here. Ledger balance reconciliation is currently client-side only.
+   match /billingInvoices/{invoiceId} {
     allow read: if clientView(t);
-    allow create: if (member(t) || platformView()) &&
-     request.resource.data.keys().hasOnly(['subject','details','status','createdBy','createdAt','updatedAt']) &&
-     text(request.resource.data.subject,120) && text(request.resource.data.details,1500) &&
-     request.resource.data.status == 'open' && request.resource.data.createdBy == request.auth.uid &&
-     request.resource.data.createdAt == request.time;
+    allow create: if clientAdmin(t) &&
+     request.resource.data.keys().hasOnly(['description','amountCents','dueDate','status','createdAt','updatedAt','createdBy']) &&
+     text(request.resource.data.description,160) && cent(request.resource.data.amountCents) &&
+     request.resource.data.amountCents > 0 &&
+     request.resource.data.dueDate is string && (request.resource.data.dueDate == '' || date(request.resource.data.dueDate)) &&
+     request.resource.data.status == 'draft' &&
+     request.resource.data.createdBy == request.auth.uid &&
+     request.resource.data.createdAt == request.time &&
+     request.resource.data.updatedAt == request.time;
     allow update: if clientAdmin(t) &&
      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt']) &&
-     request.resource.data.status in ['open','in_progress','resolved','closed'] &&
+     (
+       (resource.data.status == 'draft' && request.resource.data.status in ['issued','void']) ||
+       (resource.data.status == 'issued' && request.resource.data.status in ['settled','void']) ||
+       (resource.data.status == 'settled' && request.resource.data.status == 'issued')
+     ) && request.resource.data.updatedAt == request.time;
+    allow delete: if owner();
+    match /events/{eventId} {
+     allow read: if clientView(t);
+     allow create: if clientAdmin(t) &&
+      exists(/databases/$(database)/documents/tenants/$(t)/billingInvoices/$(invoiceId)) &&
+      get(/databases/$(database)/documents/tenants/$(t)/billingInvoices/$(invoiceId)).data.status != 'void' &&
+      request.resource.data.keys().hasOnly(['type','amountCents','note','createdBy','createdAt']) &&
+      request.resource.data.type in ['payment','credit','adjustment'] &&
+      cent(request.resource.data.amountCents) && request.resource.data.amountCents > 0 &&
+      text(request.resource.data.note,300) && request.resource.data.note.size() >= 6 &&
+      request.resource.data.createdBy == request.auth.uid && request.resource.data.createdAt == request.time;
+     allow update,delete: if false;
+    }
+   }
+   // Client ticket queue, scoped public updates and separately private internal notes.
+   match /supportTickets/{ticketId} {
+    allow read: if clientView(t);
+    allow create: if clientView(t) &&
+     request.resource.data.keys().hasOnly(['subject','details','priority','category','status','assignedUid','createdBy','createdAt','updatedAt']) &&
+     text(request.resource.data.subject,120) && text(request.resource.data.details,1500) &&
+     request.resource.data.priority in ['low','normal','high','urgent'] &&
+     request.resource.data.category in ['payroll','employee','billing','technical','general'] &&
+     request.resource.data.status == 'open' && request.resource.data.assignedUid == '' &&
+     request.resource.data.createdBy == request.auth.uid &&
+     request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time;
+    allow update: if clientAdmin(t) &&
+     request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','assignedUid','updatedAt']) &&
+     request.resource.data.status in ['open','in_progress','waiting_on_client','resolved','closed'] &&
+     resource.data.status != 'closed' &&
+     request.resource.data.assignedUid is string &&
+     (request.resource.data.assignedUid == '' ||
+       (exists(/databases/$(database)/documents/tenants/$(t)/members/$(request.resource.data.assignedUid)) &&
+        get(/databases/$(database)/documents/tenants/$(t)/members/$(request.resource.data.assignedUid)).data.status == 'active')) &&
      request.resource.data.updatedAt == request.time;
     allow delete: if owner();
+    match /updates/{messageId} {
+     allow read: if clientView(t);
+     allow create: if clientView(t) &&
+      exists(/databases/$(database)/documents/tenants/$(t)/supportTickets/$(ticketId)) &&
+      request.resource.data.keys().hasOnly(['body','createdBy','createdAt']) &&
+      text(request.resource.data.body,1600) &&
+      request.resource.data.createdBy == request.auth.uid &&
+      request.resource.data.createdAt == request.time;
+     allow update,delete: if false;
+    }
+    match /internalNotes/{noteId} {
+     allow read: if clientAdmin(t);
+     allow create: if clientAdmin(t) &&
+      exists(/databases/$(database)/documents/tenants/$(t)/supportTickets/$(ticketId)) &&
+      request.resource.data.keys().hasOnly(['body','createdBy','createdAt']) &&
+      text(request.resource.data.body,1600) &&
+      request.resource.data.createdBy == request.auth.uid &&
+      request.resource.data.createdAt == request.time;
+     allow update,delete: if false;
+    }
    }
    match /employees/{e} {
     allow get: if clientView(t) || ownsEmployee(t,e);
