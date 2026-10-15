@@ -15,7 +15,10 @@ service cloud.firestore {
   function role(t){return get(memberPath(t)).data.role;}
   function clientAdmin(t){return platform() || (member(t) && role(t) == 'client_admin');}
   function payrollStaff(t){return platformOps() || clientAdmin(t) || (member(t) && role(t) == 'payroll_specialist');}
-  function clientView(t){return platformView() || member(t);}
+  function clientView(t){return platformView() || (member(t) && role(t) != 'employee');}
+  function employeeLinkPath(t){return /databases/$(database)/documents/tenants/$(t)/employeeLinks/$(request.auth.uid);}
+  function employeeLinked(t){return member(t) && exists(employeeLinkPath(t));}
+  function ownsEmployee(t,e){return employeeLinked(t) && get(employeeLinkPath(t)).data.employeeId == e;}
   function text(v,n){return v is string && v.size() > 0 && v.size() <= n;}
   function cent(v){return v is int && v >= 0 && v <= 1000000000;}
   function hours(v){return v is number && v >= 0 && v <= 744;}
@@ -70,7 +73,8 @@ service cloud.firestore {
    allow update: if false;
   }
   match /tenants/{t} {
-   allow read: if clientView(t);
+   allow get: if clientView(t) || member(t);
+   allow list: if clientView(t);
    allow create: if platform() &&
     request.resource.data.keys().hasOnly(['name','status','createdAt','createdBy','contactEmail','servicePlan','industry','notes']) &&
     text(request.resource.data.name,120) &&
@@ -98,7 +102,7 @@ service cloud.firestore {
       request.resource.data.email == email &&
       request.resource.data.email is string &&
       request.resource.data.email.size() <= 254 &&
-      request.resource.data.role in ['client_admin','payroll_specialist','viewer'] &&
+      request.resource.data.role in ['client_admin','payroll_specialist','viewer','employee'] &&
       request.resource.data.createdBy == request.auth.uid;
     allow update: if clientAdmin(t) &&
      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role']) &&
@@ -125,8 +129,58 @@ service cloud.firestore {
     allow delete: if false;
    }
 
+   // Explicit employer-approved identity binding. A registered email alone grants no access.
+   match /employeeLinks/{uid} {
+    allow get: if clientAdmin(t) || (signedIn() && request.auth.uid == uid && member(t));
+    allow list: if clientAdmin(t);
+    allow create, update: if clientAdmin(t) &&
+      exists(/databases/$(database)/documents/accounts/$(uid)) &&
+      exists(/databases/$(database)/documents/tenants/$(t)/members/$(uid)) &&
+      get(/databases/$(database)/documents/tenants/$(t)/members/$(uid)).data.status == 'active' &&
+      request.resource.data.keys().hasOnly(['employeeId','linkedBy','linkedAt']) &&
+      text(request.resource.data.employeeId,128) &&
+      exists(employeePath(t,request.resource.data.employeeId)) &&
+      request.resource.data.linkedBy == request.auth.uid;
+    allow delete: if clientAdmin(t);
+   }
+   // Self-service preferences never change HR payroll source fields.
+   match /employeePreferences/{uid} {
+    allow get: if clientAdmin(t) || (signedIn() && request.auth.uid == uid && employeeLinked(t));
+    allow list: if clientAdmin(t);
+    allow create, update: if signedIn() && request.auth.uid == uid && employeeLinked(t) &&
+     request.resource.data.keys().hasOnly(['preferredName','notifications','updatedAt']) &&
+     request.resource.data.preferredName is string &&
+     request.resource.data.preferredName.size() <= 80 &&
+     request.resource.data.notifications is bool &&
+     request.resource.data.updatedAt == request.time;
+    allow delete: if false;
+   }
+   // All announcements are visible to approved company members, never the public.
+   match /announcements/{id} {
+    allow get, list: if clientView(t) || employeeLinked(t);
+    allow create: if clientAdmin(t) &&
+     request.resource.data.keys().hasOnly(['title','body','createdAt','createdBy']) &&
+     text(request.resource.data.title,100) &&
+     text(request.resource.data.body,1800) &&
+     request.resource.data.createdAt == request.time &&
+     request.resource.data.createdBy == request.auth.uid;
+    allow update, delete: if false;
+   }
+   // One employee-specific thread per approved account. No employee can enumerate another's thread.
+   match /employeeConversations/{uid}/messages/{messageId} {
+    allow get, list: if clientAdmin(t) || (signedIn() && request.auth.uid == uid && employeeLinked(t));
+    allow create: if (clientAdmin(t) || (signedIn() && request.auth.uid == uid && employeeLinked(t))) &&
+     request.resource.data.keys().hasOnly(['body','authorUid','authorRole','sentAt']) &&
+     text(request.resource.data.body,1800) &&
+     request.resource.data.authorUid == request.auth.uid &&
+     request.resource.data.authorRole == (clientAdmin(t) ? 'employer' : 'employee') &&
+     request.resource.data.sentAt == request.time &&
+     exists(/databases/$(database)/documents/tenants/$(t)/employeeLinks/$(uid));
+    allow update, delete: if false;
+   }
    match /employees/{e} {
-    allow read: if clientView(t);
+    allow get: if clientView(t) || ownsEmployee(t,e);
+    allow list: if clientView(t);
     allow create: if payrollStaff(t) &&
      request.resource.data.keys().hasOnly(['displayName','department','jobTitle','payType','payFrequency',
       'hourlyRateCents','annualSalaryCents','status','createdAt','createdBy','updatedAt']) &&
@@ -228,7 +282,8 @@ service cloud.firestore {
     allow delete: if false;
    }
    match /payrollRuns/{r} {
-    allow read: if clientView(t);
+    allow get: if clientView(t) || (employeeLinked(t) && resource.data.status == 'finalized');
+    allow list: if clientView(t) || (employeeLinked(t) && resource.data.status == 'finalized');
     allow create: if payrollStaff(t) &&
      request.resource.data.keys().hasOnly(['periodStart','periodEnd','payDate','status','createdAt','createdBy',
       'submittedBy','approvedBy','finalizedBy','correctionOf','correctionReason']) &&
@@ -285,7 +340,9 @@ service cloud.firestore {
      allow update,delete: if false;
     }
     match /lines/{employeeId} {
-     allow read: if clientView(t);
+     allow get: if clientView(t) || (ownsEmployee(t,employeeId) &&
+       exists(runPath(t,r)) && get(runPath(t,r)).data.status == 'finalized');
+     allow list: if clientView(t);
      allow create, update: if payrollStaff(t) &&
        exists(runPath(t,r)) && get(runPath(t,r)).data.status == 'draft' &&
        exists(employeePath(t,employeeId)) &&
