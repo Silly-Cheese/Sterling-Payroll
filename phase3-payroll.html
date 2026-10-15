@@ -1,0 +1,21 @@
+<div class="ops-grid phase3-spaced">
+<article class="panel"><div class="eyebrow">PAYROLL POLICY</div><h2>Simulation settings</h2>
+<p class="muted">Policy changes affect newly generated drafts only. Approved time is always required.</p>
+<form id="p3PolicyForm" class="form-stack">
+<label>Overtime multiplier<select id="p3Multiplier"><option value="100">1.00×</option><option value="125">1.25×</option><option value="150">1.50×</option><option value="175">1.75×</option><option value="200">2.00×</option></select></label>
+<div class="two-fields"><label>Default fictional bonus (USD)<input id="p3Bonus" type="number" min="0" step=".01" value="0.00"></label><label>Default fictional deduction (USD)<input id="p3Deduction" type="number" min="0" step=".01" value="0.00"></label></div>
+<button class="btn primary" type="submit">Update payroll policy</button></form>
+<p id="p3PolicyStatus" class="fine-print">Default policy applies until changed.</p></article>
+<article class="panel"><div class="eyebrow">PAYROLL EXCEPTIONS</div><h2>Run review & documents</h2>
+<p class="muted">Review input exceptions, produce simulated statements, and compare finalized runs.</p>
+<div id="p3RunReview" class="notice">Open a payroll run above for review and reports.</div>
+<div class="actions"><button class="btn" id="p3Inspect" type="button">Inspect run inputs</button>
+<button class="btn" id="p3Export" type="button">Download simulated statement</button></div>
+<h3>Correction run</h3>
+<label>Original finalized run<select id="p3Original"></select></label>
+<label>Correction reason<input id="p3CorrectionRunReason" maxlength="200" placeholder="Explain the correction"></label>
+<button class="btn" id="p3NewCorrection" type="button">Create correction draft</button>
+<h3>Compare two payroll runs</h3><label>Compare with<select id="p3CompareTarget"></select></label>
+<button class="btn" id="p3Compare" type="button">Compare simulated net pay</button>
+<div id="p3Comparison" class="list"></div>
+</article></div>
