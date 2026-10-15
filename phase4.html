@@ -1,0 +1,48 @@
+<div class="phase4-hero panel">
+  <div><div class="eyebrow">EMPLOYEE EXPERIENCE • PHASE 4</div><h2>My Sterling workspace</h2>
+    <p class="muted">Private fictional earnings, company updates, direct messages and your personal preferences. No real wage transfers or tax records.</p></div>
+  <span class="status-chip success" id="p4AccessChip">LINK REQUIRED</span>
+</div>
+<div id="p4Notice" class="notice" role="status">Checking approved employee access…</div>
+<div class="metric-grid compact" id="p4Metrics"></div>
+<div class="ops-grid phase3-spaced">
+  <article class="panel" id="p4MyProfile">
+    <div class="section-heading"><h2>My profile</h2><span class="subtle-pill">SELF SERVICE</span></div>
+    <div id="p4EmployeeSummary" class="data-note">No employee record linked yet.</div>
+    <form id="p4ProfileForm" class="form-stack hidden">
+      <label>Preferred display name<input id="p4PreferredName" maxlength="80" placeholder="How you want to be addressed"></label>
+      <label class="checkline"><input type="checkbox" id="p4Notify" checked> Show in-app message notifications</label>
+      <button type="submit" class="btn primary">Save preferences</button>
+    </form>
+    <p class="fine-print">These preferences do not change employer-controlled pay rates, names on payroll statements, or HR records.</p>
+  </article>
+  <article class="panel">
+    <div class="section-heading"><h2>Company announcements</h2><span class="subtle-pill">COMPANY NEWS</span></div>
+    <form id="p4AnnouncementForm" class="form-stack hidden">
+      <label>Announcement title<input id="p4AnnouncementTitle" maxlength="100" required></label>
+      <label>Message<textarea id="p4AnnouncementBody" maxlength="1800" rows="3" required></textarea></label>
+      <button type="submit" class="btn primary">Publish announcement</button>
+    </form>
+    <div id="p4Announcements" class="list"></div>
+  </article>
+</div>
+<div class="ops-grid phase3-spaced">
+  <article class="panel">
+    <div class="section-heading"><h2>My simulated pay</h2><span class="subtle-pill">FINALIZED ONLY</span></div>
+    <p class="muted">View your own finalized pay lines and print or save a fictional paystub. Drafts and other employees' pay are inaccessible.</p>
+    <div id="p4PayHistory" class="list"></div>
+    <p class="fine-print">Up to 50 finalized runs are loaded initially. Large histories will receive additional pagination in a later release.</p>
+  </article>
+  <article class="panel">
+    <div class="section-heading"><h2>Company messages</h2><span class="subtle-pill">PRIVATE THREAD</span></div>
+    <div id="p4ThreadSelectorWrap" class="hidden">
+      <label>Employee conversation<select id="p4ThreadSelector"><option value="">Select linked employee</option></select></label>
+    </div>
+    <div class="p4-thread" id="p4Messages" aria-live="polite"></div>
+    <form id="p4MessageForm" class="form-stack hidden">
+      <label>Message<textarea id="p4MessageBody" maxlength="1800" rows="3" required placeholder="Write a private message…"></textarea></label>
+      <button type="submit" class="btn primary">Send message</button>
+    </form>
+    <p class="fine-print">Only the linked employee and authorized client administrators can read this conversation.</p>
+  </article>
+</div>
