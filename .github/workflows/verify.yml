@@ -36,6 +36,8 @@ jobs:
           node --check src/phase6-core.js
           node --check src/record-actions.js
           node --check src/modals.js
+          node --check src/deletion-engine.js
+          node --check src/workspace-ui.js
       - name: Payroll engine tests
         run: node --test tests/*.test.mjs
 
