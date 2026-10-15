@@ -1,5 +1,6 @@
 import {collection,doc,updateDoc,getDocs,query,limit,writeBatch,serverTimestamp,setDoc} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 import {toCents,money} from "./payroll-core.js";
+import {compactForm,buildPortalTabs} from "./workspace-ui.js";
 import {CLIENT_PLANS,EMPLOYEE_STATUSES,PAY_FREQUENCIES,ACCESS_ROLES,importEmployees,findPossibleDuplicates} from "./phase2-core.js";
 const $=id=>document.getElementById(id);
 const el=(tag,text,cls="")=>{const n=document.createElement(tag);n.className=cls;if(text!==undefined)n.textContent=String(text);return n};
@@ -212,5 +213,14 @@ export async function mountPhase2({db,getState,refreshCompany,loadTenantDirector
   $("p2ClientForm").classList.toggle("hidden",!s.platformWrite);
   void renderMembers().catch(e=>notifyError("Membership display failed",e));
  }
- return {refresh,renderMembers};
+ const root=$("phase2Operations");
+ const editorDialog=compactForm({root,formId:"p2EditForm",label:"Edit employee",summary:"PERSONNEL DIRECTORY"});
+ buildPortalTabs(root,[["p2BulkPanel","Bulk changes"],["p2ImportPanel","CSV import"]]);
+ function edit(employeeId){
+  if(!canWrite())throw Error("Employee editing requires payroll permissions");
+  refresh();
+  $("p2Person").value=employeeId;fillEmployee();
+  editorDialog?.open();
+ }
+ return {refresh,renderMembers,edit};
 }
