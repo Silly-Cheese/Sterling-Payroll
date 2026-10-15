@@ -1,4 +1,4 @@
-import {collection,doc,getDoc,getDocs,query,orderBy,documentId,startAfter,limit,writeBatch,serverTimestamp} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
+import {collection,doc,getDoc,getDocs,query,orderBy,documentId,startAfter,limit,where,writeBatch,serverTimestamp} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 
 // Scoped roleplay data deletion. Never use this as an Auth-user delete or a real payroll retention policy.
 // All source reads and writes are enforced by Firestore Rules, not by this UI.
@@ -7,9 +7,9 @@ const CHILDREN={payrollRuns:["lines","snapshots","revisions"],billingInvoices:["
 const TENANT=["members","invites","employees","timeEntries","timeCorrections","leaveRequests","payrollRuns",
  "billingInvoices","supportTickets","employeeLinks","employeePreferences","announcements",
  "serviceAgreements","assuranceSettings","payrollPolicies","auditEvents","ownerAudit",
- "employeeConversations","employeeRequests"];
+ "employeeConversations","employeeRequests","commissionSettings","commissionPlans","commissionSales"];
 export const DELETABLE=["employees","timeEntries","payrollRuns","timeCorrections","leaveRequests",
- "billingInvoices","supportTickets","announcements","members","employeeLinks","tenants"];
+ "billingInvoices","supportTickets","announcements","members","employeeLinks","commissionSales","commissionPlans","tenants"];
 export function countLabel(n){return n===1?"1 record":n.toLocaleString()+" records"}
 export function deletionSummary(plan){
  const related=plan.refs.length-1;
@@ -28,7 +28,7 @@ export function createDeletionEngine({db,getState,notify}){
   const target=kind==="tenants"?company:doc(company,kind,id);
   const original=await getDoc(target);
   if(!original.exists())throw Error("The record no longer exists; refresh and try again");
-  const refs=new Map(),seen=new Set(),external=new Set(),uids=new Set();
+  const refs=new Map(),seen=new Set(),external=new Set(),uids=new Set(),updates=new Map();
   const add=ref=>{
    if(!refs.has(ref.path)){if(refs.size>=MAX)throw Error("Deletion exceeds 15,000 records; use a managed administrative deletion job");refs.set(ref.path,ref)}
   };
@@ -64,6 +64,8 @@ export function createDeletionEngine({db,getState,notify}){
    const timeIds=new Set(times.map(x=>x.id));
    await scan(company,"timeCorrections",x=>timeIds.has(x.data().timeEntryId));
    await scan(company,"leaveRequests",x=>x.data().employeeId===eid);
+   const plan=await getDoc(doc(company,"commissionPlans",eid));if(plan.exists())add(plan.ref);
+   await scan(company,"commissionSales",x=>x.data().employeeId===eid);
     // All runs must be inspected, but not deleted: preserve other employees' pay.
    // scan() returns no rows when keep=false, so paginate the runs separately.
    let cursor=null;
@@ -101,6 +103,13 @@ export function createDeletionEngine({db,getState,notify}){
       }
      }
     }
+    // Removing a payroll period must release linked sales back to approved/unclaimed,
+    // without destroying the fictional sales themselves.
+    for(const runId of doomed){
+     const pages=await getDocs(query(collection(company,"commissionSales"),where("paidRunId","==",runId),limit(101)));
+     if(pages.size>100)throw Error("More than 100 commission sales are linked to one deleted period. Split this operation.");
+     for(const sale of pages.docs)updates.set(sale.ref.path,{ref:sale.ref,data:{paidRunId:""}});
+    }
    }
   }
   else if(kind==="employeeLinks")await account(id);
@@ -111,7 +120,7 @@ export function createDeletionEngine({db,getState,notify}){
    const pointer=doc(db,"userTenants",id,"items",tenantId);add(pointer);external.add(pointer.path);
   }else if(kind==="tenants"){
    for(const type of TENANT){
-    const documents=["serviceAgreements","assuranceSettings","payrollPolicies"].includes(type)
+    const documents=["serviceAgreements","assuranceSettings","payrollPolicies","commissionSettings"].includes(type)
      ? await (async()=>{const d=await getDoc(doc(company,type,"current"));if(d.exists()){add(d.ref);return [d]}return []})()
      : await scan(company,type);
     for(const d of documents){
@@ -129,7 +138,7 @@ export function createDeletionEngine({db,getState,notify}){
   const ordered=[...refs.values()].sort((a,b)=>a.path===selected?1:b.path===selected?-1:b.path.split("/").length-a.path.split("/").length);
   const title=original.data().displayName||original.data().subject||original.data().description||
    original.data().name||original.data().periodStart||id;
-  return {kind,id,tenantId,root:selected,title,refs:ordered,externalCount:external.size};
+  return {kind,id,tenantId,root:selected,title,refs:ordered,updates:[...updates.values()],externalCount:external.size};
  }
  async function execute(plan,reason){
   ensureOwner();
@@ -146,7 +155,10 @@ export function createDeletionEngine({db,getState,notify}){
     ensureOwner();
     if(plan.kind!=="tenants"&&state().tenantId!==plan.tenantId)throw Error("Company switched during deletion");
     const chunk=plan.refs.slice(n,n+CHUNK),batch=writeBatch(db);
+    if(n+CHUNK>=plan.refs.length&&chunk.length+(plan.updates?.length||0)+1>450)throw Error("Too many commission claims to release atomically with this deletion.");
     for(const ref of chunk)batch.delete(ref);
+    // Release prior commission claims only with the final parent-delete commit.
+    if(n+CHUNK>=plan.refs.length)for(const u of plan.updates||[])batch.update(u.ref,u.data);
     // One atomic batch also updates receipt with the matching progress.
     batch.update(receipt,{completed:completed+chunk.length,updatedAt:serverTimestamp()});
     await batch.commit();completed+=chunk.length;
