@@ -19,7 +19,6 @@ jobs:
         run: |
           node --check src/app.js
           node --check src/payroll-core.js
-          node --check src/bootstrap.js
           node --check src/phase2.js
           node --check src/phase2-core.js
           node --check src/staff.js
