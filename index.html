@@ -8,7 +8,7 @@
   <title>Sterling Payroll | Sterling Group</title>
   <meta name="description" content="Sterling Payroll — simulated client payroll management by Sterling Group.">
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./styles.css?v=phase4">
+  <link rel="stylesheet" href="./styles.css?v=phase5a">
 </head>
 <body>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
@@ -47,12 +47,14 @@
       <div class="sidebar-group-label">WORKSPACE</div>
       <nav id="nav" class="nav">
         <button data-page="dashboard" class="nav-item active" type="button"><span class="nav-icon">◫</span> Overview</button>
+        <button data-page="owner" class="nav-item owner-only hidden" type="button"><span class="nav-icon">◆</span> Owner Controls</button>
         <button data-page="staff" class="nav-item owner-only hidden" type="button"><span class="nav-icon">♜</span> Staff & Accounts</button>
         <button data-page="clients" class="nav-item platform-only hidden" type="button"><span class="nav-icon">▦</span> Client Companies</button>
         <button data-page="operations" class="nav-item client-only" type="button"><span class="nav-icon">▤</span> Personnel Operations</button>
         <button data-page="employeePortal" class="nav-item client-only hidden" type="button"><span class="nav-icon">♧</span> Employee Portal</button>
         <button data-page="employees" class="nav-item client-only" type="button"><span class="nav-icon">♙</span> Employees</button>
         <button data-page="time" class="nav-item client-only" type="button"><span class="nav-icon">◷</span> Timekeeping</button>
+        <button data-page="service" class="nav-item client-only" type="button"><span class="nav-icon">▤</span> Client Services</button>
         <button data-page="payroll" class="nav-item client-only" type="button"><span class="nav-icon">▣</span> Payroll Runs</button>
         <button data-page="access" class="nav-item client-only admin-only" type="button"><span class="nav-icon">◇</span> Team Access</button>
       </nav>
@@ -101,6 +103,8 @@
             </article>
           </div>
         </section>
+        <section id="page-owner" class="page hidden"><div id="ownerControlCenter"></div></section>
+        <section id="page-service" class="page hidden"><div id="phase5Suite"></div></section>
         <section id="page-staff" class="page hidden"><div id="staffAccounts"></div></section>
         <section id="page-employeePortal" class="page hidden"><div id="employeePortal"></div></section>
         <section id="page-clients" class="page hidden">
@@ -192,6 +196,6 @@
     </div>
   </div>
   <dialog id="sterlingDialog" class="sterling-dialog"><form method="dialog"><h2 id="dialogTitle">Review action</h2><p id="dialogText" class="muted"></p><div class="actions"><button value="cancel" class="btn">Cancel</button><button id="dialogConfirm" value="confirm" class="btn primary">Confirm</button></div></form></dialog>
-  <script type="module" src="./src/app.js?v=phase4"></script>
+  <script type="module" src="./src/app.js?v=phase5a"></script>
 </body>
 </html>
