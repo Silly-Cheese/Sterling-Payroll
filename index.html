@@ -8,7 +8,7 @@
   <title>Sterling Payroll | Sterling Group</title>
   <meta name="description" content="Sterling Payroll — simulated client payroll management by Sterling Group.">
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./styles.css?v=phase2">
 </head>
 <body>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
@@ -48,6 +48,7 @@
       <nav id="nav" class="nav">
         <button data-page="dashboard" class="nav-item active" type="button"><span class="nav-icon">◫</span> Overview</button>
         <button data-page="clients" class="nav-item platform-only hidden" type="button"><span class="nav-icon">▦</span> Client Companies</button>
+        <button data-page="operations" class="nav-item client-only" type="button"><span class="nav-icon">▤</span> Personnel Operations</button>
         <button data-page="employees" class="nav-item client-only" type="button"><span class="nav-icon">♙</span> Employees</button>
         <button data-page="time" class="nav-item client-only" type="button"><span class="nav-icon">◷</span> Timekeeping</button>
         <button data-page="payroll" class="nav-item client-only" type="button"><span class="nav-icon">▣</span> Payroll Runs</button>
@@ -75,6 +76,7 @@
           <h1 id="pageTitle">Executive overview</h1>
           <p id="pageDescription">Everything you need to manage simulated payroll across client businesses.</p></div>
         </div>
+        <section id="ownerBootstrap" class="panel bootstrap-banner hidden" aria-live="polite"></section>
         <div id="noClient" class="panel message-panel hidden">
           <h2>Choose a company workspace</h2>
           <p class="muted">Your payroll data is kept separate for every client. Select a company above or accept an invitation.</p>
@@ -108,7 +110,7 @@
                 <button class="btn primary" type="submit">Create client company</button></form>
             </article>
             <article class="panel"><h2>Client directory</h2><p class="muted">Select a company to manage its personnel and payroll.</p>
-              <div id="clientList" class="list"></div></article>
+              <div id="clientList" class="list"></div><div id="phase2ClientTools"></div></article>
           </div>
         </section>
         <section id="page-employees" class="page hidden">
@@ -126,9 +128,10 @@
             </article>
             <article class="panel"><div class="section-heading"><h2>Employee directory</h2><span id="empCount" class="subtle-pill">0 EMPLOYEES</span></div>
               <input id="empSearch" class="search-input" type="search" placeholder="Search employee name, role or department">
-              <div id="employeeList" class="list"></div></article>
+              <div id="employeeList" class="list"></div><button id="loadMoreEmployees" class="btn hidden" type="button">Load more employees</button></article>
           </div>
         </section>
+        <section id="page-operations" class="page hidden"><div id="phase2Operations"></div></section>
         <section id="page-time" class="page hidden">
           <div class="two-col asymmetric">
             <article class="panel"><h2>Record working time</h2><p class="muted">Time entries are immutable in this first release. Please review hours carefully; correction workflows arrive in a later phase.</p>
@@ -179,13 +182,14 @@
               <div id="inviteShare" class="data-note hidden"></div>
             </article>
             <article class="panel"><h2>Company team</h2><div id="teamList" class="list"></div>
-              <h3>Outstanding invitations</h3><div id="inviteList" class="list"></div></article>
+              <h3>Outstanding invitations</h3><div id="inviteList" class="list"></div><div id="phase2AccessTools"></div></article>
           </div>
         </section>
         <footer class="footer">STERLING PAYROLL SERVICES <span>•</span> A STERLING GROUP COMPANY <span>•</span> ROLEPLAY & SIMULATION ONLY</footer>
       </div>
     </div>
   </div>
-  <script type="module" src="./src/app.js"></script>
+  <dialog id="sterlingDialog" class="sterling-dialog"><form method="dialog"><h2 id="dialogTitle">Review action</h2><p id="dialogText" class="muted"></p><div class="actions"><button value="cancel" class="btn">Cancel</button><button id="dialogConfirm" value="confirm" class="btn primary">Confirm</button></div></form></dialog>
+  <script type="module" src="./src/app.js?v=phase2"></script>
 </body>
 </html>
