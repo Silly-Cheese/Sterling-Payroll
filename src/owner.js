@@ -34,10 +34,28 @@ export function mountOwnerControls({db,getState,notify,confirmAction,refreshComp
   ensureOwner();records=[];if(!tenant())return;
   const kind=$("ownerKind").value||"employees";
   const snap=await getDocs(query(collection(db,"tenants",tenant(),kind),limit(200)));
-  if(snap.size>=200)throw Error("200-record limit reached. Narrow the workspace before deleting or overriding.");
+  if(snap.size>=200)$("ownerMessage").textContent="Showing a limited set of 200 records. Open a specific record from its page to jump directly to owner approval.";
   records=snap.docs;
   setOptions($("ownerRecord"),records.map(d=>opt(d.id,textFor(kind,d))),"Choose record");
   setReviewChoices(kind);
+ }
+ async function openReview(kind,id,tenantId=S().tenantId){
+  ensureOwner();
+  if(!REVIEW_STATES[kind])throw Error("This record does not have an owner approval workflow");
+  if(!tenantId)throw Error("Select the company containing this record");
+  setOptions($("ownerTenant"),S().tenants.map(t=>opt(t.id,t.name)),"Choose client company");
+  $("ownerTenant").value=tenantId;
+  if(tenant()!==tenantId)throw Error("The selected client is not accessible to the owner");
+  $("ownerKind").value=kind;
+  await readKind();
+  const target=await getDoc(doc(db,"tenants",tenantId,kind,id));
+  if(!target.exists())throw Error("This review record no longer exists");
+  if(!records.some(d=>d.id===id))records.push(target);
+  setOptions($("ownerRecord"),records.map(d=>opt(d.id,textFor(kind,d))),"Choose record");
+  $("ownerRecord").value=id;
+  setReviewChoices(kind);
+  $("ownerMessage").textContent="Review selected: "+textFor(kind,target)+". Choose an outcome, provide your reason, then select Override approval / signoff.";
+  $("ownerApprovalStatus").focus();
  }
  async function loadRuns(){
   runs=[];lines=[];
@@ -198,5 +216,5 @@ export function mountOwnerControls({db,getState,notify,confirmAction,refreshComp
  setOptions($("ownerKind"),kinds.map(([a,b])=>opt(a,b)),"Choose record type");
  $("ownerKind").value="employees";
  setReviewChoices("employees");
- return {refresh};
+ return {refresh,openReview};
 }
