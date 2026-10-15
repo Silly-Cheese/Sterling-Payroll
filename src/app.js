@@ -1,5 +1,5 @@
 import {initializeApp} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
-import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendEmailVerification,sendPasswordResetEmail,signOut} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js";
+import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendEmailVerification,sendPasswordResetEmail,signOut,reload,getIdToken} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js";
 import {getFirestore,collection,doc,getDoc,getDocs,addDoc,setDoc,updateDoc,query,limit,writeBatch,serverTimestamp} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 import {calculateLine,summarizeLines,toCents,money,hoursValue,canTransition,validPeriod,cleanEmail} from "./payroll-core.js";
 
@@ -119,7 +119,7 @@ async function loadTenantDirectory(){
  await chooseTenant(state.tenantId,false);
 }
 async function chooseTenant(id,writeStorage=true){
- state.tenantId=id;state.role="";
+ state.tenantId=id;state.role="";state.selectedRun=null;state.lines=[];
  if(state.user&&writeStorage)localStorage.setItem("sterling-payroll-company-"+state.user.uid,id);
  $("companySelect").value=id;
  if(id){
@@ -145,7 +145,9 @@ $("joinForm").addEventListener("submit",async event=>{
  event.preventDefault();if(!state.user)return;
  const id=$("joinCode").value.trim();
  if(!/^[a-zA-Z0-9_-]{10,40}$/.test(id)){toast("Enter the exact workspace code provided with your invitation.",true);return}
- if(!state.user.emailVerified){toast("Verify your account email first, then refresh the page.",true);return}
+ await reload(state.user);
+ await getIdToken(state.user,true);
+ if(!state.user.emailVerified){toast("Verify your account email before accepting invitations.",true);return}
  try{
   const email=cleanEmail(state.user.email),invite=await getDoc(doc(db,"tenants",id,"invites",email));
   if(!invite.exists())throw Error("No invitation exists for this verified email address and company");
@@ -292,9 +294,11 @@ function renderRuns(){
 async function selectRun(id){
  if(!state.tenantId)return;
  const run=state.runs.find(r=>r.id===id);if(!run)return;
+ const tenantId=state.tenantId;
  state.selectedRun=id;
  try{
   const snap=await getDocs(query(collection(db,"tenants",state.tenantId,"payrollRuns",id,"lines"),limit(250)));
+  if(state.tenantId!==tenantId||state.selectedRun!==id)return;
   state.lines=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.employeeName.localeCompare(b.employeeName));
   renderRunDetails();
  }catch(e){fail(e,"Unable to open payroll run")}
