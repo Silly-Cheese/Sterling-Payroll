@@ -1,20 +1,6 @@
 import {collection,doc,getDoc,getDocs,query,where,limit,writeBatch,serverTimestamp} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
-const requireConfirmation=(phrase,reason)=>{if(phrase!=="DELETE PERMANENTLY")throw Error("Type DELETE PERMANENTLY to confirm.");if(reason.length<10)throw Error("Please provide a deletion reason of at least 10 characters.");return reason};
-export function createOwnerRecordActions({db,getState,notify,onChanged,confirmAction}){
+export function createOwnerRecordActions({db,getState,notify,onChanged,confirmAction,requestDeletion}){
  const S=()=>getState();
- const dialog=document.createElement("dialog");dialog.className="sterling-dialog record-action-dialog";
- dialog.innerHTML='<h2>Delete record</h2><p id="recordDeleteSummary"></p><p class="fine-print">This owner-only action is irreversible. For payroll runs, simulated pay lines, snapshots and revisions are deleted together. The deletion requires confirmation.</p><form method="dialog" id="recordDeleteForm"><label>Reason for deletion<textarea id="recordDeleteReason" maxlength="500" minlength="10" required placeholder="Why should this fictional record be deleted?"></textarea></label><label>Type DELETE PERMANENTLY to confirm<input id="recordDeletePhrase" autocomplete="off" spellcheck="false" placeholder="DELETE PERMANENTLY" required></label><div class="actions"><button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn danger" value="confirm">Delete record</button></div></form>';
- document.body.append(dialog);
- const reason=dialog.querySelector("#recordDeleteReason"),phrase=dialog.querySelector("#recordDeletePhrase");
- const reasonDialog=async(kind,title)=>{
-  dialog.querySelector("h2").textContent="Delete "+kind;
-  dialog.querySelector("#recordDeleteSummary").textContent=title+" will be deleted if no dependent records exist.";
-  reason.value="";phrase.value="";dialog.showModal();reason.focus();
-  return await new Promise(resolve=>{
-   const complete=()=>resolve(dialog.returnValue==="confirm"?{reason:reason.value.trim(),phrase:phrase.value.trim()}:null);
-   dialog.addEventListener("close",complete,{once:true});
-  });
- };
  const tenant=()=>S().tenantId;
  const collectionRef=(kind)=>collection(db,"tenants",tenant(),kind);
  const recordRef=(kind,id)=>doc(db,"tenants",tenant(),kind,id);
@@ -46,9 +32,10 @@ export function createOwnerRecordActions({db,getState,notify,onChanged,confirmAc
   const supported=["employees","timeEntries","payrollRuns","billingInvoices","supportTickets","announcements","leaveRequests","timeCorrections"];
   if(!supported.includes(kind)||!record?.id)throw Error("Unsupported record type");
   const currentTenant=tenant(),label=record.displayName||record.description||record.subject||record.title||record.workDate||record.periodStart||record.id;
-  const confirmation=await reasonDialog(kind,label);
+  if(typeof requestDeletion!=="function")throw Error("Confirmation dialog is unavailable");
+  const confirmation=await requestDeletion({title:"Delete "+kind,message:"Permanently delete "+label+" and its related records where supported? This cannot be undone.",recordLabel:label});
   if(confirmation===null)return false;
-  const why=requireConfirmation(confirmation.phrase,confirmation.reason);
+  const why=confirmation.reason;
   if(why.length>500)throw Error("Deletion reason cannot exceed 500 characters.");
   if(currentTenant!==tenant()||!S().platformOwner)throw Error("Company or permissions changed; try again.");
   const data=await getDoc(recordRef(kind,record.id));if(!data.exists())throw Error("Record was already removed. Refresh the list.");
