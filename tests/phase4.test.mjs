@@ -8,7 +8,7 @@ test("Only a finalized fictional run can produce an employee paystub",()=>{
  const html=paystubHtml("Sterling Motors",run,validLine);
  assert.match(html,/SIMULATED PAYSTUB/);
  assert.match(html,/NOT A REAL PAYMENT/);
- assert.match(html,/\\$435\\.00/);
+ assert.ok(html.includes('$435.00'));
  assert.throws(()=>paystubHtml("Sterling Motors",{...run,status:"draft"},validLine));
 });
 test("Statement output escapes potentially malicious employee/company text",()=>{
