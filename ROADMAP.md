@@ -7,7 +7,7 @@ Deliverables:
 - Independent Sterling Payroll GitHub repository and project configuration
 - Black/cream responsive brand shell, platform and client navigation
 - Firebase email/password registration, password reset and sign-in
-- Manually provisioned platform owner; zero public owner auto-claim
+- Trusted pre-existing platform owner; no public auto-claim, and client-default registration
 - Client company creation and isolation by Firestore Security Rules
 - Invite-by-email client memberships with admin, payroll and viewer roles
 - Starter employee directory, time entry and simulated payroll calculations
@@ -24,18 +24,19 @@ Acceptance criteria: GitHub checks pass, owner can create client, invited verifi
 - Secure staff invitations, membership revocation and role management
 - Better forms, custom confirmation dialogs, inline field validation, mobile polish
 - Employee/time/payroll list pagination and scoped personnel search
-- Verified-email, one-time owner bootstrap with anti-takeover allowlist
+- Explicit owner-granted staff roles and client membership rather than email verification workflow
 
 Acceptance criteria: no manual Firebase IDs in routine operations, owner can manage client lifecycle and staff records entirely from the UI, no cross-tenant data access.
 
 ## Phase 3 — Payroll operations suite
-- Timesheet corrections and approvals, schedule-aware periods, holidays and paid leave
+**Status: implemented in repository with automated tests; Firebase rules publication and browser acceptance testing pending.**
+- Timesheet approvals, immutable correction requests, paid leave, period-based review (holiday calendars not yet implemented)
 - Configurable roleplay pay policies and deduction/bonus templates
 - Versioned payroll input snapshots and exception review
-- Payroll run comparisons, approvals and correction runs
-- Simulated paystub generation and downloadable statement files
+- Payroll run comparisons, existing separation-of-duty approvals and separate correction drafts
+- Downloadable simulated company payroll CSV statements (individual printable paystubs remain Phase 4)
 
-Acceptance criteria: runs are internally consistent, all corrections traceable, no browser-only approval escalation, no real payments.
+Acceptance criteria: runs are internally consistent, correction approvals protected by Firestore, no real payments. Cross-account browser and Firestore emulator testing still required.
 
 ## Phase 4 — Employee & client self-service
 - Employee-scoped private account portal
