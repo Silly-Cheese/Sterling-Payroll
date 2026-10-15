@@ -63,8 +63,7 @@ export function createDeletionEngine({db,getState,notify}){
    const timeIds=new Set(times.map(x=>x.id));
    await scan(company,"timeCorrections",x=>timeIds.has(x.data().timeEntryId));
    await scan(company,"leaveRequests",x=>x.data().employeeId===eid);
-   const runs=await scan(company,"payrollRuns",()=>false);
-   // All runs must be inspected, but not deleted: preserve other employees' pay.
+    // All runs must be inspected, but not deleted: preserve other employees' pay.
    // scan() returns no rows when keep=false, so paginate the runs separately.
    let cursor=null;
    for(;;){
@@ -85,7 +84,9 @@ export function createDeletionEngine({db,getState,notify}){
    const pointer=doc(db,"userTenants",id,"items",tenantId);add(pointer);external.add(pointer.path);
   }else if(kind==="tenants"){
    for(const type of TENANT){
-    const documents=await scan(company,type);
+    const documents=["serviceAgreements","assuranceSettings","payrollPolicies"].includes(type)
+     ? await (async()=>{const d=await getDoc(doc(company,type,"current"));if(d.exists()){add(d.ref);return [d]}return []})()
+     : await scan(company,type);
     for(const d of documents){
      await nested(d,type);
      if(type==="members"||type==="employeeLinks")uids.add(d.id);
