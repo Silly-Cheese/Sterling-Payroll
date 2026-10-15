@@ -122,3 +122,104 @@ input,select{border-radius:10px;padding:11px 12px;color:var(--ink);background:#0
 #p4LinkPanel .list-item>.btn{margin-left:auto}
 @media(max-width:1000px){#ownerControlCenter .three-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:580px){#ownerControlCenter .three-fields{grid-template-columns:1fr}#ownerControlCenter .actions .btn{flex:1}#phase5Suite .list-item{flex-direction:column;align-items:stretch}#phase5Suite .item-actions{justify-content:flex-start}}
+
+/* Sterling Payroll 6.0 — cohesive enterprise UI system */
+:root{--bg:#0b0d0f;--surface:#131719;--surface2:#1a1f21;--line:#303638;--ink:#f4f1eb;--muted:#a8b0b0;--gold:#e6d2a9;--gold-2:#bba276}
+body{background:radial-gradient(ellipse at top right,#1b211f 0%,#0d1011 48%,#090b0c 100%);line-height:1.55}
+button,select,input,textarea{transition:border-color .16s ease,background .16s ease,box-shadow .16s ease}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid #e6c883;outline-offset:3px}
+.sidebar{background:linear-gradient(180deg,#111614 0%,#0c0f11 100%);border-right:1px solid #2e332e}
+.nav{gap:2px}
+.nav-section-heading{font-size:10px;font-weight:800;letter-spacing:2px;color:#a49e90;padding:19px 15px 7px;text-transform:uppercase}
+.nav-item{position:relative;border:1px solid transparent!important;letter-spacing:.01em;min-height:42px;transition:background .14s,color .14s}
+.nav-item:hover{background:#242b2b!important;color:#f7e6c0!important}
+.nav-item.active{background:linear-gradient(90deg,#362e21,#231f1c)!important;color:#ffe4b2!important;border:1px solid #55452d!important}
+.nav-item.active:before{content:"";position:absolute;left:0;top:9px;bottom:9px;width:3px;background:#eac88b;border-radius:4px}
+.nav-icon{font-size:17px;opacity:.85}
+.sidebar-account{display:flex;align-items:flex-start;gap:5px;flex-direction:column;margin:14px 10px 0;border:1px solid #323b3a;padding:12px 13px;background:#171c1c;border-radius:10px}
+.sidebar-account small{letter-spacing:1.5px;font-size:9px;color:#a6adab;font-weight:800}
+.sidebar-account strong{font-size:12px;color:#e6d2a9;text-transform:capitalize}
+.topbar{background:rgba(13,17,18,.96);border-bottom:1px solid #2c3433;backdrop-filter:blur(14px)}
+.topbar-actions{display:flex;align-items:center;gap:12px}
+.quick-nav-button{background:#171d1e;border:1px solid #333d3c;color:#bdc5c3;padding:9px 12px;border-radius:10px;display:flex;align-items:center;gap:10px;font-size:12px;white-space:nowrap}
+.quick-nav-button:hover{border-color:#ab9167;color:#f7ebd9}
+.quick-nav-button kbd{font-family:inherit;border:1px solid #424b49;border-radius:5px;padding:1px 5px;font-size:10px;color:#9ba6a3}
+.content{max-width:1500px}
+.page-heading{margin-bottom:27px}
+.page-heading h1{letter-spacing:-.045em}
+.panel{background:linear-gradient(150deg,#171c1d,#111516);border:1px solid #323b3a;border-radius:17px;box-shadow:0 10px 33px rgba(0,0,0,.14)}
+.panel:hover{border-color:#434d47}
+.panel h2{letter-spacing:-.02em}
+.metric{background:linear-gradient(145deg,#222825,#151a1b);border:1px solid #3b4441;border-radius:14px}
+.metric strong{font-variant-numeric:tabular-nums}
+.btn.primary{background:linear-gradient(130deg,#ead6ad,#ceb587)!important;color:#211e17!important;border-color:#d4b883!important;font-weight:750}
+.btn.primary:hover{filter:brightness(1.09)}
+.list-item{border-radius:12px;background:#181e1f;border:1px solid #333c3a;margin-bottom:6px}
+.list-item:hover{border-color:#62533a}
+button:disabled,.btn:disabled{filter:saturate(.45);opacity:.55}
+form label{line-height:1.6}
+input,textarea,select{background-color:#0e1416;color:#eee8dc;border:1px solid #3a4442;border-radius:9px}
+input:hover,textarea:hover,select:hover{border-color:#677166}
+.connection-notice{background:#473620;color:#f8e5c3;border:1px solid #907247;border-radius:12px;padding:12px 18px;margin-bottom:18px}
+.overview-intro{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:20px;padding:5px 0 9px}
+.overview-intro h2{font:500 clamp(25px,2.4vw,38px)/1.2 Georgia,serif;letter-spacing:-.035em;margin:7px 0}
+.overview-intro p{max-width:650px}
+.quick-actions{margin:23px 0}
+.quick-actions h2{margin:0}
+.quick-action-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:11px;margin-top:17px}
+.quick-action-grid .btn{background:#222827;color:#f2dec0;text-align:left;padding:14px;border:1px solid #4a493c;border-radius:11px;font-size:12px;min-height:56px}
+.quick-action-grid .btn:after{content:"↗";float:right;font-size:15px}
+.quick-action-grid .btn:hover{background:#30352f;border-color:#d1b98a}
+.quick-nav-dialog{background:#13191a;color:#edece7;border:1px solid #7c705b;max-width:580px;width:calc(100vw - 36px);padding:0;border-radius:17px;box-shadow:0 35px 100px #000c}
+.quick-nav-dialog::backdrop{background:#010506d9;backdrop-filter:blur(5px)}
+.quick-nav-inner{padding:23px}
+.quick-nav-inner label{display:block;margin-bottom:9px;font-size:13px;color:#e6d2a9;font-weight:800}
+.quick-nav-inner>input{width:100%;padding:13px}
+.quick-nav-results{display:grid;gap:6px;max-height:48vh;overflow-y:auto;margin:15px 0}
+.quick-nav-entry{width:100%;text-align:left;border:1px solid #323c3a;background:#1c2323;border-radius:10px;padding:12px 14px;color:#f5f0e8}
+.quick-nav-entry:hover{background:#2d342f;border-color:#bb9d6b}
+.quick-nav-entry strong,.quick-nav-entry small{display:block}
+.quick-nav-entry small{color:#b4bcb8;margin-top:4px;font-size:11px}
+.service-hero{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:24px 27px;margin-bottom:19px;border:1px solid #554834;border-radius:18px;background:linear-gradient(110deg,#29251e,#1b201d 52%,#131a1c)}
+.service-hero h2{font:500 clamp(26px,3vw,40px)/1.17 Georgia,serif;letter-spacing:-.04em;margin:9px 0}
+.service-hero p{max-width:650px}
+.service-toolbar{display:flex;gap:9px;flex-wrap:wrap}
+.service-tabs{display:flex;gap:6px;overflow-x:auto;margin:18px 0 20px;padding:6px;border:1px solid #343d3b;border-radius:12px;background:#111718}
+.service-tabs button{flex:1;white-space:nowrap;padding:11px 15px;background:transparent;border:1px solid transparent;border-radius:9px;color:#b9c1bb;font-weight:650;font-size:12px}
+.service-tabs button:hover{background:#252d2a}
+.service-tabs button.active{background:#363429;border-color:#77603b;color:#f3dab1}
+.service-panel>.ops-grid,.service-panel>.two-col{margin-bottom:16px}
+.service-panel .panel h2{margin:7px 0 16px}
+.service-panel .three-fields,#ownerControlCenter .three-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:12px 0}
+.service-panel .three-fields>*{min-width:0}
+.service-panel label{min-width:0}
+.service-panel .list{max-height:520px;overflow-y:auto}
+.service-entry{display:flex;justify-content:space-between;align-items:center;gap:14px;background:#192022;border:1px solid #343e3c;border-radius:12px;padding:13px 15px;margin:7px 0}
+.service-entry-main{min-width:0;flex:1}
+.service-entry strong,.service-entry small{display:block;overflow-wrap:anywhere}
+.service-entry strong{font-size:12px;color:#f1e8db}
+.service-entry small{color:#aeb7b3;font-size:11px;margin-top:5px;line-height:1.6}
+.service-entry .item-actions{display:flex;flex-wrap:wrap;gap:9px;align-items:center}
+.service-entry .item-actions select{max-width:160px;min-width:110px}
+.service-entry.service-past-due{border-color:#82603d;background:#29231b}
+.service-entry.service-past-due small{color:#e1bc8a}
+#p5SelectedInvoice,#p5SelectedTicket{margin:15px 0}
+#p5SelectedTicket select{margin-top:10px;max-width:290px}
+#p5Notes .service-entry{padding:11px 13px}
+#p5MoreTickets,#p5MoreInvoices{margin-top:10px}
+.assurance-findings{max-height:550px;overflow-y:auto}
+.assurance-row{background:#192022;border:1px solid #35403e;padding:12px 14px;border-radius:12px;margin:8px 0}
+.assurance-row strong,.assurance-row small{display:block;overflow-wrap:anywhere}
+.assurance-row strong{font-size:12px}
+.assurance-row small{font-size:11px;color:#b6c0b9;line-height:1.65;margin-top:4px}
+.assurance-row.assurance-ok{border-color:#376449;background:#16241c}
+.assurance-row.assurance-warning{border-color:#81663b;background:#252019}
+.assurance-row.assurance-error{border-color:#8a4a4a;background:#291c1d}
+#p6Audit{max-height:600px;overflow-y:auto}
+#phase6Suite .panel{min-width:0}
+#phase6Suite .checkline{display:flex;align-items:center;gap:12px}
+@media(max-width:1130px){.quick-nav-button span{display:none}.quick-nav-button kbd{display:none}}
+@media(max-width:900px){.service-hero{flex-direction:column;align-items:flex-start}.service-toolbar{width:100%}.service-panel .three-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.quick-nav-button{padding:9px}.overview-intro{align-items:flex-start;flex-direction:column}.quick-action-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.service-tabs button{font-size:11px;padding:10px}.service-entry{flex-direction:column;align-items:stretch}.service-entry .item-actions{justify-content:flex-start}.service-hero{padding:20px}.service-panel .three-fields,#ownerControlCenter .three-fields{grid-template-columns:1fr}}
+@media(max-width:430px){.quick-action-grid{grid-template-columns:1fr}.service-toolbar{flex-direction:column}.service-toolbar .btn{width:100%}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
