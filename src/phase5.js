@@ -23,7 +23,8 @@ export async function mountPhase5({db,getState,notify,confirmAction}){
  const line=(label,value)=>{const div=E("div","metric");div.append(E("div","metric-label",label),E("strong","",String(value)));return div};
  async function auditedWrite(writes,event,kind,subject,detail){
   const batch=writeBatch(db);writes(batch);
-  batch.set(doc(coll("auditEvents")),{category:kind,action:event,subject,detail,actor:S().user.uid,at:serverTimestamp()});
+  if(S().platform||["client_admin","payroll_specialist"].includes(S().role))
+   batch.set(doc(coll("auditEvents")),{category:kind,action:event,subject,detail,actor:S().user.uid,at:serverTimestamp()});
   await batch.commit();
  }
  async function page(kind,reset){
