@@ -1,6 +1,7 @@
 import {collection,doc,getDoc,getDocs,addDoc,setDoc,updateDoc,query,where,orderBy,limit,serverTimestamp} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 import {paystubHtml,validatePreferences,recentFinalized} from "./phase4-core.js";
 import {money} from "./payroll-core.js";
+import {compactForm,buildPortalTabs} from "./workspace-ui.js";
 const E=(tag,className,text)=>{const n=document.createElement(tag);if(className)n.className=className;if(text!==undefined)n.textContent=String(text);return n};
 const option=(value,text)=>{const o=E("option","",text);o.value=value;return o};
 const card=(title,detail)=>{const node=E("article","list-item"),body=E("div");body.append(E("strong","",title),E("small","",detail));node.append(body);return node};
@@ -289,5 +290,13 @@ export async function mountPhase4({db,getState,notify,confirmAction}){
   $("p4EmployeeSummary").textContent="Choose a company to view linked employee information.";
   $("p4Notice").textContent="Choose an authorized company.";
  }
+ compactForm({root,formId:"p4LinkForm",label:"Link employee account",mode:"collapse"});
+ compactForm({root,formId:"p4ProfileForm",label:"Edit preferences",mode:"collapse"});
+ compactForm({root,formId:"p4AnnouncementForm",label:"Publish announcement",mode:"collapse"});
+ compactForm({root,formId:"p4RequestCreate",label:"Assign employee request",mode:"collapse"});
+ buildPortalTabs(root,[
+  ["p4PayPanel","My pay"],["p4MessagesPanel","Messages"],["p4RequestsPanel","Requests"],
+  ["p4NewsPanel","Company news"],["p4MyProfile","Profile"]
+ ]);
  return {refresh,clear};
 }
