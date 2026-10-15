@@ -642,7 +642,7 @@ async function confirmAction(title,message){
  });
 }
 let phase2=null,phase2Pending=null,phase3=null,phase4=null,phase5=null,phase6=null,ownerUI=null,staffUI=null;
-const ownerActions=createOwnerRecordActions({db,getState:()=>state,notify:toast,
+const ownerActions=createOwnerRecordActions({db,getState:()=>state,notify:toast,confirmAction,
  onChanged:async kind=>{if(["billingInvoices","supportTickets"].includes(kind))await phase5?.refresh?.();else await refreshCompany()}
 });
 async function initializePhase2(){
