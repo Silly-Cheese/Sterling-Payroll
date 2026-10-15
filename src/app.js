@@ -317,7 +317,7 @@ function renderRunDetails(){
  if(!state.lines.length)wrap.append(mk("p","muted","No pay lines yet. Generate a preview while this run is in draft."));
  else{
   const table=mk("table"),head=mk("thead"),hrow=mk("tr");
-  for(const label of ["Employee","Regular","Overtime","Bonus","Deductions","Gross","Net"])hrow.append(mk("th","",label));
+  for(const label of ["Employee","Regular","Overtime","Bonus","Deductions","Gross","Net","Adjust"] )hrow.append(mk("th","",label));
   head.append(hrow);table.append(head);
   const tbody=mk("tbody");
   for(const line of state.lines){
