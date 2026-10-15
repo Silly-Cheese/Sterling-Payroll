@@ -28,11 +28,13 @@ export async function mountPhase5({db,getState,notify,confirmAction}){
   await batch.commit();
  }
  async function page(kind,reset){
+  const pageGeneration=sequence,pageTenant=tenant();
   const field=kind==="billingInvoices"?"invoice":"ticket",cursor=field==="invoice"?invoiceCursor:ticketCursor;
   const parts=[orderBy(documentId())];
   if(!reset&&cursor)parts.push(startAfter(cursor));
   parts.push(limit(PAGE+1));
   const snapshot=await getDocs(query(coll(kind),...parts));
+  if(pageGeneration!==sequence||pageTenant!==tenant())return;
   const shown=snapshot.docs.slice(0,PAGE);
   if(field==="invoice"){invoices=reset?shown.map(d=>({id:d.id,...d.data()})):[...invoices,...shown.map(d=>({id:d.id,...d.data()}))];invoiceCursor=shown.at(-1)||null;moreInvoices=snapshot.size>PAGE}
   else {tickets=reset?shown.map(d=>({id:d.id,...d.data()})):[...tickets,...shown.map(d=>({id:d.id,...d.data()}))];ticketCursor=shown.at(-1)||null;moreTickets=snapshot.size>PAGE}
@@ -41,7 +43,8 @@ export async function mountPhase5({db,getState,notify,confirmAction}){
   const generation=++sequence,current=tenant();
   invoices=[];tickets=[];invoiceCursor=ticketCursor=null;moreInvoices=moreTickets=false;agreement=null;members=[];
   selectedInvoice=selectedTicket="";
-  for(const id of ["p5Invoices","p5Tickets","p5Ledger","p5Notes","p5Attention"])$(id).replaceChildren();
+  for(const id of ["p5Invoices","p5Tickets","p5Ledger","p5Notes","p5Attention","p5Metrics","p5AgreementSummary","p5SelectedInvoice","p5SelectedTicket"])$(id).replaceChildren();
+  $("p5EventForm").classList.add("hidden");$("p5NoteForm").classList.add("hidden");
   if(!current){$("p5Metrics").replaceChildren();return}
   try{
    const [profile,allMembers]=await Promise.all([
@@ -132,9 +135,10 @@ export async function mountPhase5({db,getState,notify,confirmAction}){
   if(!filtered.length)box.append(E("p","muted","No cases match these filters."));
  }
  async function openInvoice(id){
-  selectedInvoice=id;const record=invoices.find(x=>x.id===id);if(!record)return;
+  const targetTenant=tenant();selectedInvoice=id;const record=invoices.find(x=>x.id===id);if(!record)return;
   $("p5SelectedInvoice").textContent=record.description+" • "+money(record.amountCents)+" • "+record.status;
   const snap=await getDocs(query(collection(db,"tenants",tenant(),"billingInvoices",id,"events"),limit(101)));
+  if(targetTenant!==tenant()||id!==selectedInvoice)return;
   const box=$("p5Ledger");box.replaceChildren();if(snap.size>100){box.textContent="Ledger exceeds 100 entries. Export/management support required.";return}
   const events=snap.docs.map(x=>x.data()),totals=invoiceBalance(record,events);
   box.append(entry("Remaining fictional balance",money(totals.balanceCents)+" • paid "+money(totals.paidCents)+" • credits "+money(totals.creditCents)));
@@ -143,7 +147,7 @@ export async function mountPhase5({db,getState,notify,confirmAction}){
   renderInvoices();
  }
  async function openTicket(id){
-  selectedTicket=id;const ticket=tickets.find(x=>x.id===id);if(!ticket)return;
+  const targetTenant=tenant();selectedTicket=id;const ticket=tickets.find(x=>x.id===id);if(!ticket)return;
   const box=$("p5SelectedTicket");box.replaceChildren(E("strong","",ticket.subject),E("small","",ticket.details));
   if(admin()){
    const assign=E("select");setOptions(assign,[["","Unassigned"],...members.filter(x=>x.status==="active").map(x=>[x.uid,x.email||"Team member"])]);
@@ -158,6 +162,7 @@ export async function mountPhase5({db,getState,notify,confirmAction}){
    getDocs(query(collection(db,"tenants",tenant(),"supportTickets",id,"updates"),limit(101))),
    admin()?getDocs(query(collection(db,"tenants",tenant(),"supportTickets",id,"internalNotes"),limit(101))):Promise.resolve(null)
   ]);
+  if(targetTenant!==tenant()||id!==selectedTicket)return;
   const notes=$("p5Notes");notes.replaceChildren();
   if(publicNotes.size>100||(privateNotes&&privateNotes.size>100)){notes.textContent="Conversation exceeds the current 100-item limit.";return}
   const all=[...publicNotes.docs.map(x=>({...x.data(),internal:false})),...(privateNotes?.docs.map(x=>({...x.data(),internal:true}))||[])];
