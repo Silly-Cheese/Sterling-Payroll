@@ -24,5 +24,7 @@ jobs:
           node --check src/staff.js
           node --check src/phase3.js
           node --check src/phase3-core.js
+          node --check src/phase4.js
+          node --check src/phase4-core.js
       - name: Payroll engine tests
         run: node --test tests/*.test.mjs
