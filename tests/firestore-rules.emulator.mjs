@@ -203,3 +203,21 @@ test("owner can approve their own time, corrections and leave while viewers cann
   assert.equal((await getDoc(doc(owner,path))).data().status,"approved");
  }
 });
+
+test("ordinary client admin cannot use the owner exception to approve their own work",async()=>{
+ await env.withSecurityRulesDisabled(async c=>{
+  const d=c.firestore();
+  await setDoc(doc(d,"tenants","north","payrollRuns","self-submit"),{
+   status:"submitted",periodStart:"2026-10-01",periodEnd:"2026-10-14",payDate:"2026-10-16",
+   createdBy:"admin",submittedBy:"admin",approvedBy:"",finalizedBy:""
+  });
+  await setDoc(doc(d,"tenants","north","timeEntries","admin-self"),{
+   status:"pending",createdBy:"admin",employeeId:"e1",approvedBy:""
+  });
+ });
+ const admin=as("admin");
+ await assertFails(updateDoc(doc(admin,"tenants","north","payrollRuns","self-submit"),
+  {status:"approved",approvedBy:"admin"}));
+ await assertFails(updateDoc(doc(admin,"tenants","north","timeEntries","admin-self"),
+  {status:"approved",approvedBy:"admin"}));
+});
