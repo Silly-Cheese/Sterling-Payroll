@@ -250,7 +250,7 @@ service cloud.firestore {
    // Phase 5 — private-to-client support case tracking.
    match /supportTickets/{ticketId} {
     allow read: if clientView(t);
-    allow create: if member(t) &&
+    allow create: if (member(t) || platformView()) &&
      request.resource.data.keys().hasOnly(['subject','details','status','createdBy','createdAt','updatedAt']) &&
      text(request.resource.data.subject,120) && text(request.resource.data.details,1500) &&
      request.resource.data.status == 'open' && request.resource.data.createdBy == request.auth.uid &&
