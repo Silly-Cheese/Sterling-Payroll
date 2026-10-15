@@ -298,3 +298,68 @@ body[data-density="comfortable"] .content{padding:31px clamp(22px,3vw,43px)}
 @media(max-width:1360px){.density-toggle{display:none}.topbar .environment-tag{display:none}}
 @media(max-width:980px){.company-switch>span{display:none}.quick-nav-button{padding:8px 9px}}
 @media(max-width:760px){.topbar{padding:0 11px;gap:7px}.topbar-actions{width:100%;justify-content:flex-end}.company-switch select{width:min(55vw,280px)}}
+
+/* Sterling Payroll — unified dialog experience and high-density luxury workspace */
+:root{--sterling-gold:#e3c791;--sterling-text:#f7f3eb;--sterling-muted:#aab8b5;--sterling-surface:#171e1f}
+.sterling-action-dialog{position:fixed;inset:0;margin:auto;padding:0;border:1px solid #766341;background:#111718;color:var(--sterling-text);border-radius:22px;width:min(530px,calc(100vw - 28px));max-height:min(90dvh,720px);overflow-y:auto;box-shadow:0 36px 110px #000c}
+.sterling-action-dialog::backdrop,.sterling-record-dialog::backdrop{background:rgba(0,4,5,.79);backdrop-filter:blur(7px)}
+.sa-shell{padding:29px clamp(20px,3vw,36px) 21px}
+.sa-brand{display:flex;align-items:center;gap:10px;padding-bottom:19px;border-bottom:1px solid #303b38;color:#eed5a7;font-size:11px;letter-spacing:.16em;font-weight:850}
+.sa-monogram{display:grid;place-items:center;width:32px;height:32px;border-radius:9px;font:500 23px Georgia,serif;background:#352b1e;color:#f1d7a7;border:1px solid #816b46}
+.sa-brand>span:last-child small{display:block;font-size:8px;letter-spacing:.19em;color:#aeb3a4;margin-top:2px}
+.sa-icon{width:45px;height:45px;display:grid;place-items:center;margin:25px 0 15px;border-radius:14px;background:#373327;border:1px solid #7d6341;color:#f4d7a9;font-size:24px}
+.sterling-action-dialog[data-tone="danger"] .sa-icon{background:#3b2324;border-color:#955054;color:#ffb4af}
+.sa-eyebrow{font-size:10px;color:var(--sterling-gold);letter-spacing:.15em;font-weight:800;margin:0 0 7px}
+.sterling-action-dialog h2{font:500 clamp(27px,3vw,35px)/1.12 Georgia,serif;color:var(--sterling-text);letter-spacing:-.035em;margin:0 0 12px}
+#saDescription{font-size:13px;line-height:1.8;color:#c0c9c2;margin:0 0 17px;white-space:pre-line}
+.sa-field{display:block;margin:15px 0;font-weight:700;font-size:11px;color:#ecdfc8}
+.sa-field span{display:block;margin-bottom:7px}
+.sa-field textarea,.sa-field input{width:100%;min-height:43px;border:1px solid #4b5953;border-radius:11px;background:#101617;color:#f4f1eb;padding:11px 12px;font:inherit;font-size:13px;resize:vertical}
+.sa-field textarea{min-height:95px}
+.sa-field input:focus,.sa-field textarea:focus{outline:2px solid #d9b57e;outline-offset:2px}
+.sa-notice{font-size:12px;color:#ffb1a8;min-height:0}
+.sa-notice:empty{display:none}
+.sa-actions{display:flex;gap:11px;margin-top:24px}
+.sa-actions>.btn{flex:1;min-height:45px;justify-content:center}
+.sterling-action-dialog[data-tone="danger"] #saAccept{background:linear-gradient(140deg,#b34e48,#923c3a)!important;color:#fff4f0!important;border:1px solid #d7796d!important}
+.sa-footer{border-top:1px solid #283431;padding-top:16px;text-align:center;letter-spacing:.14em;font-size:9px;color:#9da9a4;margin:21px 0 0}
+.sterling-record-dialog{position:fixed;inset:0;margin:auto;width:min(1080px,calc(100vw - 32px));height:min(90dvh,950px);max-height:90dvh;max-width:1080px;background:linear-gradient(148deg,#151e1e,#0b1112);border:1px solid #665940;border-radius:20px;color:#f3eee6;padding:0;box-shadow:0 45px 120px #000c;overflow:hidden}
+.record-dialog-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:22px clamp(17px,3vw,28px);border-bottom:1px solid #39443e;background:linear-gradient(110deg,#30291f,#19201f 58%,#141a1c)}
+.record-dialog-head .eyebrow{font-size:10px}
+.record-dialog-head h2{font:500 clamp(25px,2.8vw,35px)/1.14 Georgia,serif;margin:7px 0 6px;letter-spacing:-.035em;color:#f6f0e5}
+.record-dialog-head p{font-size:12px;margin:0}
+.record-dialog-close{flex:none;width:38px;height:38px;border:1px solid #61665b;border-radius:11px;background:#222c2a;color:#f0e0c0;font-size:16px}
+.record-dialog-close:hover{background:#3b3430;border-color:#c8aa77}
+.record-dialog-content{height:calc(100% - 119px);overflow:auto;padding:clamp(14px,2vw,26px);scrollbar-width:thin;scrollbar-color:#685c49 transparent}
+.record-dialog-content .ops-grid{grid-template-columns:minmax(0,1fr)!important}
+.record-dialog-content #ownerControlCenter{display:grid;gap:16px}
+.record-dialog-content .panel{box-shadow:none;border-radius:13px}
+.record-dialog-content .panel>h2{margin:0 0 9px}
+.record-dialog-content .actions{display:flex;flex-wrap:wrap;gap:8px}
+.record-dialog-content .actions .btn{min-height:38px}
+.record-dialog-content #ownerApprovalStatus{width:auto;min-width:126px;flex:1}
+.record-dialog-content #ownerPeriodPanel{max-width:100%}
+.record-dialog-content #ownerGeneralPanel{background:linear-gradient(130deg,#202522,#161c1c)}
+.record-dialog-content #ownerAuditPanel{max-height:280px;overflow:auto}
+.record-dialog-content .three-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
+.record-dialog-content textarea{min-height:82px}
+body:has(.sterling-record-dialog[open]) .topbar{filter:brightness(.75)}
+/* Unified page and data states */
+.page .section-heading{gap:12px}
+.page .section-heading h2{line-height:1.2}
+.page .panel{overflow-wrap:anywhere}
+.list-item{transition:background .16s ease,border-color .16s ease,transform .16s ease}
+.list-item:hover{background:#222a29;border-color:#816d4d}
+.list-item .item-actions{justify-content:flex-end;max-width:100%}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;white-space:normal}
+.btn.danger:hover{background:#382021!important;border-color:#c56c65!important;color:#fff!important}
+.toast{border:1px solid #5d674e;border-radius:14px;box-shadow:0 20px 70px #0008;background:#1b2822;color:#e0f6dc;padding:14px 18px;max-width:min(420px,calc(100vw - 26px));font-size:13px;line-height:1.65}
+.toast.error{border-color:#a26060;background:#372326;color:#ffe9e6}
+.data-table-wrap{overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin}
+.data-table-wrap table{width:100%;border-collapse:separate;border-spacing:0}
+.data-table-wrap th{position:sticky;top:0;background:#222923;z-index:1;white-space:nowrap}
+.data-table-wrap tr:hover td{background:#242d2b}
+#runActions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+@media(max-width:850px){.record-dialog-content .three-fields{grid-template-columns:repeat(2,minmax(0,1fr))}.record-dialog-content{height:calc(100% - 120px)}}
+@media(max-width:600px){.record-dialog-head{padding:17px}.record-dialog-content{padding:11px;height:calc(100% - 115px)}.record-dialog-content .three-fields{grid-template-columns:1fr}.record-dialog-content .panel{padding:14px}.record-dialog-content .actions>.btn{flex:1 1 auto}.sa-actions{flex-direction:column}.sa-actions>.btn{min-height:45px}.list-item .item-actions{justify-content:flex-start}}
+@media(prefers-reduced-motion:reduce){.sterling-record-dialog,.sterling-action-dialog{scroll-behavior:auto!important}}
