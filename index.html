@@ -8,7 +8,7 @@
   <title>Sterling Payroll | Sterling Group</title>
   <meta name="description" content="Sterling Payroll — simulated client payroll management by Sterling Group.">
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./styles.css?v=phase5a">
+  <link rel="stylesheet" href="./styles.css?v=phase6-final">
 </head>
 <body>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
@@ -46,20 +46,25 @@
       <div class="brand-logo"><span>S</span><div><strong>STERLING</strong><small>PAYROLL SERVICES</small></div></div>
       <div class="sidebar-group-label">WORKSPACE</div>
       <nav id="nav" class="nav">
+        <div class="nav-section-heading">HOME</div>
         <button data-page="dashboard" class="nav-item active" type="button"><span class="nav-icon">◫</span> Overview</button>
+        <div class="nav-section-heading owner-only hidden">STERLING GOVERNANCE</div>
         <button data-page="owner" class="nav-item owner-only hidden" type="button"><span class="nav-icon">◆</span> Owner Controls</button>
         <button data-page="staff" class="nav-item owner-only hidden" type="button"><span class="nav-icon">♜</span> Staff & Accounts</button>
         <button data-page="clients" class="nav-item platform-only hidden" type="button"><span class="nav-icon">▦</span> Client Companies</button>
+        <div class="nav-section-heading client-only">PEOPLE & PAYROLL</div>
         <button data-page="operations" class="nav-item client-only" type="button"><span class="nav-icon">▤</span> Personnel Operations</button>
         <button data-page="employeePortal" class="nav-item client-only hidden" type="button"><span class="nav-icon">♧</span> Employee Portal</button>
         <button data-page="employees" class="nav-item client-only" type="button"><span class="nav-icon">♙</span> Employees</button>
         <button data-page="time" class="nav-item client-only" type="button"><span class="nav-icon">◷</span> Timekeeping</button>
+        <div class="nav-section-heading client-only">CLIENT SERVICES</div>
         <button data-page="service" class="nav-item client-only" type="button"><span class="nav-icon">▤</span> Client Services</button>
         <button data-page="payroll" class="nav-item client-only" type="button"><span class="nav-icon">▣</span> Payroll Runs</button>
+        <button data-page="assurance" class="nav-item client-only admin-only" type="button"><span class="nav-icon">◈</span> Assurance Center</button>
         <button data-page="access" class="nav-item client-only admin-only" type="button"><span class="nav-icon">◇</span> Team Access</button>
       </nav>
       <div class="sidebar-bottom">
-        <div class="system-indicator"><i></i><div><strong>SIMULATION ENVIRONMENT</strong><small>No banking or tax processing</small></div></div>
+        <div class="system-indicator"><i></i><div><strong>SIMULATION ENVIRONMENT</strong><small>No banking or tax processing</small></div></div><div class="sidebar-account"><small>YOUR ACCESS</small><strong id="sidebarRole">Client account</strong></div>
         <button type="button" class="profile" id="signOut">
           <span id="avatar">SP</span><span class="profile-copy"><strong id="signedInName">Payroll User</strong><small>Sign out</small></span><span>↗</span>
         </button>
@@ -69,7 +74,7 @@
       <header class="topbar">
         <button id="mobileMenu" class="mobile-menu btn" type="button" aria-label="Toggle menu">☰</button>
         <div class="topbar-title"><small>STERLING / PAYROLL</small><strong id="pageName">Executive Overview</strong></div>
-        <div class="topbar-actions">
+        <div class="topbar-actions"><button id="openQuickNav" class="quick-nav-button" type="button" aria-label="Find a page">⌕ <span>Search pages</span> <kbd>Ctrl K</kbd></button>
           <label class="company-switch"><span>COMPANY</span><select id="companySelect" aria-label="Active company"><option value="">Select company</option></select></label>
           <span class="environment-tag">SIMULATED</span>
         </div>
@@ -81,13 +86,16 @@
           <p id="pageDescription">Everything you need to manage simulated payroll across client businesses.</p></div>
         </div>
         
+        <div id="connectionNotice" class="connection-notice hidden" role="status">Connection interrupted. Changes may not be saved until you are online.</div>
         <div id="noClient" class="panel message-panel hidden">
           <h2>Choose a company workspace</h2>
-          <p class="muted">Your payroll data is kept separate for every client. Select a company above or accept an invitation.</p>
+          <p class="muted">Your payroll data is kept separate for every client. Select a company above. Account permissions are granted by a Sterling administrator.</p>
           <p class="fine-print">If you need access to a company, contact a Sterling Payroll administrator. No email verification or company code is required.</p>
         </div>
         <section id="page-dashboard" class="page">
+          <div class="overview-intro"><div><div class="eyebrow">YOUR WORKSPACE</div><h2 id="overviewGreeting">A clearer way to manage Sterling.</h2><p id="overviewSubline" class="muted">Choose a company to see its employees, fictional payroll and service activity.</p></div><span id="overviewRole" class="subtle-pill">SIMULATION ONLY</span></div>
           <div id="metrics" class="metric-grid"></div>
+          <div class="quick-actions panel"><div class="section-heading"><h2>Quick actions</h2><span class="subtle-pill">SHORTCUTS</span></div><div id="quickActions" class="quick-action-grid"></div></div>
           <div class="two-col">
             <article class="panel"><div class="section-heading"><h2>Getting started</h2><span class="subtle-pill">PLATFORM</span></div>
               <div class="onboarding-list">
@@ -104,6 +112,7 @@
           </div>
         </section>
         <section id="page-owner" class="page hidden"><div id="ownerControlCenter"></div></section>
+        <section id="page-assurance" class="page hidden"><div id="phase6Suite"></div></section>
         <section id="page-service" class="page hidden"><div id="phase5Suite"></div></section>
         <section id="page-staff" class="page hidden"><div id="staffAccounts"></div></section>
         <section id="page-employeePortal" class="page hidden"><div id="employeePortal"></div></section>
@@ -196,6 +205,7 @@
     </div>
   </div>
   <dialog id="sterlingDialog" class="sterling-dialog"><form method="dialog"><h2 id="dialogTitle">Review action</h2><p id="dialogText" class="muted"></p><div class="actions"><button value="cancel" class="btn">Cancel</button><button id="dialogConfirm" value="confirm" class="btn primary">Confirm</button></div></form></dialog>
-  <script type="module" src="./src/app.js?v=phase5a"></script>
+  <dialog id="quickNav" class="quick-nav-dialog"><div class="quick-nav-inner"><label for="quickNavSearch">Find a workspace</label><input id="quickNavSearch" type="search" placeholder="Search navigation or features..." autocomplete="off"><div id="quickNavResults" class="quick-nav-results"></div><p class="fine-print">Press Esc to close. Pages respect your current permissions.</p></div></dialog>
+  <script type="module" src="./src/app.js?v=phase6-final"></script>
 </body>
 </html>
