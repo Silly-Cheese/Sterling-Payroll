@@ -527,6 +527,16 @@ function renderRunDetails(){
        {...payload,bonusCents:extra,deductionCents:less,grossCents:gross,netCents:gross-less});
      await selectRun(run.id);toast("Draft adjustment saved.");
     },"small"));
+    if(state.platformOwner)cell.append(button("Delete line",async()=>{
+     if(!await confirmAction("Delete draft pay line","Remove the fictional pay line for "+line.employeeName+" from this draft?"))return;
+     const currentTenant=state.tenantId;
+     const batch=writeBatch(db);
+     batch.delete(doc(db,"tenants",currentTenant,"payrollRuns",run.id,"lines",line.employeeId));
+     auditClient(batch,"payroll","draft-line-delete",line.employeeId,run.periodStart+" — "+run.periodEnd);
+     await batch.commit();
+     if(state.tenantId===currentTenant)await selectRun(run.id);
+     toast("Draft pay line deleted; finalized pay history was not modified.");
+    },"small danger"));
    }else cell.textContent="Locked";
    row.append(cell);
    tbody.append(row);
