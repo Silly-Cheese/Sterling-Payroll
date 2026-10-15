@@ -234,6 +234,17 @@ service cloud.firestore {
    }
    // Append-only operational event feed. This is a client-action log, not a trusted
    // independently administered audit service; a privileged browser can still omit it.
+   // Advisory-only retention policy. No automatic record deletion or real legal holds.
+   match /assuranceSettings/current {
+    allow read: if clientAdmin(t);
+    allow create,update: if clientAdmin(t) &&
+     request.resource.data.keys().hasOnly(['reviewAfterDays','legalHold','updatedBy','updatedAt']) &&
+     request.resource.data.reviewAfterDays in [90,180,365,730,1825,3650] &&
+     request.resource.data.legalHold is bool &&
+     request.resource.data.updatedBy == request.auth.uid &&
+     request.resource.data.updatedAt == request.time;
+    allow delete: if owner();
+   }
    match /auditEvents/{eventId} {
     allow read: if clientAdmin(t) || platformView();
     allow create: if clientView(t) &&
@@ -286,7 +297,7 @@ service cloud.firestore {
      allow read: if clientView(t);
      allow create: if clientAdmin(t) &&
       exists(/databases/$(database)/documents/tenants/$(t)/billingInvoices/$(invoiceId)) &&
-      get(/databases/$(database)/documents/tenants/$(t)/billingInvoices/$(invoiceId)).data.status != 'void' &&
+      get(/databases/$(database)/documents/tenants/$(t)/billingInvoices/$(invoiceId)).data.status in ['draft','issued'] &&
       request.resource.data.keys().hasOnly(['type','amountCents','note','createdBy','createdAt']) &&
       request.resource.data.type in ['payment','credit','adjustment'] &&
       cent(request.resource.data.amountCents) && request.resource.data.amountCents > 0 &&
