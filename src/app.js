@@ -9,6 +9,7 @@ import {buildPayrollPreview,DEFAULT_POLICY} from "./phase3-core.js";
 import {mountPhase2} from "./phase2.js";
 import {createOwnerRecordActions} from "./record-actions.js";
 import {createSterlingModals} from "./modals.js";
+import {compactForm} from "./workspace-ui.js";
 
 const app=initializeApp({
  apiKey:"AIzaSyBAAAUc0nDiiD7zfURjohVj1UBA-1yQmV0",
@@ -681,6 +682,13 @@ const now=new Date(),before=new Date();before.setDate(now.getDate()-13);
 $("periodStart").value=localDate(before);$("periodEnd").value=localDate(now);
 const payday=new Date();payday.setDate(now.getDate()+3);$("payDate").value=localDate(payday);
 const sterlingModals=createSterlingModals();
+const creationDialogs=[
+ ["clientForm","Add a client","CLIENT DIRECTORY"],
+ ["employeeForm","Add employee","EMPLOYEE DIRECTORY"],
+ ["timeForm","Record time","TIMEKEEPING REGISTER"],
+ ["runForm","Create payroll","PAYROLL REGISTER"]
+].map(([formId,label,summary])=>compactForm({formId,label,summary}));
+
 async function confirmAction(title,message,options={}){
  return sterlingModals.confirm({title,message,...options});
 }
