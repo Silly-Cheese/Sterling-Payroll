@@ -21,6 +21,7 @@ export function createDeletionEngine({db,getState,notify}){
  const ensureOwner=()=>{if(!state().platformOwner||!state().user)throw Error("Only the trusted Sterling owner can permanently delete these records")};
  async function plan(kind,id,tenantId=state().tenantId){
   ensureOwner();
+  if(kind==="tenants")tenantId=id;
   if(!DELETABLE.includes(kind)||!id||id.includes("/")||!tenantId||tenantId.includes("/"))throw Error("Choose one supported record within an authorized company");
   if(kind==="tenants"&&id!==tenantId)throw Error("Company scope mismatch");
   const company=doc(db,"tenants",tenantId);
@@ -75,7 +76,33 @@ export function createDeletionEngine({db,getState,notify}){
   }
   if(kind==="employees")await employee(id);
   else if(kind==="timeEntries")await scan(company,"timeCorrections",x=>x.data().timeEntryId===id);
-  else if(CHILDREN[kind])await nested(target,kind);
+  else if(CHILDREN[kind]){
+   await nested(target,kind);
+   if(kind==="payrollRuns"){
+    // Include correction runs which explicitly depend on the period being removed.
+    const allRuns=[];
+    let cursor=null;
+    for(;;){
+     const args=[orderBy(documentId())];
+     if(cursor)args.push(startAfter(cursor));
+     args.push(limit(PAGE));
+     const batch=await getDocs(query(collection(company,"payrollRuns"),...args));
+     allRuns.push(...batch.docs);
+     if(batch.size<PAGE)break;
+     cursor=batch.docs.at(-1);
+    }
+    const doomed=new Set([id]);let changed=true;
+    while(changed){
+     changed=false;
+     for(const run of allRuns){
+      if(!doomed.has(run.id)&&doomed.has(run.data().correctionOf)){
+       doomed.add(run.id);changed=true;
+       add(run.ref);await nested(run.ref,"payrollRuns");
+      }
+     }
+    }
+   }
+  }
   else if(kind==="employeeLinks")await account(id);
   else if(kind==="members"){
    await account(id);
@@ -106,7 +133,7 @@ export function createDeletionEngine({db,getState,notify}){
  }
  async function execute(plan,reason){
   ensureOwner();
-  if(!plan||state().tenantId!==plan.tenantId)throw Error("Company changed during deletion; start again");
+  if(!plan||(plan.kind!=="tenants"&&state().tenantId!==plan.tenantId))throw Error("Company changed during deletion; start again");
   if(typeof reason!=="string"||reason.length<10||reason.length>500)throw Error("A reason of 10–500 characters is required");
   const receipt=doc(collection(db,"deletionReceipts")),ownerUid=state().user.uid;
   const start=writeBatch(db);
@@ -117,7 +144,7 @@ export function createDeletionEngine({db,getState,notify}){
   try{
    for(let n=0;n<plan.refs.length;n+=CHUNK){
     ensureOwner();
-    if(state().tenantId!==plan.tenantId)throw Error("Company switched during deletion");
+    if(plan.kind!=="tenants"&&state().tenantId!==plan.tenantId)throw Error("Company switched during deletion");
     const chunk=plan.refs.slice(n,n+CHUNK),batch=writeBatch(db);
     for(const ref of chunk)batch.delete(ref);
     // One atomic batch also updates receipt with the matching progress.
