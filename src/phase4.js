@@ -33,6 +33,46 @@ export async function mountPhase4({db,getState,notify,confirmAction}){
   if(snap.empty)show(box,"No messages in this conversation yet.");
   box.scrollTop=box.scrollHeight;
  }
+ async function fetchRequests(uid,version){
+  const box=$("p4Requests");box.replaceChildren();
+  if(!uid){show(box,"Choose a linked employee or sign into your employee portal.");return}
+  const snap=await getDocs(query(coll("employeeRequests",uid,"items"),limit(80)));
+  if(version!==generation)return;
+  const elevated=admin();
+  const records=snap.docs.sort((a,b)=>(b.data().createdAt?.seconds||0)-(a.data().createdAt?.seconds||0));
+  for(const record of records){
+   const data=record.data(),entry=card(data.title,data.instructions+" • "+data.status+(data.dueDate?" • Due "+data.dueDate:""));
+   if(!elevated&&data.status==="pending"){
+    const form=E("form","form-stack"),label=E("label"),response=E("textarea");
+    response.maxLength=500;response.required=true;response.placeholder="Your text response (no sensitive documents)";
+    label.append(E("span","","Response"),response);
+    const submit=E("button","btn small primary","Submit response");submit.type="submit";
+    form.append(label,submit);
+    form.onsubmit=async event=>{
+     event.preventDefault();
+     try{
+      const value=response.value.trim();
+      if(!value||value.length>500)throw Error("Enter a response of up to 500 characters");
+      await updateDoc(doc(coll("employeeRequests",uid,"items"),record.id),{status:"submitted",response:value,updatedAt:serverTimestamp()});
+      notify("Employer request submitted.");await fetchRequests(uid,generation);
+     }catch(error){failed("Request response failed",error)}
+    };
+    entry.append(form);
+   }else if(elevated&&data.status==="submitted"){
+    const finish=E("button","btn small","Mark completed");finish.type="button";
+    finish.onclick=async()=>{
+     try{
+      if(!await confirmAction("Complete employee request","Mark this response completed?"))return;
+      await updateDoc(doc(coll("employeeRequests",uid,"items"),record.id),{status:"completed",updatedAt:serverTimestamp()});
+      notify("Employee request completed.");await fetchRequests(uid,generation);
+     }catch(error){failed("Request completion failed",error)}
+    };
+    entry.append(finish);
+   }else if(data.response)entry.append(E("p","muted","Response: "+data.response));
+   box.append(entry);
+  }
+  if(snap.empty)show(box,"No information requests for this employee.");
+ }
  async function fetchAnnouncements(version){
   const snap=await getDocs(query(coll("announcements"),orderBy("createdAt","desc"),limit(30)));
   if(version!==generation)return;
@@ -202,7 +242,9 @@ export async function mountPhase4({db,getState,notify,confirmAction}){
     }
    }else if(linked())threadUid=S().user.uid;
    $("p4MessageForm").classList.toggle("hidden",!threadUid);
-   if(threadUid)await fetchThread(threadUid,version);else show($("p4Messages"),adminNow?"Choose a linked employee above.":"Messaging becomes available after employer linking.");
+   $("p4RequestForm").classList.toggle("hidden",!adminNow||!threadUid);
+   if(threadUid){await fetchThread(threadUid,version);await fetchRequests(threadUid,version)}
+   else {show($("p4Messages"),adminNow?"Choose a linked employee above.":"Messaging becomes available after employer linking.");show($("p4Requests"),"No approved employee conversation selected.")}
    await fetchRequests(threadUid,version);
   }catch(error){
    if(version!==generation)return;
@@ -230,6 +272,17 @@ export async function mountPhase4({db,getState,notify,confirmAction}){
   const version=++generation;threadUid=$("p4ThreadSelector").value;
   $("p4MessageForm").classList.toggle("hidden",!threadUid);
   try{await Promise.all([fetchThread(threadUid,version),fetchRequests(threadUid,version)])}catch(error){failed("Conversation/request load failed",error)}
+ });
+ $("p4RequestForm").addEventListener("submit",async event=>{
+  event.preventDefault();
+  try{
+   if(!admin()||!threadUid)throw Error("Select a linked employee first");
+   const title=$("p4RequestTitle").value.trim(),instructions=$("p4RequestInstructions").value.trim(),dueDate=$("p4RequestDue").value;
+   if(title.length<1||title.length>100||instructions.length<1||instructions.length>800)throw Error("Complete the request title and instructions");
+   if(!await confirmAction("Send information request","Send this text-only request to the linked employee?"))return;
+   await addDoc(coll("employeeRequests",threadUid,"items"),{title,instructions,dueDate,status:"pending",createdBy:S().user.uid,createdAt:serverTimestamp(),updatedAt:serverTimestamp(),response:""});
+   $("p4RequestForm").reset();notify("Employee request created.");await fetchRequests(threadUid,generation);
+  }catch(error){failed("Request creation failed",error)}
  });
  $("p4ProfileForm").addEventListener("submit",async event=>{
   event.preventDefault();
