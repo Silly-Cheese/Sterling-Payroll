@@ -268,3 +268,64 @@ test("owner may remove complete fictional tenant tree but client viewers cannot"
  await assertSucceeds(batch.commit());
  assert.equal((await getDoc(doc(owner,"tenants","south"))).exists(),false);
 });
+
+test("commissions are off by default, enabled per client and never readable by viewers or employees",async()=>{
+ const owner=as("owner"),admin=as("admin"),viewer=as("viewer"),employee=as("employee");
+ const base="tenants/north/";
+ await assertFails(getDocs(collection(viewer,base+"commissionPlans")));
+ await assertFails(getDocs(collection(employee,base+"commissionSales")));
+ await assertFails(setDoc(doc(viewer,base+"commissionSettings/current"),{
+  enabled:true,updatedBy:"viewer",updatedAt:serverTimestamp()}));
+ await assertSucceeds(setDoc(doc(admin,base+"commissionSettings/current"),{
+  enabled:true,updatedBy:"admin",updatedAt:serverTimestamp()}));
+ await assertSucceeds(getDoc(doc(owner,base+"commissionSettings/current")));
+ await assertFails(getDoc(doc(viewer,base+"commissionSettings/current")));
+ await assertFails(getDoc(doc(employee,"tenants/south/commissionSettings/current")));
+});
+test("commission plans validate percentage and fixed settings; sale amount must match snapshotted plan",async()=>{
+ const db=as("admin"),owner=as("owner"),viewer=as("viewer");
+ const base="tenants/north/";
+ await assertSucceeds(setDoc(doc(db,base+"commissionSettings/current"),{enabled:true,updatedBy:"admin",updatedAt:serverTimestamp()}));
+ const plan={employeeId:"e1",type:"percent",rateBasisPoints:1250,fixedCents:0,active:true,updatedBy:"admin",updatedAt:serverTimestamp()};
+ await assertSucceeds(setDoc(doc(db,base+"commissionPlans/e1"),plan));
+ await assertFails(setDoc(doc(viewer,base+"commissionPlans/e2"),{...plan,employeeId:"e2",updatedBy:"viewer"}));
+ const sale={employeeId:"e1",saleDate:"2026-10-12",description:"Fictional product sale",
+  saleAmountCents:20000,commissionCents:2500,type:"percent",rateBasisPoints:1250,fixedCents:0,
+  status:"pending",approvedBy:"",paidRunId:"",createdBy:"admin",createdAt:serverTimestamp()};
+ await assertFails(setDoc(doc(db,base+"commissionSales/forged"),{...sale,commissionCents:9999}));
+ await assertSucceeds(setDoc(doc(db,base+"commissionSales/ok"),sale));
+ await assertFails(updateDoc(doc(db,base+"commissionSales/ok"),{status:"approved",approvedBy:"admin",reviewedAt:serverTimestamp()}));
+ await assertSucceeds(updateDoc(doc(owner,base+"commissionSales/ok"),{status:"approved",approvedBy:"owner",reviewedAt:serverTimestamp()}));
+ await assertFails(updateDoc(doc(viewer,base+"commissionSales/ok"),{paidRunId:"p1"}));
+ const fixed={employeeId:"e2",type:"fixed",rateBasisPoints:0,fixedCents:1500,active:true,updatedBy:"admin",updatedAt:serverTimestamp()};
+ await assertSucceeds(setDoc(doc(db,base+"commissionPlans/e2"),fixed));
+ await assertSucceeds(setDoc(doc(db,base+"commissionSales/fixed"),{...sale,employeeId:"e2",type:"fixed",rateBasisPoints:0,fixedCents:1500,
+  commissionCents:1500,createdBy:"admin"}));
+ await assertFails(setDoc(doc(db,base+"commissionSales/badfixed"),{...sale,employeeId:"e2",type:"fixed",rateBasisPoints:0,fixedCents:1500,
+  commissionCents:2500,createdBy:"admin"}));
+});
+test("only approved commission sales can be claimed by a draft payroll, and not twice",async()=>{
+ const owner=as("owner"),admin=as("admin"),base="tenants/north/";
+ await env.withSecurityRulesDisabled(async c=>{
+  const db=c.firestore();
+  await setDoc(doc(db,base+"commissionSales/approved"),{employeeId:"e1",saleDate:"2026-10-12",
+   description:"Mock approved commission",saleAmountCents:40000,commissionCents:4000,type:"percent",rateBasisPoints:1000,
+   fixedCents:0,status:"approved",approvedBy:"owner",paidRunId:"",createdBy:"admin"});
+  await setDoc(doc(db,base+"payrollRuns/draft-run"),{periodStart:"2026-10-01",periodEnd:"2026-10-14",payDate:"2026-10-17",
+   status:"draft",submittedBy:"",approvedBy:"",finalizedBy:"",createdBy:"admin"});
+  await setDoc(doc(db,base+"payrollRuns/second-run"),{periodStart:"2026-10-01",periodEnd:"2026-10-14",payDate:"2026-10-17",
+   status:"draft",submittedBy:"",approvedBy:"",finalizedBy:"",createdBy:"admin"});
+ });
+ await assertSucceeds(updateDoc(doc(admin,base+"commissionSales/approved"),{paidRunId:"draft-run"}));
+ await assertFails(updateDoc(doc(admin,base+"commissionSales/approved"),{paidRunId:"second-run"}));
+ await assertSucceeds(updateDoc(doc(owner,base+"commissionSales/approved"),{paidRunId:""}));
+ await assertSucceeds(updateDoc(doc(admin,base+"commissionSales/approved"),{paidRunId:"second-run"}));
+});
+test("owner can delete approved fictional commission records but client users cannot",async()=>{
+ await env.withSecurityRulesDisabled(async c=>{
+  await setDoc(doc(c.firestore(),"tenants","north","commissionSales","doomed"),{employeeId:"e1",status:"approved",paidRunId:"",commissionCents:100});
+ });
+ await assertFails(deleteDoc(doc(as("viewer"),"tenants","north","commissionSales","doomed")));
+ await assertFails(deleteDoc(doc(as("admin"),"tenants","north","commissionSales","doomed")));
+ await assertSucceeds(deleteDoc(doc(as("owner"),"tenants","north","commissionSales","doomed")));
+});
