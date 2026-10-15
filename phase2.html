@@ -1,0 +1,37 @@
+<div class="ops-grid">
+ <article class="panel"><div class="eyebrow">PERSONNEL OPERATIONS</div><h2>Edit employee</h2><p class="muted">Select a company employee and update their fictional compensation and status.</p>
+ <label>Employee<select id="p2Person"></select></label>
+ <form id="p2EditForm" class="form-stack">
+  <label>Full name<input id="p2Name" maxlength="120" required></label>
+  <div class="two-fields"><label>Job title<input id="p2Title" maxlength="100"></label><label>Department<input id="p2Department" maxlength="100"></label></div>
+  <div class="two-fields"><label>Pay type<select id="p2PayType"><option value="hourly">Hourly</option><option value="salary">Salary</option></select></label><label>Pay frequency<select id="p2Frequency"><option value="weekly">Weekly</option><option value="biweekly">Biweekly</option><option value="semimonthly">Twice monthly</option><option value="monthly">Monthly</option></select></label></div>
+  <div class="two-fields"><label>Hourly rate (simulated USD)<input id="p2Hourly" type="number" min="0" step=".01"></label><label>Annual salary (simulated USD)<input id="p2Salary" type="number" min="0" step=".01"></label></div>
+  <label>Employment status<select id="p2Status"><option value="active">Active</option><option value="leave">On leave</option><option value="inactive">Inactive</option></select></label>
+  <button class="btn primary" type="submit">Save changes</button>
+ </form></article>
+ <article class="panel"><div class="eyebrow">BULK TOOLS</div><h2>Import employees</h2><p class="muted">Import up to 100 simulated staff records with CSV validation.</p>
+  <label>Choose CSV file<input id="p2Csv" type="file" accept=".csv,text/csv"></label>
+  <div class="actions"><button id="p2Preview" class="btn" type="button">Preview CSV</button><button id="p2Commit" class="btn primary" type="button" disabled>Import reviewed records</button></div>
+  <div class="notice" id="p2ImportStatus" role="status">Headers: name,title,department,payType,payFrequency,hourlyRate,annualSalary</div>
+  <div id="p2PreviewList" class="list"></div>
+ </article></div>
+<article class="panel" style="margin-top:18px"><div class="company"><div><div class="eyebrow">MASS OPERATIONS</div><h2>Bulk employee changes</h2></div><label>Search<input id="p2Search" type="search" placeholder="Filter employees"></label></div>
+ <div class="bulk-toolbar"><label class="checkline"><input id="p2SelectAll" type="checkbox"> Select displayed</label>
+ <select id="p2BulkStatus" aria-label="New employee status"><option value="active">Active</option><option value="leave">On leave</option><option value="inactive">Inactive</option></select>
+ <button class="btn" id="p2BulkApply" type="button">Update selected</button><span id="p2SelectedCount" class="muted">0 selected</span></div>
+ <div id="p2EmployeeList" class="list"></div></article>
+<template id="p2ClientTemplate">
+ <div class="divider"></div><h3>Manage client company</h3>
+ <form id="p2ClientForm" class="form-stack">
+ <label>Company<select id="p2ClientSelect"></select></label>
+ <label>Company name<input id="p2ClientName" maxlength="120" required></label>
+ <div class="two-fields"><label>Industry<input id="p2Industry" maxlength="100"></label><label>Contact email<input id="p2ContactEmail" type="email" maxlength="254"></label></div>
+ <div class="two-fields"><label>Service tier<select id="p2Plan"><option value="starter">Starter</option><option value="standard">Standard</option><option value="enterprise">Enterprise</option></select></label><label>Client status<select id="p2ClientStatus"><option value="active">Active</option><option value="suspended">Suspended</option></select></label></div>
+ <label>Internal notes<textarea id="p2ClientNotes" rows="3" maxlength="500"></textarea></label>
+ <button class="btn primary" type="submit">Save client details</button></form>
+</template>
+<template id="p2AccessTemplate">
+ <div class="divider"></div><h3>Team role management</h3>
+ <p class="muted">Change team permissions or suspend another member. You cannot change your own membership here.</p>
+ <div id="p2Members" class="list"></div>
+</template>
