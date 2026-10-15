@@ -1,6 +1,7 @@
 import {collection,doc,getDoc,getDocs,query,orderBy,documentId,startAfter,limit,writeBatch,serverTimestamp} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 import {invoiceInput,ticketInput,agreementInput,ledgerEvent,invoiceBalance,canChangeInvoice,canChangeTicket,PLANS,INVOICE_STATES,CASE_STATES,serviceStats,invoicesCsv,ticketSla,ticketAgeHours} from "./phase5-core.js";
 import {money} from "./payroll-core.js";
+import {compactForm} from "./workspace-ui.js";
 const E=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=String(text);return n};
 const O=(id,label)=>{const n=E("option","",label);n.value=id;return n};
 const PAGE=50;
@@ -233,5 +234,8 @@ export async function mountPhase5({db,getState,notify,confirmAction,ownerDelete}
   for(const n of root.querySelectorAll("[data-p5-tab]"))n.classList.toggle("active",n===tab);
   for(const n of root.querySelectorAll("[data-p5-panel]"))n.classList.toggle("hidden",n.dataset.p5Panel!==target);
  };
+ compactForm({root,formId:"p5InvoiceForm",label:"New invoice",summary:"FICTIONAL INVOICE REGISTER"});
+ compactForm({root,formId:"p5TicketForm",label:"Open support case",summary:"CLIENT SUPPORT QUEUE"});
+ compactForm({root,formId:"p5AgreementForm",label:"Edit service agreement",mode:"collapse"});
  return {refresh};
 }
