@@ -10,6 +10,7 @@ import {mountPhase2} from "./phase2.js";
 import {createOwnerRecordActions} from "./record-actions.js";
 import {createSterlingModals} from "./modals.js";
 import {compactForm} from "./workspace-ui.js";
+import {prepareRunCommissions,commitRunCommissions} from "./commission-payroll.js";
 
 const app=initializeApp({
  apiKey:"AIzaSyBAAAUc0nDiiD7zfURjohVj1UBA-1yQmV0",
@@ -23,6 +24,7 @@ const auth=getAuth(app),db=getFirestore(app),$=id=>document.getElementById(id);
 const state={user:null,platform:false,platformOwner:false,platformWrite:false,platformRole:"client",tenants:[],tenantId:"",role:"",employees:[],time:[],runs:[],selectedRun:null,lines:[],page:"dashboard",register:false,moreEmployees:false,moreTime:false,moreRuns:false,employeeCursor:null,timeCursor:null,runCursor:null,clientCursor:null,moreClients:false};
 const titles={
  service:["Client Services","Subscription terms, fictional invoicing, service history and support."],
+ commissions:["Commissions","Optional employee commission plans, fictional sales and approval queue."],
  assurance:["Assurance Center","Integrity checks, activity review, exports and system health."],
  employeePortal:["Employee Portal","Private fictional pay statements, profile preferences and company communications."],
  staff:["Staff & Accounts","Assign Sterling staff privileges and company memberships."],
@@ -106,10 +108,11 @@ function go(page){
  if(page==="clients"&&!state.platform)page="dashboard";
  if(page==="staff"&&!state.platformOwner)page="dashboard";
  if(page==="service"&&(!state.tenantId||state.role==="employee"))page="dashboard";
+ if(page==="commissions"&&(!state.tenantId||!canPayroll()))page="dashboard";
  if(page==="assurance"&&(!state.tenantId||!canAdmin()))page="dashboard";
  if(page==="employeePortal"&&!state.tenantId)page="dashboard";
- if(state.role==="employee"&&["employees","operations","time","payroll","access","service","assurance","clients"].includes(page))page=state.tenantId?"employeePortal":"dashboard";
- if(["employees","operations","time","payroll","access"].includes(page)&&!state.tenantId)page="dashboard";
+ if(state.role==="employee"&&["employees","operations","time","payroll","access","service","assurance","clients","commissions"].includes(page))page=state.tenantId?"employeePortal":"dashboard";
+ if(["employees","operations","time","payroll","access","commissions"].includes(page)&&!state.tenantId)page="dashboard";
  if(page==="access"&&!canAdmin())page="dashboard";
  state.page=page;
  for(const node of document.querySelectorAll(".page"))node.classList.toggle("hidden",node.id!=="page-"+page);
@@ -121,6 +124,7 @@ function go(page){
  document.getElementById("phase3Payroll")?.classList.toggle("hidden",page!=="payroll"||!state.tenantId);
  if(page==="staff")void staffUI?.refresh();
  if(page==="service")void phase5?.refresh();
+ if(page==="commissions")void commissionsUI?.refresh().catch(e=>fail(e,"Commissions could not load"));
  if(page==="assurance")void phase6?.refresh();
  if(page==="employeePortal")void phase4?.refresh();
  if(page==="dashboard")renderDashboard();
@@ -241,8 +245,10 @@ async function chooseTenant(id,writeStorage=true){
  document.querySelectorAll(".client-only").forEach(node=>node.classList.toggle("hidden",!id));
  const employeeOnly=state.role==="employee";
  for(const nav of document.querySelectorAll("#nav [data-page]")){
-  if(["employees","operations","time","payroll","access","service","assurance"].includes(nav.dataset.page)&&employeeOnly)nav.classList.add("hidden");
+  if(["employees","operations","time","payroll","access","service","assurance","commissions"].includes(nav.dataset.page)&&employeeOnly)nav.classList.add("hidden");
  }
+ const commissionNav=document.querySelector('#nav [data-page="commissions"]');
+ if(commissionNav)commissionNav.classList.toggle("hidden",!id||!canPayroll());
  const portalNav=document.querySelector("#nav [data-page=employeePortal]");
  if(portalNav)portalNav.classList.toggle("hidden",!id||!(employeeOnly||canAdmin()));
  document.querySelectorAll(".admin-only").forEach(node=>node.classList.toggle("hidden",!id||!canAdmin()));
@@ -255,6 +261,7 @@ async function chooseTenant(id,writeStorage=true){
  if(!id){state.employees=[];state.time=[];state.runs=[];state.selectedRun=null;go("dashboard");return}
  if(employeeOnly){await phase4?.refresh();go("employeePortal");return}
  await refreshCompany();
+ if(commissionsUI&&state.page==="commissions")await commissionsUI.refresh();
  if(state.page==="clients"&&state.platform)go("clients");else go(state.page==="dashboard"?"dashboard":state.page);
 }
 $("companySelect").addEventListener("change",()=>chooseTenant($("companySelect").value).catch(e=>fail(e,"Company selection failed")));
@@ -291,7 +298,7 @@ function renderDashboard(){
  $("overviewSubline").textContent=state.tenantId?"Manage fictional pay periods, client services and employee operations from this workspace.":"Select an authorized client company to start. Account creation alone does not grant company access.";
  const quick=$("quickActions");quick.replaceChildren();
  const links=state.tenantId?(state.role==="employee"?[["employeePortal","My pay & messages"]]:[
-  ["payroll","Prepare payroll"],["time","Review time"],["employees","Employee directory"],["service","Client billing"],...(canAdmin()?[["assurance","Run health check"]]:[])]):
+  ["payroll","Prepare payroll"],["time","Review time"],["employees","Employee directory"],["service","Client billing"],...(canPayroll()?[["commissions","Commissions"]]:[]),...(canAdmin()?[["assurance","Run health check"]]:[])]):
   [...(state.platform?[["clients","Manage client companies"]]:[]),...(state.platformOwner?[["staff","Manage staff permissions"]]:[])];
  for(const [page,label] of links)quick.append(button(label,()=>go(page),"quick-action"));
  if(!links.length)quick.append(mk("p","muted","Ask a Sterling administrator to assign an authorized company workspace."));
@@ -611,10 +618,14 @@ async function generateLines(run){
  const tenantId=state.tenantId;
  const {preview,policy}=await phase3.buildPreview(run);
  if(preview.issues.length)throw Error("Resolve "+preview.issues.length+" time and payroll exceptions before generating");
- const lines=preview.lines;
+ const commission=await prepareRunCommissions(db,tenantId,run,preview.lines);
+ const lines=commission.lines;
+ preview.lines=lines;
+ preview.totals=summarizeLines(lines);
  if(!lines.length)throw Error("No approved simulated earnings for this period");
  if(lines.length>250)throw Error("Draft exceeds 250-employee safety limit");
- if(!await confirmAction("Generate payroll preview","Generate "+lines.length+" reviewed pay lines with "+money(preview.totals.grossCents)+" fictional gross pay? Existing draft lines will be replaced."))return;
+ if(lines.length+commission.claim.length+commission.release.length>440)throw Error("Too many commission and pay-line writes for one atomic batch. Split the pay period.");
+ if(!await confirmAction("Generate payroll preview","Generate "+lines.length+" reviewed pay lines with "+money(preview.totals.grossCents)+" fictional gross pay (including "+money(commission.commissionCents)+" commissions)? Existing draft lines will be replaced."))return;
  if(tenantId!==state.tenantId)throw Error("Company changed during payroll preparation");
  const base=collection(db,"tenants",tenantId,"payrollRuns",run.id,"lines");
  const oldSnapshot=await getDocs(query(base,limit(251)));
@@ -623,6 +634,7 @@ async function generateLines(run){
  const keys=new Set(lines.map(x=>x.employeeId));
  for(const prior of oldSnapshot.docs)if(!keys.has(prior.id))batch.delete(doc(base,prior.id));
  for(const line of lines)batch.set(doc(base,line.employeeId),line);
+ commitRunCommissions(batch,run.id,commission);
  auditClient(batch,"payroll","payroll-generate",run.id,lines.length+" reviewed fictional lines");
  await batch.commit();
  await phase3.saveSnapshot(run,{preview,policy});
@@ -693,7 +705,7 @@ const creationDialogs=[
 async function confirmAction(title,message,options={}){
  return sterlingModals.confirm({title,message,...options});
 }
-let phase2=null,phase2Pending=null,phase3=null,phase4=null,phase5=null,phase6=null,ownerUI=null,staffUI=null;
+let phase2=null,phase2Pending=null,phase3=null,phase4=null,phase5=null,phase6=null,commissionsUI=null,ownerUI=null,staffUI=null;
 const ownerActions=createOwnerRecordActions({db,getState:()=>state,notify:toast,confirmAction,requestDeletion:sterlingModals.deleteRecord,
  onChanged:async kind=>{
   if(kind==="tenants"){
@@ -701,6 +713,7 @@ const ownerActions=createOwnerRecordActions({db,getState:()=>state,notify:toast,
    await loadTenantDirectory();go("clients");return;
   }
   if(kind==="members"||kind==="employeeLinks")await loadTenantDirectory();
+  if(["commissionSales","commissionPlans"].includes(kind))await commissionsUI?.refresh();
   if(["billingInvoices","supportTickets"].includes(kind))await phase5?.refresh?.();
   else await refreshCompany();
  }
@@ -716,7 +729,7 @@ async function initializePhase2(){
  return phase2Pending;
 }
 onAuthStateChanged(auth,async user=>{
- phase4?.clear();
+ phase4?.clear();commissionsUI?.clear();
  state.user=user;state.tenantId="";state.platform=false;state.tenants=[];state.role="";state.platformOwner=false;state.platformWrite=false;state.platformRole="client";
  $("authScreen").classList.toggle("hidden",!!user);$("shell").classList.toggle("hidden",!user);
  if(!user)return;
@@ -743,6 +756,13 @@ onAuthStateChanged(auth,async user=>{
    try{const {mountPhase5}=await import("./phase5.js?v=phase6-final");phase5=await mountPhase5({db,getState:()=>state,notify:toast,confirmAction,ownerDelete:(kind,record)=>ownerActions.remove(kind,record)})}
    catch(error){console.error("Client services module unavailable",error);toast("Client services are not yet available; check the deployment.",true)}
   }
+  if(!commissionsUI){
+   try{
+    const {mountCommissions}=await import("./commissions.js?v=sterling-commissions-v1");
+    commissionsUI=await mountCommissions({db,getState:()=>state,notify:toast,confirmAction,
+     ownerDelete:(kind,record)=>ownerActions.remove(kind,record)});
+   }catch(error){console.error("Commission module unavailable",error);toast("Commission tools are not available; check GitHub Pages deployment.",true)}
+  }
   if(!phase6){
    try{const {mountPhase6}=await import("./phase6.js?v=phase6-final");phase6=await mountPhase6({db,getState:()=>state,notify:toast,confirmAction})}
    catch(error){console.error("Assurance module unavailable",error);toast("Assurance tools are not yet deployed.",true)}
@@ -752,7 +772,7 @@ onAuthStateChanged(auth,async user=>{
    catch(error){console.error("Owner control module unavailable",error);toast("Record management tools are not yet deployed.",true)}
   }
   if(state.platformOwner)await staffUI?.refresh();
-  if(state.tenantId&&state.role!=="employee"){await phase3?.refresh();await phase5?.refresh()}
+  if(state.tenantId&&state.role!=="employee"){await phase3?.refresh();await phase5?.refresh();if(state.page==="commissions")await commissionsUI?.refresh()}
   go(state.role==="employee"?"employeePortal":"dashboard");
   if(!state.platform&&!state.tenants.length)toast("Client account ready. Sterling can assign you access to a company.");
  }catch(e){fail(e,"Workspace authorization failed");go("dashboard")}
