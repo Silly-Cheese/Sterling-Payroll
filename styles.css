@@ -47,3 +47,33 @@ input,select{border-radius:10px;padding:11px 12px;color:var(--ink);background:#0
 #page-operations #p2Person{width:100%}
 @media(max-width:1020px){.ops-grid{grid-template-columns:1fr}}
 @media(max-width:760px){.bulk-toolbar{align-items:stretch}.bulk-toolbar select,.bulk-toolbar .btn{flex:1}.employee-check{padding:12px}.ops-grid .panel{padding:18px}#p2Members .list-item{flex-direction:column;align-items:flex-start}#p2Members .item-actions{justify-content:flex-start;width:100%}}
+
+/* Phase 3 suite — time control, exceptions and policy settings */
+.phase3-section{margin-top:20px}
+.phase3-section .panel{border-color:#333b3a}
+.phase3-spaced{margin-top:18px}
+.phase3-panel{padding:23px}
+.phase3-panel .section-heading{align-items:center}
+.phase3-section .list{max-height:520px;overflow:auto}
+.phase3-section .list-item{align-items:center}
+.phase3-section .list-item .item-actions{gap:8px}
+.phase3-section .list-item .btn{font-size:11px;min-height:32px}
+.phase3-section label{margin-top:12px}
+.phase3-section textarea{font:inherit;color:var(--ink);background:#0d1115;border:1px solid #343d42;border-radius:10px;width:100%;resize:vertical;padding:11px 12px;min-height:78px;max-width:100%}
+.phase3-section textarea:focus{outline:2px solid var(--gold-2);outline-offset:2px}
+.phase3-section .notice{margin-top:11px;border:1px solid #464334;border-radius:11px;padding:13px 14px;background:#201e1a;color:#ddd3bd;overflow-wrap:anywhere;font-size:12px}
+.phase3-section #p3Comparison{margin-top:13px}
+#staffAccounts .panel{padding:24px;min-width:0}
+#staffAccounts label{margin-top:18px}
+#staffAccounts select{width:100%}
+#staffAccounts .list{max-height:480px;overflow:auto}
+#staffAccounts .item-actions{min-width:0}
+#staffAccounts .btn.danger{background:#271819}
+#staffAccounts .ops-grid{align-items:start}
+@media(max-width:720px){
+ .phase3-section .list-item{flex-direction:column;align-items:stretch}
+ .phase3-section .item-actions{justify-content:flex-start!important}
+ .phase3-section .list-item .item-actions button{flex:1}
+ #staffAccounts .panel{padding:17px}
+ #staffAccounts .actions .btn{flex:1}
+}
