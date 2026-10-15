@@ -605,7 +605,7 @@ onAuthStateChanged(auth,async user=>{
    catch(error){console.error("Employee portal module unavailable",error);toast("Employee portal assets are still deploying. Please refresh after GitHub Pages finishes.",true)}
   }
   if(!phase5){
-   try{const {mountPhase5}=await import("./phase5.js?v=phase6-final");phase5=await mountPhase5({db,getState:()=>state,notify:toast,confirmAction})}
+   try{const {mountPhase5}=await import("./phase5.js?v=phase6-final");phase5=await mountPhase5({db,getState:()=>state,notify:toast,confirmAction,ownerDelete:(kind,record)=>ownerActions.remove(kind,record)})}
    catch(error){console.error("Client services module unavailable",error);toast("Client services are not yet available; check the deployment.",true)}
   }
   if(!phase6){
