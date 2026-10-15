@@ -57,6 +57,9 @@ function canPayroll(){return state.platformWrite||state.platformRole==="payroll_
 function canAdmin(){return state.platformWrite||state.role==="client_admin"}
 const tenantDoc=()=>doc(db,"tenants",state.tenantId);
 const sub=(name)=>collection(db,"tenants",state.tenantId,name);
+function auditClient(batch,category,action,subject,detail){
+ batch.set(doc(sub("auditEvents")),{category,action,subject:String(subject).slice(0,160),detail:String(detail).slice(0,300),actor:state.user.uid,at:serverTimestamp()});
+}
 function go(page){
  if(!titles[page])page="dashboard";
  if(page==="clients"&&!state.platform)page="dashboard";
@@ -297,13 +300,16 @@ $("employeeForm").addEventListener("submit",async event=>{
  event.preventDefault();if(!canPayroll()||!state.tenantId)return;
  const payType=$("empType").value;
  try{
-  await addDoc(sub("employees"),{
+  const record=doc(sub("employees"));
+  const batch=writeBatch(db);
+  batch.set(record,{
    displayName:$("empName").value.trim(),department:$("empDept").value.trim(),jobTitle:$("empJob").value.trim(),
    payType,payFrequency:$("empFrequency").value,
    hourlyRateCents:payType==="hourly"?toCents($("empHourly").value):0,
    annualSalaryCents:payType==="salary"?toCents($("empSalary").value):0,
    status:"active",createdBy:state.user.uid,createdAt:serverTimestamp(),updatedAt:serverTimestamp()
   });
+  auditClient(batch,"personnel","employee-create",record.id,$("empName").value.trim());await batch.commit();
   $("employeeForm").reset();$("empType").dispatchEvent(new Event("change"));
   await refreshCompany();toast("Employee saved in this client workspace.");
  }catch(e){fail(e,"Employee creation failed")}
@@ -319,7 +325,8 @@ function renderEmployees(){
   const description=[e.jobTitle,e.department,e.payType==="hourly"?money(e.hourlyRateCents)+"/hr":money(e.annualSalaryCents)+"/year"].filter(Boolean).join(" • ");
   const actions=canPayroll()?[button(e.status==="active"?"Place on leave":"Reactivate",async()=>{
    const status=e.status==="active"?"leave":"active";
-   await updateDoc(doc(db,"tenants",state.tenantId,"employees",e.id),{status,updatedAt:serverTimestamp()});
+   const update=writeBatch(db);update.update(doc(db,"tenants",state.tenantId,"employees",e.id),{status,updatedAt:serverTimestamp()});
+   auditClient(update,"personnel","employee-status",e.id,e.status+" → "+status);await update.commit();
    await refreshCompany();toast("Employee status updated.");
   },"small")]:[];
   el.append(item(e.displayName,description,actions,e.status,e.status==="active"?"success":""));
@@ -360,11 +367,12 @@ $("timeForm").addEventListener("submit",async event=>{
  const employeeId=$("timeEmployee").value;
  if(!state.employees.some(e=>e.id===employeeId&&e.status==="active"))return toast("Choose an active employee.",true);
  try{
-  await addDoc(sub("timeEntries"),{
+  const entry=doc(sub("timeEntries"));const batch=writeBatch(db);batch.set(entry,{
    employeeId,workDate:$("timeDate").value,
    regularHours:hoursValue($("timeRegular").value),overtimeHours:hoursValue($("timeOvertime").value),
    note:$("timeNote").value.trim(),createdAt:serverTimestamp(),createdBy:state.user.uid,status:"pending",approvedBy:""
   });
+  auditClient(batch,"time","time-entry-create",entry.id,$("timeDate").value);await batch.commit();
   $("timeRegular").value="8";$("timeOvertime").value="0";$("timeNote").value="";
   await refreshCompany();toast("Simulated time entry recorded.");
  }catch(e){fail(e,"Time entry failed")}
@@ -382,8 +390,9 @@ $("runForm").addEventListener("submit",async event=>{
  const periodStart=$("periodStart").value,periodEnd=$("periodEnd").value,payDate=$("payDate").value;
  if(!validPeriod(periodStart,periodEnd,payDate))return toast("Pay period dates must be valid, and payday must be after the period.",true);
  try{
-  const run=await addDoc(sub("payrollRuns"),{periodStart,periodEnd,payDate,status:"draft",
-   createdAt:serverTimestamp(),createdBy:state.user.uid,submittedBy:"",approvedBy:"",finalizedBy:""});
+  const run=doc(sub("payrollRuns"));const batch=writeBatch(db);
+  batch.set(run,{periodStart,periodEnd,payDate,status:"draft",createdAt:serverTimestamp(),createdBy:state.user.uid,submittedBy:"",approvedBy:"",finalizedBy:""});
+  auditClient(batch,"payroll","payroll-create",run.id,periodStart+" → "+periodEnd);await batch.commit();
   await refreshCompany();await selectRun(run.id);toast("Draft payroll created.");
  }catch(e){fail(e,"Payroll run creation failed")}
 });
@@ -486,6 +495,7 @@ async function generateLines(run){
  const keys=new Set(lines.map(x=>x.employeeId));
  for(const prior of oldSnapshot.docs)if(!keys.has(prior.id))batch.delete(doc(base,prior.id));
  for(const line of lines)batch.set(doc(base,line.employeeId),line);
+ auditClient(batch,"payroll","payroll-generate",run.id,lines.length+" reviewed fictional lines");
  await batch.commit();
  await phase3.saveSnapshot(run,{preview,policy});
  await selectRun(run.id);
@@ -500,7 +510,10 @@ async function moveRun(run,next){
  if(next==="finalized")fields.finalizedBy=state.user.uid;
  if(next==="draft"){fields.submittedBy="";fields.approvedBy="";}
  if(!await confirmAction("Confirm payroll status","Change this fictional payroll run to "+next+"?"))return;
- await updateDoc(doc(db,"tenants",state.tenantId,"payrollRuns",run.id),fields);
+ const auditBatch=writeBatch(db);
+ auditBatch.update(doc(db,"tenants",state.tenantId,"payrollRuns",run.id),fields);
+ auditClient(auditBatch,"payroll","payroll-status",run.id,run.status+" → "+next);
+ await auditBatch.commit();
  await refreshCompany();await selectRun(run.id);
  toast("Payroll run marked "+next+".");
 }
