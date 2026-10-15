@@ -38,10 +38,12 @@ See [SETUP.md](./SETUP.md) for Firebase Authentication, Firestore rules deployme
 - Text-only fictional forms/acknowledgment requests with in-app pending-item counts.
 - Client admins select known employee records; no manual Firebase UID entry or email-verification gate.
 
-## Phase 4 delivered and Phase 5 underway
+## Phase 4, 5 and 6 simulated release
 - **Employee Portal:** explicit employer-linked identity, private simulated paystub history, preferences, announcements, secure company messages and employee response requests.
 - **Owner Controls:** trusted owner can correct finalized fictional pay periods and pay lines in place with before/after revisions, archive personnel and delete supported records with an activity log.
-- **Client Services:** simulated invoices, client service tiers, support tickets and status tracking; further Phase 5 workflows remain in development.
+- **Client Services:** fictional agreements and invoice ledger, status transitions, CSV statements, paginated tickets, assignments, SLA-style triage and private staff notes.
+- **Assurance Center:** client-admin integrity reports, scoped export, advisory retention, activity review and asset diagnostics.
+- **Reliability:** improved role-based navigation, quick search, responsive design, append-only event integration and Firebase emulator security tests in nightly GitHub CI.
 - **Deployment protection:** dynamic employee portal loading and Pages asset checks prevent a missing module from preventing the login screen.
 
 ## Hosting
@@ -52,3 +54,5 @@ Static web frontend, compatible with GitHub Pages; Firebase project: `sterling-p
 - Never enter real Social Security numbers, bank account details or tax identifiers.
 - Approval workflows are roleplay-grade simulations. Browser calculations are not a certified payroll or tax engine.
 - No Firebase Admin SDK credentials in this site or repository.
+
+**Release instructions:** [RELEASE_6.md](./RELEASE_6.md) · **Firestore rules must be published in Firebase Console separately from GitHub Pages.**
