@@ -14,6 +14,11 @@ export async function mountPhase2({db,getState,refreshCompany,loadTenantDirector
  $("phase2ClientTools").append($("p2ClientTemplate").content.cloneNode(true));
  $("phase2AccessTools").append($("p2AccessTemplate").content.cloneNode(true));
  const S=()=>getState();
+ const audit=(batch,tenantId,action,subject,detail)=>{
+  batch.set(doc(collection(db,"tenants",tenantId,"auditEvents")),{
+   category:"personnel",action,subject:String(subject).slice(0,160),detail:String(detail).slice(0,300),actor:S().user.uid,at:serverTimestamp()
+  });
+ };
  const canWrite=()=>S().platformWrite||S().platformRole==="payroll_operator"||["client_admin","payroll_specialist"].includes(S().role);
  const canAdmin=()=>S().platformWrite||S().role==="client_admin";
  const employees=()=>S().employees,active=()=>employees().find(e=>e.id===$("p2Person").value);
@@ -44,7 +49,10 @@ export async function mountPhase2({db,getState,refreshCompany,loadTenantDirector
    if(changes.displayName.length<2||changes.displayName.length>120||!EMPLOYEE_STATUSES.includes(changes.status)||
      !PAY_FREQUENCIES.includes(changes.payFrequency))throw Error("Invalid employee details");
    if(!await confirmAction("Employee changes","Save updates for "+e.displayName+"?"))return;
-   await updateDoc(doc(db,"tenants",S().tenantId,"employees",e.id),changes);
+   const batch=writeBatch(db);
+   batch.update(doc(db,"tenants",S().tenantId,"employees",e.id),changes);
+   audit(batch,S().tenantId,"employee-update",e.id,e.displayName);
+   await batch.commit();
    await refreshCompany();refresh();notify("Employee changes saved.");
   }catch(e){notifyError("Employee changes failed",e)}
  });
@@ -85,6 +93,7 @@ export async function mountPhase2({db,getState,refreshCompany,loadTenantDirector
    const status=$("p2BulkStatus").value;if(!EMPLOYEE_STATUSES.includes(status))throw Error("Invalid status");
    if(!await confirmAction("Bulk employment update","Change "+ids.length+" employee records to "+status+"?"))return;
    const batch=writeBatch(db);for(const id of ids)batch.update(doc(db,"tenants",S().tenantId,"employees",id),{status,updatedAt:serverTimestamp()});
+   audit(batch,S().tenantId,"employee-bulk-status",status,ids.length+" employees updated");
    await batch.commit();checked.clear();await refreshCompany();refresh();notify("Updated "+ids.length+" employee records.");
   }catch(e){notifyError("Bulk update failed",e)}
  });
@@ -108,6 +117,7 @@ export async function mountPhase2({db,getState,refreshCompany,loadTenantDirector
     const ref=doc(collection(db,"tenants",tenantId,"employees"));
     batch.set(ref,{...employee,createdBy:S().user.uid,createdAt:serverTimestamp(),updatedAt:serverTimestamp()});
    }
+   audit(batch,tenantId,"employee-csv-import","employees",preview.length+" fictional employee profiles");
    await batch.commit();const count=preview.length;preview=[];possible=[];$("p2Commit").disabled=true;$("p2Csv").value="";
    $("p2PreviewList").replaceChildren();await refreshCompany();refresh();notify(count+" employees imported.");
   }catch(e){notifyError("Employee import failed",e)}
@@ -131,7 +141,9 @@ export async function mountPhase2({db,getState,refreshCompany,loadTenantDirector
     status:$("p2ClientStatus").value,notes:$("p2ClientNotes").value.trim()};
    if(changes.name.length<2||!CLIENT_PLANS.includes(changes.servicePlan))throw Error("Invalid client settings");
    if(!await confirmAction("Client settings","Apply changes to "+tenant.name+"?"))return;
-   await updateDoc(doc(db,"tenants",tenant.id),changes);await loadTenantDirectory();refresh();notify("Client updated.");
+   const batch=writeBatch(db);batch.update(doc(db,"tenants",tenant.id),changes);
+   audit(batch,tenant.id,"client-settings",tenant.id,tenant.name+" service profile updated");
+   await batch.commit();await loadTenantDirectory();refresh();notify("Client updated.");
   }catch(e){notifyError("Client update failed",e)}
  });
  async function renderMembers(){
@@ -154,8 +166,9 @@ export async function mountPhase2({db,getState,refreshCompany,loadTenantDirector
     edit.append(roleSelect,statusSelect,button("Save",async()=>{
      controls();const changes={role:roleSelect.value,status:statusSelect.value};
      if(!await confirmAction("Team access","Update access for "+member.email+"?"))return;
-     await updateDoc(doc(db,"tenants",tenantId,"members",d.id),changes);
-     notify("Membership updated.");await renderMembers();
+     const batch=writeBatch(db);batch.update(doc(db,"tenants",tenantId,"members",d.id),changes);
+     audit(batch,tenantId,"membership-update",d.id,changes.role+" / "+changes.status);
+     await batch.commit();notify("Membership updated.");await renderMembers();
     }));
    }
    if(member.role==="employee"&&member.status==="active"){
