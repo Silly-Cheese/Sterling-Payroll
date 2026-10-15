@@ -156,3 +156,50 @@ test("owner can delete simulated invoice events and support conversations",async
   "tenants/north/supportTickets/s1"])batch.delete(doc(owner,p));
  await assertSucceeds(batch.commit());
 });
+
+test("owner can directly finalize their own draft without a second reviewer using linked revision and audit",async()=>{
+ await env.withSecurityRulesDisabled(async c=>{
+  await setDoc(doc(c.firestore(),"tenants","north","payrollRuns","owner-test"),{
+   periodStart:"2026-10-01",periodEnd:"2026-10-14",payDate:"2026-10-16",
+   status:"draft",submittedBy:"",approvedBy:"",finalizedBy:"",createdBy:"owner"
+  });
+ });
+ const db=as("owner");
+ const run=doc(db,"tenants","north","payrollRuns","owner-test");
+ const before=(await getDoc(run)).data();
+ const id="owner-direct-signoff";
+ const after={...before,status:"finalized",submittedBy:"owner",approvedBy:"owner",
+  finalizedBy:"owner",lastRevisionId:id,lastCorrectedBy:"owner",lastCorrectedAt:serverTimestamp()};
+ const batch=writeBatch(db);
+ batch.set(doc(db,"tenants","north","payrollRuns","owner-test","revisions",id),{
+  kind:"period",entityId:"owner-test",
+  reason:"Authorized owner second-party override on fictional payroll run",
+  actor:"owner",at:serverTimestamp(),before,after});
+ batch.update(run,after);
+ batch.set(doc(db,"tenants","north","ownerAudit","owner-test-audit"),{
+  action:"override approval",entityType:"payrollRuns",entityId:"owner-test",
+  reason:"Authorized owner second-party override on fictional payroll run",
+  actor:"owner",at:serverTimestamp(),before
+ });
+ await assertSucceeds(batch.commit());
+ const result=await getDoc(run);
+ assert.equal(result.data().status,"finalized");
+ assert.equal(result.data().approvedBy,"owner");
+ assert.equal(result.data().finalizedBy,"owner");
+ await assertSucceeds(getDoc(doc(db,"tenants","north","payrollRuns","owner-test","revisions",id)));
+});
+test("owner can approve their own time, corrections and leave while viewers cannot",async()=>{
+ await env.withSecurityRulesDisabled(async c=>{
+  const d=c.firestore(),base="tenants/north/";
+  await setDoc(doc(d,base+"timeEntries/t-self"),{createdBy:"owner",status:"pending",approvedBy:"",employeeId:"e1"});
+  await setDoc(doc(d,base+"timeCorrections/c-self"),{createdBy:"owner",status:"pending",reviewedBy:"",timeEntryId:"t-self"});
+  await setDoc(doc(d,base+"leaveRequests/l-self"),{createdBy:"owner",status:"pending",reviewedBy:"",employeeId:"e1"});
+ });
+ const owner=as("owner"),viewer=as("viewer");
+ for(const [name,id,field] of [["timeEntries","t-self","approvedBy"],["timeCorrections","c-self","reviewedBy"],["leaveRequests","l-self","reviewedBy"]]){
+  const path="tenants/north/"+name+"/"+id;
+  await assertFails(updateDoc(doc(viewer,path),{status:"approved",[field]:"viewer"}));
+  await assertSucceeds(updateDoc(doc(owner,path),{status:"approved",[field]:"owner"}));
+  assert.equal((await getDoc(doc(owner,path))).data().status,"approved");
+ }
+});
