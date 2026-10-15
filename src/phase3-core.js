@@ -80,7 +80,7 @@ export function validateLeave(form){
 export function csvStatement({company,run,lines}){
  const quote=v=>'"'+String(v??"").replaceAll('"','""')+'"';
  const rows=[["Sterling Payroll — SIMULATED PAY ONLY"],["Company",company],["Period",run.periodStart+" through "+run.periodEnd],["Simulated pay date",run.payDate],
-  ["Employee","Regular","Overtime","Bonus","Deductions","Gross","Net"],
-  ...lines.map(l=>[l.employeeName,l.regularCents,l.overtimeCents,l.bonusCents,l.deductionCents,l.grossCents,l.netCents].map((v,i)=>i===0?v:(v/100).toFixed(2)))];
+  ["Employee","Regular","Overtime","Bonus","Commission","Deductions","Gross","Net"],
+  ...lines.map(l=>[l.employeeName,l.regularCents,l.overtimeCents,l.bonusCents,l.commissionCents||0,l.deductionCents,l.grossCents,l.netCents].map((v,i)=>i===0?v:(v/100).toFixed(2)))];
  return rows.map(r=>r.map(quote).join(",")).join("\r\n");
 }
