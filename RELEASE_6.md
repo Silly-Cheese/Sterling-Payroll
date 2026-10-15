@@ -59,3 +59,9 @@ No account becomes owner just by signing up. Existing trusted owner authorizatio
 Rollback application code using a GitHub revert followed by Pages deployment. Inspect security implications before changing deployed Firestore Rules. The browser's JSON export is **not** an automatically restorable, full Firestore database backup.
 
 This is a completed simulated frontend and test-tooling release, **not** a certified financial system. Server-recomputed payroll, exhaustive audit enforcement, offsite automatic backup, actual uptime monitoring and professional accessibility certification require further trusted infrastructure and live testing.
+
+## October owner workspace update
+
+The sign-in Phase 5 initialization bug is fixed. Navigation is more compact, with optional Comfortable view, searchable and filterable large registers, and bounded Firestore prefix lookups for client/employee names. Inline owner actions are present for supported employee, timekeeping, payroll draft, invoice and case records. The direct deletion dialog requires a reason and the phrase `DELETE PERMANENTLY`.
+
+**Current deletion limit:** Full dependency-aware permanent deletion of payroll runs with existing lines/revisions, invoices with ledger events, cases with conversation history, and company-wide recursive deletion is **not yet enabled**. Do not remove a Firestore parent document without processing its descendants; this creates orphaned records. These cases require a verified batched owner cascade workflow. Existing in-place payroll correction and void actions remain available.
