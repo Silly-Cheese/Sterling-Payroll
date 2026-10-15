@@ -1,0 +1,23 @@
+name: Sterling Payroll — Quality Checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax checks
+        run: |
+          node --check src/app.js
+          node --check src/payroll-core.js
+      - name: Payroll engine tests
+        run: node --test tests/*.test.mjs
