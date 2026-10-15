@@ -80,3 +80,19 @@ Permanent deletion of finalized payroll runs with associated lines, snapshots an
 The interface now shows searchable records before creation forms, with on-demand Sterling-branded dialogs. Employee self-service has separate pay, messages, requests, news and profile views. Client billing and support forms open only when requested. Staff and company access use focused tabs.
 
 Owner deletion can remove supported fictional records including finalized payroll periods and their discovered dependent pay lines, snapshots and revisions. Deletion is explicitly confirmed with a reason and the phrase `DELETE PERMANENTLY`. A protected deletion receipt survives the operation and may show an interrupted multi-batch deletion. Records stored in unrecognized future subcollections may need a separate administrator cleanup. The delete engine limits a single browser operation to 15,000 documents and does not remove Firebase Auth identities. Firebase rules must be published separately before new operations can work.
+
+## October 15 — Optional simulated commissions and startup hotfix
+
+**Startup fix:** The compact creation dialog previously appended a dialog directly to the JavaScript Document instead of its HTML body, causing a HierarchyRequestError before sign-in. Dialogs now mount to document.body and module versions were refreshed.
+
+**Optional per-company commissions:** Each company has its own commissionSettings/current switch, disabled unless enabled explicitly. Client administrators or trusted Sterling managers can turn it on. Administrators may assign active employees either a percentage of their fictional sales (0–100%, two decimals) or a fixed fictional commission for each sale. Payroll staff can record the employee, sale date, sale description and amount sold. The approved calculated commission is snapshotted at creation; changing a plan does not rewrite older sales.
+
+**Approvals:** A different company administrator reviews ordinary staff-submitted sales. The trusted Sterling owner may override self-review. Client viewers and employee-only users cannot browse or edit commission plans or sales.
+
+**Payroll:** Eligible approved sales are included in a draft run only when their date falls within the run period. Claiming the sale and updating pay lines happens in a single Firestore batch. Commission earnings are itemized in payroll details, CSV exports and finalized employee paystubs. Draft regeneration handles included and excluded claims; owner deletion of a payroll run releases linked sales. Active hourly employees with only commissions can be included without logged hours.
+
+**Limitations:** All commissions remain fictional. No money is transferred or tax filing performed. Bounded batch limits apply; very large client sale volumes require smaller pay periods or future pagination upgrades. This is not a certified financial system.
+
+**Activation required:** Publish the full repository firestore.rules separately through https://console.firebase.google.com/project/sterling-payroll-5d200/firestore/rules . GitHub Pages does not publish database rules.
+
+**Acceptance check:** Enable commissions for one company, set a 10% or fixed $25 plan, record a $200 simulated sale, approve it as an authorized reviewer, generate a draft spanning that date, and verify its commission line. Switch to a different company: commissions should remain disabled there.
