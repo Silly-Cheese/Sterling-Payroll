@@ -1,7 +1,9 @@
 import {initializeApp} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
 import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendEmailVerification,sendPasswordResetEmail,signOut,reload,getIdToken} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js";
-import {getFirestore,collection,doc,getDoc,getDocs,addDoc,setDoc,updateDoc,query,limit,writeBatch,serverTimestamp} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
+import {getFirestore,collection,doc,getDoc,getDocs,addDoc,setDoc,updateDoc,query,limit,writeBatch,serverTimestamp,orderBy,documentId,startAfter} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 import {calculateLine,summarizeLines,toCents,money,hoursValue,canTransition,validPeriod,cleanEmail} from "./payroll-core.js";
+import {mountOwnerBootstrap} from "./bootstrap.js";
+import {mountPhase2} from "./phase2.js";
 
 const app=initializeApp({
  apiKey:"AIzaSyBAAAUc0nDiiD7zfURjohVj1UBA-1yQmV0",
@@ -12,11 +14,12 @@ const app=initializeApp({
  appId:"1:755423368876:web:da8513d0923f1d14033109"
 });
 const auth=getAuth(app),db=getFirestore(app),$=id=>document.getElementById(id);
-const state={user:null,platform:false,tenants:[],tenantId:"",role:"",employees:[],time:[],runs:[],selectedRun:null,lines:[],page:"dashboard",register:false};
+const state={user:null,platform:false,tenants:[],tenantId:"",role:"",employees:[],time:[],runs:[],selectedRun:null,lines:[],page:"dashboard",register:false,moreEmployees:false,moreTime:false,moreRuns:false,employeeCursor:null,timeCursor:null,runCursor:null};
 const titles={
  dashboard:["Executive overview","Everything you need to manage simulated payroll across client businesses."],
  clients:["Client companies","Manage the businesses using Sterling Payroll."],
  employees:["Employee management","Compensation and employment records for the selected company."],
+ operations:["Personnel operations","Edit employee records, manage bulk changes, and import fictional staff data."],
  time:["Timekeeping","Log simulated working hours with a clear audit history."],
  payroll:["Payroll processing","Prepare, review and approve fictional payments securely."],
  access:["Team access","Invite teammates to your client workspace and review roles."]
@@ -49,7 +52,7 @@ const sub=(name)=>collection(db,"tenants",state.tenantId,name);
 function go(page){
  if(!titles[page])page="dashboard";
  if(page==="clients"&&!state.platform)page="dashboard";
- if(["employees","time","payroll","access"].includes(page)&&!state.tenantId)page="dashboard";
+ if(["employees","operations","time","payroll","access"].includes(page)&&!state.tenantId)page="dashboard";
  if(page==="access"&&!canAdmin())page="dashboard";
  state.page=page;
  for(const node of document.querySelectorAll(".page"))node.classList.toggle("hidden",node.id!=="page-"+page);
@@ -60,6 +63,7 @@ function go(page){
  if(page==="dashboard")renderDashboard();
  if(page==="clients")renderClients();
  if(page==="employees")renderEmployees();
+ if(page==="operations")phase2?.refresh();
  if(page==="time")renderTime();
  if(page==="payroll")renderRuns();
  if(page==="access")void renderAccess();
@@ -167,17 +171,21 @@ async function refreshCompany(){
  const id=state.tenantId;
  try{
   const [employees,time,runs]=await Promise.all([
-   getDocs(query(sub("employees"),limit(250))),
-   getDocs(query(sub("timeEntries"),limit(500))),
-   getDocs(query(sub("payrollRuns"),limit(100)))
+   getDocs(query(sub("employees"),orderBy(documentId()),limit(100))),
+   getDocs(query(sub("timeEntries"),orderBy(documentId()),limit(200))),
+   getDocs(query(sub("payrollRuns"),orderBy(documentId()),limit(100)))
   ]);
   if(state.tenantId!==id)return;
   state.employees=employees.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.displayName.localeCompare(b.displayName));
   state.time=time.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.workDate.localeCompare(a.workDate));
   state.runs=runs.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.periodEnd.localeCompare(a.periodEnd));
-  if(employees.size===250||time.size===500||runs.size===100)toast("Some records may be beyond the current page limit; pagination is scheduled for a later phase.");
+  state.employeeCursor=employees.docs.at(-1)||null;state.timeCursor=time.docs.at(-1)||null;state.runCursor=runs.docs.at(-1)||null;
+  state.moreEmployees=employees.size===100;state.moreTime=time.size===200;state.moreRuns=runs.size===100;
+  $("loadMoreEmployees").classList.toggle("hidden",!state.moreEmployees);
+  $("loadMoreTime").classList.toggle("hidden",!state.moreTime);
+  $("loadMoreRuns").classList.toggle("hidden",!state.moreRuns);
  }catch(e){fail(e,"Company data could not load")}
- renderDashboard();renderEmployees();renderTime();renderRuns();
+ renderDashboard();renderEmployees();renderTime();renderRuns();phase2?.refresh();
 }
 function renderDashboard(){
  const el=$("metrics");el.replaceChildren();
@@ -203,7 +211,7 @@ $("clientForm").addEventListener("submit",async event=>{
  event.preventDefault();if(!state.platform)return;
  const name=$("clientName").value.trim();if(name.length<2)return toast("Enter a company name.",true);
  try{
-  const ref=await addDoc(collection(db,"tenants"),{name,status:"active",createdBy:state.user.uid,createdAt:serverTimestamp()});
+  const ref=await addDoc(collection(db,"tenants"),{name,status:"active",createdBy:state.user.uid,createdAt:serverTimestamp(),contactEmail:"",industry:"",servicePlan:"starter",notes:""});
   $("clientForm").reset();await loadTenantDirectory();await chooseTenant(ref.id);go("access");
   toast("Client created. Invite its administrators from Team Access.");
  }catch(e){fail(e,"Client creation failed")}
@@ -235,7 +243,7 @@ function renderEmployees(){
  const q=$("empSearch").value.trim().toLowerCase();
  const employees=state.employees.filter(e=>[e.displayName,e.jobTitle,e.department].join(" ").toLowerCase().includes(q));
  $("empCount").textContent=state.employees.length+" EMPLOYEES";
- if(!employees.length)return empty(el,"No employee records match this search.");
+ if(!employees.length)empty(el,"No employee records match this search.");
  for(const e of employees){
   const description=[e.jobTitle,e.department,e.payType==="hourly"?money(e.hourlyRateCents)+"/hr":money(e.annualSalaryCents)+"/year"].filter(Boolean).join(" • ");
   const actions=canPayroll()?[button(e.status==="active"?"Place on leave":"Reactivate",async()=>{
@@ -248,6 +256,33 @@ function renderEmployees(){
  const selector=$("timeEmployee");const old=selector.value;selector.replaceChildren(new Option("Select an employee",""));
  for(const e of state.employees.filter(e=>e.status==="active"))selector.append(new Option(e.displayName,e.id));
  selector.value=old&&state.employees.some(e=>e.id===old&&e.status==="active")?old:"";
+}
+for(const [buttonId,kind,count,sort] of [
+ ["loadMoreEmployees","employees",100,"displayName"],
+ ["loadMoreTime","timeEntries",200,"workDate"],
+ ["loadMoreRuns","payrollRuns",100,"periodEnd"]
+]){
+ $(buttonId).addEventListener("click",async()=>{
+  if(!state.tenantId)return;
+  const tenantId=state.tenantId;
+  const cursorField=kind==="employees"?"employeeCursor":kind==="timeEntries"?"timeCursor":"runCursor";
+  const moreField=kind==="employees"?"moreEmployees":kind==="timeEntries"?"moreTime":"moreRuns";
+  const arrayField=kind==="employees"?"employees":kind==="timeEntries"?"time":"runs";
+  const cursor=state[cursorField];if(!cursor)return;
+  $(buttonId).disabled=true;
+  try{
+   const snapshot=await getDocs(query(sub(kind),orderBy(documentId()),startAfter(cursor),limit(count)));
+   if(state.tenantId!==tenantId)return;
+   const found=snapshot.docs.map(d=>({id:d.id,...d.data()}));
+   const seen=new Set(state[arrayField].map(d=>d.id));
+   state[arrayField].push(...found.filter(d=>!seen.has(d.id)));
+   state[arrayField].sort((a,b)=>kind==="employees"?String(a[sort]||"").localeCompare(String(b[sort]||"")):String(b[sort]||"").localeCompare(String(a[sort]||"")));
+   state[cursorField]=snapshot.docs.at(-1)||null;state[moreField]=snapshot.size===count;
+   $(buttonId).classList.toggle("hidden",!state[moreField]);
+   renderDashboard();renderEmployees();renderTime();renderRuns();phase2?.refresh();
+  }catch(error){fail(error,"Unable to load additional records")}
+  finally{$(buttonId).disabled=false}
+ });
 }
 $("timeForm").addEventListener("submit",async event=>{
  event.preventDefault();if(!canPayroll()||!state.tenantId)return;
@@ -365,7 +400,7 @@ function renderRunDetails(){
 }
 async function generateLines(run){
  const employees=state.employees.filter(e=>e.status==="active"),lines=[];
- if(state.employees.length>=250||state.time.length>=500)throw Error("Employee/time listing may be incomplete; payroll generation is paused until pagination is available");
+ if(state.moreEmployees||state.moreTime)throw Error("Payroll source data is not fully loaded. Use Load more on Employees and Timekeeping to include all records.");
  if(employees.length>250)throw Error("Run exceeds the current 250-employee safeguard");
  for(const e of employees){
   const relevant=state.time.filter(t=>t.employeeId===e.id&&t.workDate>=run.periodStart&&t.workDate<=run.periodEnd);
@@ -432,6 +467,25 @@ $("timeDate").value=localDate(new Date());
 const now=new Date(),before=new Date();before.setDate(now.getDate()-13);
 $("periodStart").value=localDate(before);$("periodEnd").value=localDate(now);
 const payday=new Date();payday.setDate(now.getDate()+3);$("payDate").value=localDate(payday);
+let phase2=null,phase2Pending=null;
+async function initializePhase2(){
+ if(phase2)return phase2;
+ if(!phase2Pending){
+  phase2Pending=mountPhase2({
+   db,getState:()=>state,refreshCompany,loadTenantDirectory,
+   notify:toast,confirmAction:async(title,message)=>{
+    const modal=$("sterlingDialog");
+    $("dialogTitle").textContent=title;$("dialogText").textContent=message;
+    if(!modal?.showModal)return false;
+    modal.showModal();
+    return await new Promise(resolve=>{
+     modal.addEventListener("close",()=>resolve(modal.returnValue==="confirm"),{once:true});
+    });
+   }
+  }).then(x=>(phase2=x,x)).catch(error=>{phase2Pending=null;throw error});
+ }
+ return phase2Pending;
+}
 onAuthStateChanged(auth,async user=>{
  state.user=user;state.tenantId="";state.platform=false;state.tenants=[];state.role="";
  $("authScreen").classList.toggle("hidden",!!user);$("shell").classList.toggle("hidden",!user);
@@ -441,8 +495,12 @@ onAuthStateChanged(auth,async user=>{
  try{
   const grant=await getDoc(doc(db,"platformAdmins",user.uid));
   state.platform=grant.exists()&&grant.data()?.active===true;
+  $("ownerBootstrap").classList.add("hidden");
   if(location.hash.startsWith("#join="))$("joinCode").value=decodeURIComponent(location.hash.slice(6));
   await loadTenantDirectory();
+  await initializePhase2();
+  if(!state.platform)await mountOwnerBootstrap({auth,db,user,
+    onClaim:async()=>{state.platform=true;await loadTenantDirectory();go("clients");toast("Welcome to Sterling Payroll headquarters.");},notify:toast});
   go("dashboard");
   if(!state.platform&&!state.tenants.length)toast("Sign in successful. Enter your company code to accept an invitation.");
  }catch(e){fail(e,"Workspace authorization failed");go("dashboard")}
