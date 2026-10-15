@@ -8,7 +8,7 @@
   <title>Sterling Payroll | Sterling Group</title>
   <meta name="description" content="Sterling Payroll — simulated client payroll management by Sterling Group.">
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./styles.css?v=phase6-final">
+  <link rel="stylesheet" href="./styles.css?v=20261015-scale">
 </head>
 <body>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
@@ -74,7 +74,7 @@
       <header class="topbar">
         <button id="mobileMenu" class="mobile-menu btn" type="button" aria-label="Toggle menu">☰</button>
         <div class="topbar-title"><small>STERLING / PAYROLL</small><strong id="pageName">Executive Overview</strong></div>
-        <div class="topbar-actions"><button id="openQuickNav" class="quick-nav-button" type="button" aria-label="Find a page">⌕ <span>Search pages</span> <kbd>Ctrl K</kbd></button>
+        <div class="topbar-actions"><button id="densityToggle" type="button" class="quick-nav-button density-toggle" title="Toggle compact navigation">Comfortable view</button><button id="openQuickNav" class="quick-nav-button" type="button" aria-label="Find a page">⌕ <span>Search pages</span> <kbd>Ctrl K</kbd></button>
           <label class="company-switch"><span>COMPANY</span><select id="companySelect" aria-label="Active company"><option value="">Select company</option></select></label>
           <span class="environment-tag">SIMULATED</span>
         </div>
@@ -97,17 +97,12 @@
           <div id="metrics" class="metric-grid"></div>
           <div class="quick-actions panel"><div class="section-heading"><h2>Quick actions</h2><span class="subtle-pill">SHORTCUTS</span></div><div id="quickActions" class="quick-action-grid"></div></div>
           <div class="two-col">
-            <article class="panel"><div class="section-heading"><h2>Getting started</h2><span class="subtle-pill">PLATFORM</span></div>
-              <div class="onboarding-list">
-                <div><b>01</b><span>Create or join a client company<small>Separate every business and its employees</small></span></div>
-                <div><b>02</b><span>Add employees and compensation<small>Hourly and salary-based simulation</small></span></div>
-                <div><b>03</b><span>Record time and prepare payroll<small>Review gross, deductions and simulated net pay</small></span></div>
-                <div><b>04</b><span>Submit for independent approval<small>Two-person controls before finalization</small></span></div>
-              </div>
+            <article class="panel"><div class="section-heading"><h2>Requires attention</h2><span class="subtle-pill">LIVE WORKSPACE</span></div>
+              <div id="attentionQueue" class="attention-queue"></div>
             </article>
-            <article class="panel"><div class="section-heading"><h2>System integrity</h2><span class="status-chip success">ACTIVE</span></div>
-              <p class="muted">Each company's records are isolated in Firestore and protected by membership rules. Payroll amounts represent fictional, roleplay transactions only.</p>
-              <div class="data-note"><strong>No actual funds movement</strong><small>No bank details, tax calculations, SSNs or real pay distribution.</small></div>
+            <article class="panel"><div class="section-heading"><h2>Recent payroll periods</h2><span class="subtle-pill">QUICK ACCESS</span></div>
+              <div id="recentPayroll" class="list"></div>
+              <p class="fine-print">Showing records currently loaded in this workspace. Use the Payroll Runs page to browse additional records.</p>
             </article>
           </div>
         </section>
@@ -123,7 +118,7 @@
                 <button class="btn primary" type="submit">Create client company</button></form>
             </article>
             <article class="panel"><h2>Client directory</h2><p class="muted">Select a company to manage its personnel and payroll.</p>
-              <div id="clientList" class="list"></div><button id="loadMoreClients" class="btn hidden" type="button">Load more clients</button><div id="phase2ClientTools"></div></article>
+              <div class="list-toolbar"><input id="clientSearch" type="search" class="search-input" placeholder="Search client companies"><span id="clientCount" class="data-count"></span></div><div id="clientList" class="list"></div><button id="loadMoreClients" class="btn hidden" type="button">Load more clients</button><div id="phase2ClientTools"></div></article>
           </div>
         </section>
         <section id="page-employees" class="page hidden">
@@ -140,14 +135,14 @@
               </form>
             </article>
             <article class="panel"><div class="section-heading"><h2>Employee directory</h2><span id="empCount" class="subtle-pill">0 EMPLOYEES</span></div>
-              <input id="empSearch" class="search-input" type="search" placeholder="Search employee name, role or department">
+              <div class="list-toolbar"><input id="empSearch" class="search-input" type="search" placeholder="Find name, role or department"><select id="empStatus" aria-label="Filter employment status"><option value="all">All statuses</option><option value="active">Active</option><option value="leave">On leave</option><option value="inactive">Inactive</option></select></div>
               <div id="employeeList" class="list"></div><button id="loadMoreEmployees" class="btn hidden" type="button">Load more employees</button></article>
           </div>
         </section>
         <section id="page-operations" class="page hidden"><div id="phase2Operations"></div></section>
         <section id="page-time" class="page hidden">
           <div class="two-col asymmetric">
-            <article class="panel"><h2>Record working time</h2><p class="muted">Time entries are immutable in this first release. Please review hours carefully; correction workflows arrive in a later phase.</p>
+            <article class="panel"><h2>Record working time</h2><p class="muted">Time entries can be reviewed and corrected through the approval queue below. Changes preserve the original history.</p>
               <form id="timeForm" class="form-stack">
                 <label>Employee<select id="timeEmployee" required></select></label>
                 <label>Work date<input id="timeDate" type="date" required></label>
@@ -157,7 +152,7 @@
                 <button class="btn primary" type="submit">Save time entry</button>
               </form>
             </article>
-            <article class="panel"><h2>Recent time entries</h2><div id="timeList" class="list"></div><button id="loadMoreTime" class="btn hidden" type="button">Load more time entries</button></article>
+            <article class="panel"><h2>Time entry register</h2><div class="list-toolbar"><input id="timeSearch" class="search-input" type="search" placeholder="Find employee or date"><select id="timeStatus" aria-label="Filter time entries"><option value="all">All</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select></div><p class="fine-print" id="timeCount"></p><div id="timeList" class="list"></div><button id="loadMoreTime" class="btn hidden" type="button">Load more time entries</button></article>
           </div>
         </section>
         <div id="phase3Time" class="phase3-section client-only hidden"></div>
@@ -172,7 +167,7 @@
               </form>
               <div class="data-note"><strong>Approval separation enforced</strong><small>The approver must differ from the submitter; the finalizer must differ from the approver.</small></div>
             </article>
-            <article class="panel"><h2>Payroll runs</h2><div id="runList" class="list"></div><button id="loadMoreRuns" class="btn hidden" type="button">Load more payroll runs</button></article>
+            <article class="panel"><h2>Payroll run register</h2><div class="list-toolbar"><input id="runSearch" class="search-input" type="search" placeholder="Find period or date"><select id="runStatus" aria-label="Filter payroll runs"><option value="all">All</option><option value="draft">Draft</option><option value="submitted">Submitted</option><option value="approved">Approved</option><option value="finalized">Finalized</option><option value="rejected">Rejected</option><option value="voided">Voided</option></select></div><p class="fine-print" id="runCount"></p><div id="runList" class="list"></div><button id="loadMoreRuns" class="btn hidden" type="button">Load more payroll runs</button></article>
           </div>
           <article id="runDetails" class="panel run-details hidden">
             <div class="section-heading"><div><div class="eyebrow">PAYROLL RUN DETAILS</div><h2 id="runHeading">Payroll period</h2></div><span id="runStatusChip" class="status-chip">DRAFT</span></div>
@@ -206,6 +201,6 @@
   </div>
   <dialog id="sterlingDialog" class="sterling-dialog"><form method="dialog"><h2 id="dialogTitle">Review action</h2><p id="dialogText" class="muted"></p><div class="actions"><button value="cancel" class="btn">Cancel</button><button id="dialogConfirm" value="confirm" class="btn primary">Confirm</button></div></form></dialog>
   <dialog id="quickNav" class="quick-nav-dialog"><div class="quick-nav-inner"><label for="quickNavSearch">Find a workspace</label><input id="quickNavSearch" type="search" placeholder="Search navigation or features..." autocomplete="off"><div id="quickNavResults" class="quick-nav-results"></div><p class="fine-print">Press Esc to close. Pages respect your current permissions.</p></div></dialog>
-  <script type="module" src="./src/app.js?v=phase6-final"></script>
+  <script type="module" src="./src/app.js?v=20261015-scale"></script>
 </body>
 </html>
