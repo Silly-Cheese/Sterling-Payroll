@@ -1,11 +1,11 @@
 import {collection,doc,getDocs,getDoc,writeBatch,serverTimestamp,limit,query} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
-import {correctedLine,correctedPeriod,reason,canHardDelete} from "./owner-core.js";
+import {correctedLine,correctedPeriod,reason,canHardDelete,ownerApprovalOverride,REVIEW_STATES} from "./owner-core.js";
 const E=(tag,cls,txt)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(txt!==undefined)n.textContent=String(txt);return n};
 const opt=(id,label)=>{const n=E("option","",label);n.value=id;return n};
 const kinds=[["employees","Employees"],["timeEntries","Time entries"],["payrollRuns","Payroll periods"],["timeCorrections","Time corrections"],["leaveRequests","Leave requests"],["announcements","Announcements"],["billingInvoices","Simulated invoices"],["supportTickets","Support tickets"]];
 export function mountOwnerControls({db,getState,notify,confirmAction,refreshCompany}){
  const root=document.getElementById("ownerControlCenter");if(!root)return null;
- root.innerHTML='<div class="panel"><div class="eyebrow">OWNER AUTHORITY</div><h2>Owner Control Center</h2><p class="muted">Override or remove records within this simulation. Changes require a reason and are entered in the immutable owner activity log. This does not delete Firebase Authentication users or external data.</p><div class="three-fields"><label>Client<select id="ownerTenant"></select></label><label>Record type<select id="ownerKind"></select></label><label>Record<select id="ownerRecord"></select></label></div><label>Required action reason<textarea id="ownerReason" maxlength="500" minlength="10" placeholder="Explain the override or deletion"></textarea></label><div class="actions"><button id="ownerArchive" class="btn" type="button">Archive / void</button><button id="ownerDelete" class="btn danger" type="button">Delete record</button><select id="ownerApprovalStatus" aria-label="Owner approval override"><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select><button id="ownerOverrideApproval" class="btn" type="button">Override approval</button><button id="ownerReload" class="btn" type="button">Refresh</button></div><p id="ownerMessage" class="fine-print">No action is taken without confirmation.</p></div><div class="ops-grid phase3-spaced"><article class="panel"><h2>Correct finalized payroll in place</h2><p class="muted">Correct period dates, status and individual simulated pay lines. Every revision preserves the previous and new values.</p><label>Finalized or other period<select id="ownerRun"></select></label><div class="three-fields"><label>Start<input type="date" id="ownerStart"></label><label>End<input type="date" id="ownerEnd"></label><label>Pay date<input type="date" id="ownerPayDate"></label></div><label>Owner override status<select id="ownerRunStatus"><option>draft</option><option>submitted</option><option>approved</option><option>finalized</option><option>rejected</option><option>voided</option></select></label><button id="ownerSavePeriod" class="btn primary" type="button">Correct this same pay period</button><h3>Correct individual pay amounts</h3><label>Employee pay line<select id="ownerLine"></select></label><div class="three-fields"><label>Regular ($)<input id="ownerRegular" type="number" min="0" step=".01"></label><label>Overtime ($)<input id="ownerOvertime" type="number" min="0" step=".01"></label><label>Bonus ($)<input id="ownerBonus" type="number" min="0" step=".01"></label><label>Deduction ($)<input id="ownerDeduction" type="number" min="0" step=".01"></label><label>Regular hours<input id="ownerRegHours" type="number" min="0" step=".01"></label><label>Overtime hours<input id="ownerOtHours" type="number" min="0" step=".01"></label></div><button class="btn primary" id="ownerSaveLine" type="button">Correct finalized pay line in place</button></article><article class="panel"><h2>Recent owner actions</h2><div id="ownerAuditList" class="list"></div></article></div>';
+ root.innerHTML='<div class="panel"><div class="eyebrow">OWNER AUTHORITY</div><h2>Owner Control Center</h2><p class="muted">Override or remove records within this simulation. Changes require a reason and are entered in the immutable owner activity log. This does not delete Firebase Authentication users or external data.</p><div class="three-fields"><label>Client<select id="ownerTenant"></select></label><label>Record type<select id="ownerKind"></select></label><label>Record<select id="ownerRecord"></select></label></div><label>Required action reason<textarea id="ownerReason" maxlength="500" minlength="10" placeholder="Explain the override or deletion"></textarea></label><div class="actions"><button id="ownerArchive" class="btn" type="button">Archive / void</button><button id="ownerDelete" class="btn danger" type="button">Delete record</button><select id="ownerApprovalStatus" aria-label="Owner approval override"><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select><button id="ownerOverrideApproval" class="btn primary" type="button">Override approval / signoff</button><button id="ownerReload" class="btn" type="button">Refresh</button></div><p id="ownerMessage" class="fine-print">Owner overrides bypass the normal second-party requirement. Every decision requires a reason, confirmation and recorded owner identity.</p></div><div class="ops-grid phase3-spaced"><article class="panel"><h2>Correct finalized payroll in place</h2><p class="muted">Correct period dates, status and individual simulated pay lines. Every revision preserves the previous and new values.</p><label>Finalized or other period<select id="ownerRun"></select></label><div class="three-fields"><label>Start<input type="date" id="ownerStart"></label><label>End<input type="date" id="ownerEnd"></label><label>Pay date<input type="date" id="ownerPayDate"></label></div><label>Owner override status<select id="ownerRunStatus"><option>draft</option><option>submitted</option><option>approved</option><option>finalized</option><option>rejected</option><option>voided</option></select></label><button id="ownerSavePeriod" class="btn primary" type="button">Correct this same pay period</button><h3>Correct individual pay amounts</h3><label>Employee pay line<select id="ownerLine"></select></label><div class="three-fields"><label>Regular ($)<input id="ownerRegular" type="number" min="0" step=".01"></label><label>Overtime ($)<input id="ownerOvertime" type="number" min="0" step=".01"></label><label>Bonus ($)<input id="ownerBonus" type="number" min="0" step=".01"></label><label>Deduction ($)<input id="ownerDeduction" type="number" min="0" step=".01"></label><label>Regular hours<input id="ownerRegHours" type="number" min="0" step=".01"></label><label>Overtime hours<input id="ownerOtHours" type="number" min="0" step=".01"></label></div><button class="btn primary" id="ownerSaveLine" type="button">Correct finalized pay line in place</button></article><article class="panel"><h2>Recent owner actions</h2><div id="ownerAuditList" class="list"></div></article></div>';
  const $=id=>root.querySelector("#"+id),S=()=>getState();
  let records=[],runs=[],lines=[],cursorTenant="";
  const tenant=()=>$("ownerTenant").value;
@@ -20,6 +20,16 @@ export function mountOwnerControls({db,getState,notify,confirmAction,refreshComp
   return (v.title||v.reason||v.workDate||v.date||"Record")+" ("+d.id.slice(0,8)+")";
  }
  function setOptions(select,items,label){const current=select.value;select.replaceChildren(opt("",label),...items);if([...select.options].some(o=>o.value===current))select.value=current}
+ function setReviewChoices(kind){
+  const statuses=REVIEW_STATES[kind]||[];
+  const select=$("ownerApprovalStatus");
+  select.replaceChildren(...statuses.map(value=>opt(value,value.replaceAll("_"," "))));
+  const available=statuses.length>0;
+  select.disabled=!available;
+  $("ownerOverrideApproval").disabled=!available;
+  const record=records.find(d=>d.id===$("ownerRecord").value);
+  if(record&&statuses.includes(record.data().status))select.value=record.data().status;
+ }
  async function readKind(){
   ensureOwner();records=[];if(!tenant())return;
   const kind=$("ownerKind").value||"employees";
@@ -27,6 +37,7 @@ export function mountOwnerControls({db,getState,notify,confirmAction,refreshComp
   if(snap.size>=200)throw Error("200-record limit reached. Narrow the workspace before deleting or overriding.");
   records=snap.docs;
   setOptions($("ownerRecord"),records.map(d=>opt(d.id,textFor(kind,d))),"Choose record");
+  setReviewChoices(kind);
  }
  async function loadRuns(){
   runs=[];lines=[];
@@ -94,6 +105,7 @@ export function mountOwnerControls({db,getState,notify,confirmAction,refreshComp
  }
  $("ownerTenant").onchange=()=>refresh().catch(displayError);
  $("ownerKind").onchange=()=>readKind().catch(displayError);
+ $("ownerRecord").onchange=()=>setReviewChoices($("ownerKind").value);
  $("ownerRun").onchange=()=>loadLines().catch(displayError);
  $("ownerLine").onchange=fillLine;
  $("ownerReload").onclick=()=>refresh().catch(displayError);
@@ -160,20 +172,31 @@ export function mountOwnerControls({db,getState,notify,confirmAction,refreshComp
    ensureOwner();
    const kind=$("ownerKind").value,record=records.find(d=>d.id===$("ownerRecord").value);
    const next=$("ownerApprovalStatus").value,why=reason($("ownerReason").value);
-   if(!["timeEntries","timeCorrections","leaveRequests"].includes(kind))throw Error("Select a time entry, leave request or correction request");
-   if(!record||!["pending","approved","rejected"].includes(next))throw Error("Select a valid record and decision");
-   const reviewField=kind==="timeEntries"?"approvedBy":"reviewedBy";
-   if(!await confirmAction("Owner approval override","Override this "+kind+" record to "+next+"? An owner activity record will be retained."))return;
-   const batch=writeBatch(db);
-   batch.update(record.ref,{status:next,[reviewField]:next==="pending"?"":S().user.uid});
-   await auditBatch(batch,kind,record.id,"override approval",why,record.data());
-   await batch.commit();
-   notify("Owner approval override saved.");await refresh();await refreshCompany();
+   if(!record)throw Error("Choose an existing record to override");
+   if(!REVIEW_STATES[kind]?.includes(next))throw Error("Choose a supported approval or payroll signoff state");
+   const before=record.data();
+   const after=ownerApprovalOverride(kind,before,next,S().user.uid);
+   const label=textFor(kind,record);
+   if(!await confirmAction("Owner approval override",
+    "Override "+label+" from "+before.status+" to "+next+"? This expressly bypasses any separate approver and records you as the owner responsible."))return;
+   if(kind==="payrollRuns"){
+    // Payroll signoff changes are tied to immutable before/after revisions in Firestore Rules.
+    await revise(record,"period",record.id,after,why,record.ref);
+   }else{
+    const reviewer=kind==="timeEntries"?"approvedBy":"reviewedBy";
+    const batch=writeBatch(db);
+    batch.update(record.ref,{status:next,[reviewer]:after[reviewer]});
+    await auditBatch(batch,kind,record.id,"override approval",why,before);
+    await batch.commit();
+    notify("Owner approval override saved and attributed to your account.");
+    await refresh();await refreshCompany();
+   }
   }catch(e){displayError(e)}
  };
  $("ownerArchive").onclick=()=>deleteSelected(true);
  $("ownerDelete").onclick=()=>deleteSelected(false);
  setOptions($("ownerKind"),kinds.map(([a,b])=>opt(a,b)),"Choose record type");
  $("ownerKind").value="employees";
+ setReviewChoices("employees");
  return {refresh};
 }
