@@ -167,7 +167,14 @@ export async function mountPhase2({db,getState,refreshCompany,loadTenantDirector
   for(const t of s.tenants)tenant.append(option(t.id,t.name));
   tenant.value=s.tenants.some(t=>t.id===old)?old:(s.tenantId||"");
   fillTenant();
-  $("p2EditForm").classList.toggle("hidden",!canWrite());
+  const writable=canWrite();
+  $("p2EditForm").classList.toggle("hidden",!writable);
+  $("p2Csv").disabled=!writable;
+  $("p2Preview").disabled=!writable;
+  $("p2Commit").disabled=!writable||!preview.length;
+  $("p2BulkApply").disabled=!writable;
+  $("p2BulkStatus").disabled=!writable;
+  $("p2SelectAll").disabled=!writable;
   $("p2ClientForm").classList.toggle("hidden",!s.platform);
   void renderMembers().catch(e=>notifyError("Membership display failed",e));
  }
