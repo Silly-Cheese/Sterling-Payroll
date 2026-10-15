@@ -50,3 +50,16 @@ test("Employee portal files shipped with Pages deployment",()=>{
  const workflow=fs.readFileSync(new URL("../.github/workflows/pages.yml",import.meta.url),"utf8");
  for(const file of ["phase4.html","src/phase4.js","src/phase4-core.js"])assert.ok(workflow.includes(file));
 });
+
+test("Phase 4 acknowledgment requests are limited to linked employees",()=>{
+ const rules=fs.readFileSync(new URL("../firestore.rules",import.meta.url),"utf8");
+ const portal=fs.readFileSync(new URL("../src/phase4.js",import.meta.url),"utf8");
+ const template=fs.readFileSync(new URL("../phase4.html",import.meta.url),"utf8");
+ assert.match(rules,/match \/employeeRequests\/\{uid\}\/items\/\{requestId\}/);
+ assert.match(rules,/request\.auth\.uid == uid && employeeLinked\(t\)/);
+ assert.match(rules,/resource\.data\.status == 'pending' && request\.resource\.data\.status == 'submitted'/);
+ assert.match(rules,/request\.resource\.data\.diff\(resource\.data\)\.affectedKeys\(\)\.hasOnly\(\['status','response','updatedAt'\]\)/);
+ assert.match(portal,/async function fetchRequests\(uid,version\)/);
+ assert.match(portal,/addDoc\(coll\("employeeRequests",threadUid,"items"\)/);
+ assert.match(template,/id="p4Requests"/);
+});
