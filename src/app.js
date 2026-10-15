@@ -20,7 +20,8 @@ const auth=getAuth(app),db=getFirestore(app),$=id=>document.getElementById(id);
 const state={user:null,platform:false,platformOwner:false,platformWrite:false,platformRole:"client",tenants:[],tenantId:"",role:"",employees:[],time:[],runs:[],selectedRun:null,lines:[],page:"dashboard",register:false,moreEmployees:false,moreTime:false,moreRuns:false,employeeCursor:null,timeCursor:null,runCursor:null,clientCursor:null,moreClients:false};
 const titles={
  owner:["Owner Control Center","Correct finalized fictional payroll in place, override and delete records with audit history."],
- service:["Client Services","Simulated billing, client service plans and support cases."],
+ service:["Client Services","Subscription terms, fictional invoicing, service history and support."],
+ assurance:["Assurance Center","Integrity checks, activity review, exports and system health."],
  employeePortal:["Employee Portal","Private fictional pay statements, profile preferences and company communications."],
  staff:["Staff & Accounts","Assign Sterling staff privileges and company memberships."],
  dashboard:["Executive overview","Everything you need to manage simulated payroll across client businesses."],
@@ -62,8 +63,9 @@ function go(page){
  if(page==="staff"&&!state.platformOwner)page="dashboard";
  if(page==="owner"&&!state.platformOwner)page="dashboard";
  if(page==="service"&&(!state.tenantId||state.role==="employee"))page="dashboard";
+ if(page==="assurance"&&(!state.tenantId||!canAdmin()))page="dashboard";
  if(page==="employeePortal"&&!state.tenantId)page="dashboard";
- if(state.role==="employee"&&["employees","operations","time","payroll","access","service","clients"].includes(page))page=state.tenantId?"employeePortal":"dashboard";
+ if(state.role==="employee"&&["employees","operations","time","payroll","access","service","assurance","clients"].includes(page))page=state.tenantId?"employeePortal":"dashboard";
  if(["employees","operations","time","payroll","access"].includes(page)&&!state.tenantId)page="dashboard";
  if(page==="access"&&!canAdmin())page="dashboard";
  state.page=page;
@@ -77,6 +79,7 @@ function go(page){
  if(page==="staff")void staffUI?.refresh();
  if(page==="owner")void ownerUI?.refresh();
  if(page==="service")void phase5?.refresh();
+ if(page==="assurance")void phase6?.refresh();
  if(page==="employeePortal")void phase4?.refresh();
  if(page==="dashboard")renderDashboard();
  if(page==="clients")renderClients();
@@ -89,6 +92,31 @@ function go(page){
 }
 for(const nav of document.querySelectorAll("[data-page]"))nav.addEventListener("click",()=>go(nav.dataset.page));
 $("mobileMenu").addEventListener("click",()=>document.querySelector(".sidebar").classList.toggle("open"));
+const quickDialog=$("quickNav"),quickInput=$("quickNavSearch"),quickResults=$("quickNavResults");
+function renderQuickNav(){
+ const search=quickInput.value.toLowerCase().trim();quickResults.replaceChildren();
+ const pages=Object.entries(titles).filter(([page,[title]])=>{
+  const node=document.querySelector('#nav [data-page="'+page+'"]');
+  return node&&!node.classList.contains("hidden")&&(title.toLowerCase().includes(search)||page.toLowerCase().includes(search));
+ });
+ for(const [page,[title,description]] of pages){
+  const entry=mk("button","quick-nav-entry");entry.type="button";
+  entry.append(mk("strong","",title),mk("small","",description));
+  entry.onclick=()=>{quickDialog.close();go(page)};quickResults.append(entry);
+ }
+ if(!pages.length)quickResults.append(mk("p","muted","No permitted pages match your search."));
+}
+function openQuickNav(){quickInput.value="";renderQuickNav();quickDialog.showModal();quickInput.focus()}
+$("openQuickNav").onclick=openQuickNav;quickInput.oninput=renderQuickNav;
+document.addEventListener("keydown",event=>{
+ if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="k"){event.preventDefault();if(!quickDialog.open)openQuickNav()}
+ if(event.key==="/"&&!quickDialog.open&&!["INPUT","TEXTAREA","SELECT"].includes(document.activeElement?.tagName)){
+  event.preventDefault();openQuickNav()
+ }
+});
+window.addEventListener("offline",()=>{$("connectionNotice").classList.remove("hidden")});
+window.addEventListener("online",()=>{$("connectionNotice").classList.add("hidden")});
+
 $("signOut").addEventListener("click",()=>signOut(auth).catch(e=>fail(e,"Sign out failed")));
 
 $("authToggle").addEventListener("click",()=>{
@@ -162,7 +190,7 @@ async function chooseTenant(id,writeStorage=true){
  document.querySelectorAll(".client-only").forEach(node=>node.classList.toggle("hidden",!id));
  const employeeOnly=state.role==="employee";
  for(const nav of document.querySelectorAll("#nav [data-page]")){
-  if(["employees","operations","time","payroll","access","service"].includes(nav.dataset.page)&&employeeOnly)nav.classList.add("hidden");
+  if(["employees","operations","time","payroll","access","service","assurance"].includes(nav.dataset.page)&&employeeOnly)nav.classList.add("hidden");
  }
  const portalNav=document.querySelector("#nav [data-page=employeePortal]");
  if(portalNav)portalNav.classList.toggle("hidden",!id||!(employeeOnly||canAdmin()));
@@ -170,6 +198,7 @@ async function chooseTenant(id,writeStorage=true){
  document.querySelectorAll(".platform-only").forEach(node=>node.classList.toggle("hidden",!state.platform));
  document.querySelectorAll(".owner-only").forEach(node=>node.classList.toggle("hidden",!state.platformOwner));
  $("clientForm").classList.toggle("hidden",!state.platformWrite);
+ $("sidebarRole").textContent=state.platformOwner?"Sterling owner":state.platformRole!=="client"?state.platformRole.replaceAll("_"," "):state.role==="employee"?"Employee portal":state.role?state.role.replaceAll("_"," "):"Client account";
  const editOnly=document.querySelectorAll("#employeeForm,#timeForm,#runForm");
  editOnly.forEach(form=>form.classList.toggle("hidden",!canPayroll()));
  if(!id){state.employees=[];state.time=[];state.runs=[];state.selectedRun=null;go("dashboard");return}
@@ -206,6 +235,15 @@ async function refreshCompany(){
 }
 function renderDashboard(){
  const el=$("metrics");el.replaceChildren();
+ $("overviewRole").textContent=state.platformOwner?"STERLING OWNER":state.role?state.role.replaceAll("_"," ").toUpperCase():"CLIENT ACCOUNT";
+ $("overviewGreeting").textContent=state.tenantId?(state.tenants.find(t=>t.id===state.tenantId)?.name||"Your company")+" at a glance.":"Your Sterling command center.";
+ $("overviewSubline").textContent=state.tenantId?"Manage fictional pay periods, client services and employee operations from this workspace.":"Select an authorized client company to start. Account creation alone does not grant company access.";
+ const quick=$("quickActions");quick.replaceChildren();
+ const links=state.tenantId?(state.role==="employee"?[["employeePortal","My pay & messages"]]:[
+  ["payroll","Prepare payroll"],["time","Review time"],["employees","Employee directory"],["service","Client billing"],...(canAdmin()?[["assurance","Run health check"]]:[])]):
+  [...(state.platform?[["clients","Manage client companies"]]:[]),...(state.platformOwner?[["staff","Manage staff permissions"]]:[])];
+ for(const [page,label] of links)quick.append(button(label,()=>go(page),"quick-action"));
+ if(!links.length)quick.append(mk("p","muted","Ask a Sterling administrator to assign an authorized company workspace."));
  const metrics=[
   ["Client companies",state.platform?state.tenants.length:state.tenants.length,"Managed client workspaces"],
   ["Employees",state.tenantId?state.employees.length:"—","Current company directory"],
@@ -512,7 +550,7 @@ async function confirmAction(title,message){
   modal.addEventListener("close",()=>resolve(modal.returnValue==="confirm"),{once:true});
  });
 }
-let phase2=null,phase2Pending=null,phase3=null,phase4=null,phase5=null,ownerUI=null,staffUI=null;
+let phase2=null,phase2Pending=null,phase3=null,phase4=null,phase5=null,phase6=null,ownerUI=null,staffUI=null;
 async function initializePhase2(){
  if(phase2)return phase2;
  if(!phase2Pending){
@@ -544,15 +582,19 @@ onAuthStateChanged(auth,async user=>{
   if(!staffUI)staffUI=mountStaffAccounts({db,getState:()=>state,notify:toast,confirmAction});
   if(!phase3)phase3=await mountPhase3({db,getState:()=>state,refreshCompany,notify:toast,confirmAction});
   if(!phase4){
-   try{const {mountPhase4}=await import("./phase4.js?v=phase5a");phase4=await mountPhase4({db,getState:()=>state,notify:toast,confirmAction})}
+   try{const {mountPhase4}=await import("./phase4.js?v=phase6-final");phase4=await mountPhase4({db,getState:()=>state,notify:toast,confirmAction})}
    catch(error){console.error("Employee portal module unavailable",error);toast("Employee portal assets are still deploying. Please refresh after GitHub Pages finishes.",true)}
   }
   if(!phase5){
-   try{const {mountPhase5}=await import("./phase5.js?v=phase5a");phase5=mountPhase5({db,getState:()=>state,notify:toast,confirmAction})}
+   try{const {mountPhase5}=await import("./phase5.js?v=phase6-final");phase5=mountPhase5({db,getState:()=>state,notify:toast,confirmAction})}
    catch(error){console.error("Client services module unavailable",error);toast("Client services are not yet available; check the deployment.",true)}
   }
+  if(!phase6){
+   try{const {mountPhase6}=await import("./phase6.js?v=phase6-final");phase6=await mountPhase6({db,getState:()=>state,notify:toast,confirmAction})}
+   catch(error){console.error("Assurance module unavailable",error);toast("Assurance tools are not yet deployed.",true)}
+  }
   if(state.platformOwner&&!ownerUI){
-   try{const {mountOwnerControls}=await import("./owner.js?v=phase5a");ownerUI=mountOwnerControls({db,getState:()=>state,notify:toast,confirmAction,refreshCompany})}
+   try{const {mountOwnerControls}=await import("./owner.js?v=phase6-final");ownerUI=mountOwnerControls({db,getState:()=>state,notify:toast,confirmAction,refreshCompany})}
    catch(error){console.error("Owner control module unavailable",error);toast("Owner controls are not yet deployed.",true)}
   }
   if(state.platformOwner){await staffUI?.refresh();await ownerUI?.refresh()}
