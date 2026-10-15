@@ -324,6 +324,28 @@ function renderRunDetails(){
    const row=mk("tr");
    for(const v of [line.employeeName,money(line.regularCents),money(line.overtimeCents),money(line.bonusCents),
      money(line.deductionCents),money(line.grossCents),money(line.netCents)])row.append(mk("td","",v));
+   const cell=mk("td");
+   if(run.status==="draft"&&canPayroll()){
+    const bonus=mk("input","adjust-input");
+    const deduction=mk("input","adjust-input");
+    bonus.type=deduction.type="number";
+    bonus.min=deduction.min="0";
+    bonus.step=deduction.step="0.01";
+    bonus.value=(line.bonusCents/100).toFixed(2);
+    deduction.value=(line.deductionCents/100).toFixed(2);
+    bonus.setAttribute("aria-label","Bonus: "+line.employeeName);
+    deduction.setAttribute("aria-label","Deduction: "+line.employeeName);
+    cell.append(bonus,deduction,button("Save",async()=>{
+     const extra=toCents(bonus.value),less=toCents(deduction.value);
+     const gross=line.regularCents+line.overtimeCents+extra;
+     if(less>gross)throw Error("Deduction exceeds gross");
+     const {id:omit,...payload}=line;
+     await setDoc(doc(db,"tenants",state.tenantId,"payrollRuns",run.id,"lines",line.employeeId),
+       {...payload,bonusCents:extra,deductionCents:less,grossCents:gross,netCents:gross-less});
+     await selectRun(run.id);toast("Draft adjustment saved.");
+    },"small"));
+   }else cell.textContent="Locked";
+   row.append(cell);
    tbody.append(row);
   }
   table.append(tbody);wrap.append(table);
