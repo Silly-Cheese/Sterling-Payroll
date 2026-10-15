@@ -38,6 +38,9 @@ jobs:
           node --check src/modals.js
           node --check src/deletion-engine.js
           node --check src/workspace-ui.js
+          node --check src/commissions.js
+          node --check src/commission-core.js
+          node --check src/commission-payroll.js
       - name: Payroll engine tests
         run: node --test tests/*.test.mjs
 
