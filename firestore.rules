@@ -3,19 +3,19 @@ service cloud.firestore {
  match /databases/{database}/documents {
   function signedIn(){return request.auth != null;}
   function platformPath(){return /databases/$(database)/documents/platformAdmins/$(request.auth.uid);}
-  function bootstrapPath(){return /databases/$(database)/documents/system/bootstrap;}
-  function ownerEmail(){return 'SET_OWNER_EMAIL_BEFORE_DEPLOYMENT@example.invalid';}
-  function initialOwner(uid){return signedIn() && request.auth.uid == uid && request.auth.token.email_verified == true &&
-    request.auth.token.email == ownerEmail() && !exists(bootstrapPath()) && existsAfter(bootstrapPath()) &&
-    getAfter(bootstrapPath()).data.ownerUid == uid && getAfter(bootstrapPath()).data.initialized == true;}
-  function platform(){return signedIn() && exists(platformPath()) && get(platformPath()).data.active == true;}
+  function staffPath(){return /databases/$(database)/documents/platformStaff/$(request.auth.uid);}
+  function owner(){return signedIn() && exists(platformPath()) && get(platformPath()).data.active == true;}
+  function staffRole(){return signedIn() && exists(staffPath()) && get(staffPath()).data.active == true ? get(staffPath()).data.role : 'none';}
+  function platform(){return owner() || staffRole() == 'administrator';}
+  function platformOps(){return platform() || staffRole() == 'payroll_operator';}
+  function platformView(){return platformOps() || staffRole() == 'support';}
   function memberPath(t){return /databases/$(database)/documents/tenants/$(t)/members/$(request.auth.uid);}
   function member(t){return signedIn() && exists(memberPath(t)) && get(memberPath(t)).data.status == 'active' &&
     get(/databases/$(database)/documents/tenants/$(t)).data.status == 'active';}
   function role(t){return get(memberPath(t)).data.role;}
   function clientAdmin(t){return platform() || (member(t) && role(t) == 'client_admin');}
-  function payrollStaff(t){return clientAdmin(t) || (member(t) && role(t) == 'payroll_specialist');}
-  function clientView(t){return platform() || member(t);}
+  function payrollStaff(t){return platformOps() || clientAdmin(t) || (member(t) && role(t) == 'payroll_specialist');}
+  function clientView(t){return platformView() || member(t);}
   function text(v,n){return v is string && v.size() > 0 && v.size() <= n;}
   function cent(v){return v is int && v >= 0 && v <= 1000000000;}
   function hours(v){return v is number && v >= 0 && v <= 744;}
@@ -23,35 +23,51 @@ service cloud.firestore {
   function employeePath(t,e){return /databases/$(database)/documents/tenants/$(t)/employees/$(e);}
   function runPath(t,r){return /databases/$(database)/documents/tenants/$(t)/payrollRuns/$(r);}
 
-  // One-time owner claim: only the configured verified email may claim via atomic batch.
-  match /system/bootstrap {
-   allow get: if signedIn();
-   allow list: if false;
-   allow create: if signedIn() && request.auth.token.email_verified == true &&
-     request.auth.token.email == ownerEmail() && !exists(bootstrapPath()) &&
-     request.resource.data.keys().hasOnly(['ownerUid','initialized','createdAt']) &&
-     request.resource.data.ownerUid == request.auth.uid && request.resource.data.initialized == true &&
-     existsAfter(platformPath()) && getAfter(platformPath()).data.role == 'owner' &&
-     getAfter(platformPath()).data.active == true;
-   allow update,delete: if false;
-  }
+  // Existing owner privileges remain unchanged. No automatic owner claim on registration.
   match /platformAdmins/{uid} {
-   allow get: if signedIn() && (request.auth.uid == uid || platform());
-   allow list: if platform();
-   allow create: if initialOwner(uid) &&
-     request.resource.data.keys().hasOnly(['role','active','createdAt']) &&
-     request.resource.data.role == 'owner' && request.resource.data.active == true;
-   allow update,delete: if false;
+   allow get: if signedIn() && (request.auth.uid == uid || owner());
+   allow list: if owner();
+   allow write: if false;
+  }
+  // Self-registered directory entries contain no elevated permissions.
+  match /accounts/{uid} {
+   allow get: if signedIn() && (request.auth.uid == uid || owner() || platform());
+   allow list: if owner() || platform();
+   allow create: if signedIn() && request.auth.uid == uid &&
+    request.resource.data.keys().hasOnly(['email','displayName','accountType','createdAt']) &&
+    request.resource.data.email == request.auth.token.email &&
+    request.resource.data.email is string && request.resource.data.email.size() <= 254 &&
+    request.resource.data.displayName is string && request.resource.data.displayName.size() <= 120 &&
+    request.resource.data.accountType == 'client';
+   allow update: if signedIn() && request.auth.uid == uid &&
+    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName']) &&
+    request.resource.data.displayName is string && request.resource.data.displayName.size() <= 120;
+   allow delete: if false;
+  }
+  // Only the existing platform owner can elevate registered identities into staff.
+  match /platformStaff/{uid} {
+   allow get: if signedIn() && (request.auth.uid == uid || owner());
+   allow list: if owner();
+   allow create: if owner() && exists(/databases/$(database)/documents/accounts/$(uid)) &&
+    request.resource.data.keys().hasOnly(['role','active','grantedBy','updatedAt']) &&
+    request.resource.data.role in ['administrator','payroll_operator','support'] &&
+    request.resource.data.active == true && request.resource.data.grantedBy == request.auth.uid;
+   allow update: if owner() &&
+    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role','active','updatedAt']) &&
+    request.resource.data.role in ['administrator','payroll_operator','support'] &&
+    request.resource.data.active is bool &&
+    request.resource.data.grantedBy == resource.data.grantedBy;
+   allow delete: if owner();
   }
   // Private per-user directory of accepted client workspaces; never a permission grant by itself.
   match /userTenants/{uid}/items/{t} {
    allow get,list: if signedIn() && request.auth.uid == uid;
-   allow create: if signedIn() && request.auth.uid == uid &&
-     request.resource.data.keys().hasOnly(['tenantId','joinedAt']) &&
-     request.resource.data.tenantId == t &&
-     existsAfter(/databases/$(database)/documents/tenants/$(t)/members/$(uid)) &&
-     getAfter(/databases/$(database)/documents/tenants/$(t)/members/$(uid)).data.status == 'active';
-   allow update,delete: if false;
+   allow create: if clientAdmin(t) &&
+    existsAfter(/databases/$(database)/documents/tenants/$(t)/members/$(uid)) &&
+    request.resource.data.keys().hasOnly(['tenantId','joinedAt']) &&
+    request.resource.data.tenantId == t;
+   allow delete: if clientAdmin(t);
+   allow update: if false;
   }
   match /tenants/{t} {
    allow read: if clientView(t);
@@ -96,13 +112,11 @@ service cloud.firestore {
     allow get: if platform() || (signedIn() && request.auth.uid == uid) || clientAdmin(t);
     allow list: if clientAdmin(t);
     // Users only accept invitations addressed to their verified email.
-    allow create: if signedIn() && request.auth.uid == uid &&
-      request.auth.token.email_verified == true &&
-      exists(/databases/$(database)/documents/tenants/$(t)/invites/$(request.auth.token.email.lower())) &&
+    allow create: if clientAdmin(t) &&
+      exists(/databases/$(database)/documents/accounts/$(uid)) &&
       request.resource.data.keys().hasOnly(['email','role','status','joinedAt']) &&
-      request.resource.data.email == request.auth.token.email.lower() &&
-      request.resource.data.role ==
-         get(/databases/$(database)/documents/tenants/$(t)/invites/$(request.auth.token.email.lower())).data.role &&
+      request.resource.data.email == get(/databases/$(database)/documents/accounts/$(uid)).data.email &&
+      request.resource.data.role in ['client_admin','payroll_specialist','viewer'] &&
       request.resource.data.status == 'active';
     allow update: if clientAdmin(t) && uid != request.auth.uid &&
       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role','status']) &&
