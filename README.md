@@ -38,6 +38,12 @@ See [SETUP.md](./SETUP.md) for Firebase Authentication, Firestore rules deployme
 - Text-only fictional forms/acknowledgment requests with in-app pending-item counts.
 - Client admins select known employee records; no manual Firebase UID entry or email-verification gate.
 
+## Phase 4 delivered and Phase 5 underway
+- **Employee Portal:** explicit employer-linked identity, private simulated paystub history, preferences, announcements, secure company messages and employee response requests.
+- **Owner Controls:** trusted owner can correct finalized fictional pay periods and pay lines in place with before/after revisions, archive personnel and delete supported records with an activity log.
+- **Client Services:** simulated invoices, client service tiers, support tickets and status tracking; further Phase 5 workflows remain in development.
+- **Deployment protection:** dynamic employee portal loading and Pages asset checks prevent a missing module from preventing the login screen.
+
 ## Hosting
 Static web frontend, compatible with GitHub Pages; Firebase project: `sterling-payroll-5d200`.
 
