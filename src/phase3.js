@@ -76,8 +76,23 @@ export async function mountPhase3({db,getState,refreshCompany,notify,confirmActi
   },"No leave requests pending review.");
  }
  async function refresh(){
-  if(!S().tenantId)return;
-  try{await retrieve();draw()}catch(e){describeError("Phase 3 data load failed",e)}
+  const tenant=S().tenantId;
+  if(!tenant){corrections=[];leaves=[];tenantLoaded="";return}
+  if(tenant!==tenantLoaded){
+   corrections=[];leaves=[];policy=DEFAULT_POLICY;tenantLoaded="";
+   for(const id of ["p3TimeQueue","p3Corrections","p3Leaves","p3Comparison"]){
+    const target=$(id);if(target)target.replaceChildren();
+   }
+   $("p3RunReview").textContent="Loading company-specific payroll records…";
+  }
+  try{await retrieve();if(tenant===S().tenantId)draw()}catch(e){
+   corrections=[];leaves=[];tenantLoaded="";
+   for(const id of ["p3TimeQueue","p3Corrections","p3Leaves","p3Comparison"]){
+    const target=$(id);if(target)target.replaceChildren();
+   }
+   $("p3RunReview").textContent="Company data could not be loaded. No previous client data is displayed.";
+   describeError("Phase 3 data load failed",e);
+  }
  }
  async function reviewTime(entry,status){
   try{
