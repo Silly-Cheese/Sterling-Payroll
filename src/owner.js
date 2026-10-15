@@ -22,7 +22,7 @@ export function mountOwnerControls({db,getState,notify,confirmAction,refreshComp
  function setOptions(select,items,label){const current=select.value;select.replaceChildren(opt("",label),...items);if([...select.options].some(o=>o.value===current))select.value=current}
  async function readKind(){
   ensureOwner();records=[];if(!tenant())return;
-  const kind=$("ownerKind").value;
+  const kind=$("ownerKind").value||"employees";
   const snap=await getDocs(query(collection(db,"tenants",tenant(),kind),limit(200)));
   if(snap.size>=200)throw Error("200-record limit reached. Narrow the workspace before deleting or overriding.");
   records=snap.docs;
@@ -70,7 +70,7 @@ export function mountOwnerControls({db,getState,notify,confirmAction,refreshComp
   if(!S().platformOwner)return;
   const t=S().tenants;
   setOptions($("ownerTenant"),t.map(x=>opt(x.id,x.name)),"Choose client company");
-  if(!$("ownerKind").options.length)setOptions($("ownerKind"),kinds.map(([a,b])=>opt(a,b)),"Choose record type");
+  if(!$("ownerKind").value)$("ownerKind").value="employees";
   const selected=tenant();cursorTenant=selected;
   if(!selected)return;
   await Promise.all([readKind(),loadRuns(),loadAudit()]);
@@ -121,6 +121,11 @@ export function mountOwnerControls({db,getState,notify,confirmAction,refreshComp
    ensureOwner();const why=reason($("ownerReason").value),kind=$("ownerKind").value,record=records.find(d=>d.id===$("ownerRecord").value);
    if(!record)throw Error("Select an existing record");
    const previous=record.data(),batch=writeBatch(db);
+   if(!archiveOnly&&kind==="employees"){
+    const links=await getDocs(query(collection(db,"tenants",tenant(),"employeeLinks"),limit(201)));
+    if(links.size>200)throw Error("Too many employee portal links to verify; do not delete this HR employee.");
+    if(links.docs.some(d=>d.data().employeeId===record.id))throw Error("Unlink this employee from any portal account before deletion.");
+   }
    if(archiveOnly){
     if(kind==="employees")batch.update(record.ref,{status:"inactive",updatedAt:serverTimestamp()});
     else if(kind==="payrollRuns"){
@@ -148,5 +153,6 @@ export function mountOwnerControls({db,getState,notify,confirmAction,refreshComp
  $("ownerArchive").onclick=()=>deleteSelected(true);
  $("ownerDelete").onclick=()=>deleteSelected(false);
  setOptions($("ownerKind"),kinds.map(([a,b])=>opt(a,b)),"Choose record type");
+ $("ownerKind").value="employees";
  return {refresh};
 }
