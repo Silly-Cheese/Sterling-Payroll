@@ -39,13 +39,14 @@ Acceptance criteria: no manual Firebase IDs in routine operations, owner can man
 Acceptance criteria: runs are internally consistent, correction approvals protected by Firestore, no real payments. Cross-account browser and Firestore emulator testing still required.
 
 ## Phase 4 — Employee & client self-service
-- Employee-scoped private account portal
-- Client dashboards, messages, document requests and notifications
-- Paystubs, personal profile and fictional earnings history
-- Employer-led account claiming with verified identity
-- Responsive mobile-first improvements
+**Status: implemented in repository; GitHub deployment and end-to-end Firebase security testing required.**
+- Employee-scoped private portal that restricts access to employer-linked HR identities
+- Company announcements, employee/employer private messages, fictional text-only acknowledgment requests and in-app attention counts
+- Printable simulation-labeled HTML paystubs, self-service preferences and finalized fictional earnings history (50-run initial limit)
+- Employer-approved account-to-employee linking by registered-account and named employee dropdowns (manual identity check, not email verification)
+- Responsive employee cards, message threads and portable printable statements
 
-Acceptance criteria: employees see only their own data; different client employers remain isolated.
+Acceptance criteria: employees see only their own finalized pay data; company employer/employee records remain isolated. Automated checks are green; live Firestore emulator/second-account acceptance testing still required.
 
 ## Phase 5 — Client plans, billing & support
 - Simulated service plans and client subscription states
