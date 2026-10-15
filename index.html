@@ -118,7 +118,7 @@
                 <button class="btn primary" type="submit">Create client company</button></form>
             </article>
             <article class="panel"><h2>Client directory</h2><p class="muted">Select a company to manage its personnel and payroll.</p>
-              <div class="list-toolbar"><input id="clientSearch" type="search" class="search-input" placeholder="Search client companies"><span id="clientCount" class="data-count"></span></div><div id="clientList" class="list"></div><button id="loadMoreClients" class="btn hidden" type="button">Load more clients</button><div id="phase2ClientTools"></div></article>
+              <div class="list-toolbar"><input id="clientSearch" type="search" class="search-input" placeholder="Search client companies"><span id="clientCount" class="data-count"></span></div><p id="clientSearchHint" class="fine-print" role="status">Search loaded records; typing 2+ letters also looks up company-name prefixes.</p><div id="clientList" class="list"></div><button id="loadMoreClients" class="btn hidden" type="button">Load more clients</button><div id="phase2ClientTools"></div></article>
           </div>
         </section>
         <section id="page-employees" class="page hidden">
@@ -136,7 +136,7 @@
             </article>
             <article class="panel"><div class="section-heading"><h2>Employee directory</h2><span id="empCount" class="subtle-pill">0 EMPLOYEES</span></div>
               <div class="list-toolbar"><input id="empSearch" class="search-input" type="search" placeholder="Find name, role or department"><select id="empStatus" aria-label="Filter employment status"><option value="all">All statuses</option><option value="active">Active</option><option value="leave">On leave</option><option value="inactive">Inactive</option></select></div>
-              <div id="employeeList" class="list"></div><button id="loadMoreEmployees" class="btn hidden" type="button">Load more employees</button></article>
+              <p id="empSearchHint" class="fine-print" role="status">Search loaded records; typing 2+ letters also looks up employee-name prefixes.</p><div id="employeeList" class="list"></div><button id="loadMoreEmployees" class="btn hidden" type="button">Load more employees</button></article>
           </div>
         </section>
         <section id="page-operations" class="page hidden"><div id="phase2Operations"></div></section>
