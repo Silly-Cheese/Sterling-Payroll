@@ -373,7 +373,7 @@ $("clientForm").addEventListener("submit",async event=>{
  const name=$("clientName").value.trim();if(name.length<2)return toast("Enter a company name.",true);
  try{
   const ref=await addDoc(collection(db,"tenants"),{name,status:"active",createdBy:state.user.uid,createdAt:serverTimestamp(),contactEmail:"",industry:"",servicePlan:"starter",notes:""});
-  $("clientForm").reset();await loadTenantDirectory();await chooseTenant(ref.id);go("access");
+  $("clientForm").reset();event.target.dispatchEvent(new Event("sterling:complete"));await loadTenantDirectory();await chooseTenant(ref.id);go("access");
   toast("Client created. Invite its administrators from Team Access.");
  }catch(e){fail(e,"Client creation failed")}
 });
@@ -397,7 +397,7 @@ $("employeeForm").addEventListener("submit",async event=>{
    status:"active",createdBy:state.user.uid,createdAt:serverTimestamp(),updatedAt:serverTimestamp()
   });
   auditClient(batch,"personnel","employee-create",record.id,$("empName").value.trim());await batch.commit();
-  $("employeeForm").reset();$("empType").dispatchEvent(new Event("change"));
+  $("employeeForm").reset();event.target.dispatchEvent(new Event("sterling:complete"));$("empType").dispatchEvent(new Event("change"));
   await refreshCompany();toast("Employee saved in this client workspace.");
  }catch(e){fail(e,"Employee creation failed")}
 });
@@ -464,7 +464,7 @@ $("timeForm").addEventListener("submit",async event=>{
    note:$("timeNote").value.trim(),createdAt:serverTimestamp(),createdBy:state.user.uid,status:"pending",approvedBy:""
   });
   auditClient(batch,"time","time-entry-create",entry.id,$("timeDate").value);await batch.commit();
-  $("timeRegular").value="8";$("timeOvertime").value="0";$("timeNote").value="";
+  $("timeRegular").value="8";$("timeOvertime").value="0";$("timeNote").value="";event.target.dispatchEvent(new Event("sterling:complete"));
   await refreshCompany();toast("Simulated time entry recorded.");
  }catch(e){fail(e,"Time entry failed")}
 });
@@ -497,7 +497,7 @@ $("runForm").addEventListener("submit",async event=>{
   const run=doc(sub("payrollRuns"));const batch=writeBatch(db);
   batch.set(run,{periodStart,periodEnd,payDate,status:"draft",createdAt:serverTimestamp(),createdBy:state.user.uid,submittedBy:"",approvedBy:"",finalizedBy:""});
   auditClient(batch,"payroll","payroll-create",run.id,periodStart+" → "+periodEnd);await batch.commit();
-  await refreshCompany();await selectRun(run.id);toast("Draft payroll created.");
+  await refreshCompany();await selectRun(run.id);event.target.dispatchEvent(new Event("sterling:complete"));toast("Draft payroll created.");
  }catch(e){fail(e,"Payroll run creation failed")}
 });
 function renderRuns(){
