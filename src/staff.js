@@ -1,6 +1,6 @@
 import {collection,doc,getDocs,getDoc,setDoc,updateDoc,writeBatch,serverTimestamp,query,limit} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 const ROLES=[["administrator","Administrator"],["payroll_operator","Payroll operator"],["support","Support (read only)"]];
-const CLIENT_ROLES=[["client_admin","Client administrator"],["payroll_specialist","Payroll specialist"],["viewer","Viewer"]];
+const CLIENT_ROLES=[["client_admin","Client administrator"],["payroll_specialist","Payroll specialist"],["viewer","Viewer"],["employee","Employee portal"]];
 const make=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e};
 const fill=(select,values)=>select.replaceChildren(...values.map(v=>{const e=make("option",v[1]);e.value=v[0];return e}));
 export function mountStaffAccounts({db,getState,notify,confirmAction}){
