@@ -103,3 +103,22 @@ input,select{border-radius:10px;padding:11px 12px;color:var(--ink);background:#0
 #page-employeePortal #p4PayHistory .item-actions .btn{white-space:nowrap}
 @media(max-width:740px){#page-employeePortal .phase4-hero{align-items:flex-start;flex-direction:column}#page-employeePortal #p4PayHistory .list-item{align-items:flex-start;flex-direction:column}#page-employeePortal .metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:420px){#page-employeePortal .metric-grid{grid-template-columns:1fr}#page-employeePortal .phase4-hero h2{font-size:25px}}
+
+/* Owner and client service workspaces: calm, responsive enterprise controls */
+#ownerControlCenter .panel,#phase5Suite .panel{min-width:0}
+#ownerControlCenter .three-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:15px 0}
+#ownerControlCenter .panel>label{margin-top:18px}
+#ownerControlCenter textarea,#phase5Suite textarea{font:inherit;color:var(--ink);background:#0d1115;border:1px solid #343d42;border-radius:10px;width:100%;padding:11px 12px;resize:vertical;min-height:95px}
+#ownerControlCenter textarea:focus,#phase5Suite textarea:focus{outline:2px solid var(--gold-2)}
+#ownerControlCenter .actions{margin:18px 0 9px}
+#ownerControlCenter .fine-print{line-height:1.7}
+#ownerAuditList{max-height:700px;overflow:auto}
+#phase5Suite .metric-grid{margin-top:0}
+#phase5Suite .list{max-height:580px;overflow:auto}
+#phase5Suite .item-actions select{min-width:120px}
+#phase5Suite .panel>p{line-height:1.7}
+#p4LinkPanel{margin:20px 0}
+#p4LinkPanel .list{max-height:320px;overflow:auto}
+#p4LinkPanel .list-item>.btn{margin-left:auto}
+@media(max-width:1000px){#ownerControlCenter .three-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:580px){#ownerControlCenter .three-fields{grid-template-columns:1fr}#ownerControlCenter .actions .btn{flex:1}#phase5Suite .list-item{flex-direction:column;align-items:stretch}#phase5Suite .item-actions{justify-content:flex-start}}
