@@ -3,6 +3,11 @@ service cloud.firestore {
  match /databases/{database}/documents {
   function signedIn(){return request.auth != null;}
   function platformPath(){return /databases/$(database)/documents/platformAdmins/$(request.auth.uid);}
+  function bootstrapPath(){return /databases/$(database)/documents/system/bootstrap;}
+  function ownerEmail(){return 'SET_OWNER_EMAIL_BEFORE_DEPLOYMENT@example.invalid';}
+  function initialOwner(uid){return signedIn() && request.auth.uid == uid && request.auth.token.email_verified == true &&
+    request.auth.token.email == ownerEmail() && !exists(bootstrapPath()) && existsAfter(bootstrapPath()) &&
+    getAfter(bootstrapPath()).data.ownerUid == uid && getAfter(bootstrapPath()).data.initialized == true;}
   function platform(){return signedIn() && exists(platformPath()) && get(platformPath()).data.active == true;}
   function memberPath(t){return /databases/$(database)/documents/tenants/$(t)/members/$(request.auth.uid);}
   function member(t){return signedIn() && exists(memberPath(t)) && get(memberPath(t)).data.status == 'active';}
@@ -17,11 +22,25 @@ service cloud.firestore {
   function employeePath(t,e){return /databases/$(database)/documents/tenants/$(t)/employees/$(e);}
   function runPath(t,r){return /databases/$(database)/documents/tenants/$(t)/payrollRuns/$(r);}
 
-  // Owner/operator grants are provisioned in the trusted Firebase Console only.
+  // One-time owner claim: only the configured verified email may claim via atomic batch.
+  match /system/bootstrap {
+   allow get: if signedIn();
+   allow list: if false;
+   allow create: if signedIn() && request.auth.token.email_verified == true &&
+     request.auth.token.email == ownerEmail() && !exists(bootstrapPath()) &&
+     request.resource.data.keys().hasOnly(['ownerUid','initialized','createdAt']) &&
+     request.resource.data.ownerUid == request.auth.uid && request.resource.data.initialized == true &&
+     existsAfter(platformPath()) && getAfter(platformPath()).data.role == 'owner' &&
+     getAfter(platformPath()).data.active == true;
+   allow update,delete: if false;
+  }
   match /platformAdmins/{uid} {
    allow get: if signedIn() && (request.auth.uid == uid || platform());
    allow list: if platform();
-   allow write: if false;
+   allow create: if initialOwner(uid) &&
+     request.resource.data.keys().hasOnly(['role','active','createdAt']) &&
+     request.resource.data.role == 'owner' && request.resource.data.active == true;
+   allow update,delete: if false;
   }
   // Private per-user directory of accepted client workspaces; never a permission grant by itself.
   match /userTenants/{uid}/items/{t} {
@@ -36,13 +55,21 @@ service cloud.firestore {
   match /tenants/{t} {
    allow read: if clientView(t);
    allow create: if platform() &&
-    request.resource.data.keys().hasOnly(['name','status','createdAt','createdBy']) &&
+    request.resource.data.keys().hasOnly(['name','status','createdAt','createdBy','contactEmail','servicePlan','industry','notes']) &&
     text(request.resource.data.name,120) &&
     request.resource.data.status == 'active' &&
+    request.resource.data.contactEmail is string && request.resource.data.contactEmail.size() <= 254 &&
+    request.resource.data.servicePlan in ['starter','standard','enterprise'] &&
+    request.resource.data.industry is string && request.resource.data.industry.size() <= 100 &&
+    request.resource.data.notes is string && request.resource.data.notes.size() <= 500 &&
     request.resource.data.createdBy == request.auth.uid;
    allow update: if platform() &&
-    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name','status']) &&
+    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name','status','contactEmail','servicePlan','industry','notes']) &&
     text(request.resource.data.name,120) &&
+    request.resource.data.contactEmail is string && request.resource.data.contactEmail.size() <= 254 &&
+    request.resource.data.servicePlan in ['starter','standard','enterprise'] &&
+    request.resource.data.industry is string && request.resource.data.industry.size() <= 100 &&
+    request.resource.data.notes is string && request.resource.data.notes.size() <= 500 &&
     request.resource.data.status in ['active','suspended'];
    allow delete: if false;
 
@@ -57,7 +84,11 @@ service cloud.firestore {
       request.resource.data.email.size() <= 254 &&
       request.resource.data.role in ['client_admin','payroll_specialist','viewer'] &&
       request.resource.data.createdBy == request.auth.uid;
-    allow update,delete: if false;
+    allow update: if clientAdmin(t) &&
+     request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role']) &&
+     request.resource.data.email == resource.data.email &&
+     request.resource.data.role in ['client_admin','payroll_specialist','viewer'];
+   allow delete: if clientAdmin(t);
    }
 
    match /members/{uid} {
@@ -72,7 +103,12 @@ service cloud.firestore {
       request.resource.data.role ==
          get(/databases/$(database)/documents/tenants/$(t)/invites/$(request.auth.token.email.lower())).data.role &&
       request.resource.data.status == 'active';
-    allow update,delete: if false;
+    allow update: if clientAdmin(t) && uid != request.auth.uid &&
+      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role','status']) &&
+      request.resource.data.role in ['client_admin','payroll_specialist','viewer'] &&
+      request.resource.data.status in ['active','suspended'] &&
+      resource.data.email == request.resource.data.email;
+    allow delete: if false;
    }
 
    match /employees/{e} {
