@@ -405,13 +405,13 @@ function renderEmployees(){
  if(!employees.length)empty(el,"No employee records match this search.");
  for(const e of employees.slice(0,250)){
   const description=[e.jobTitle,e.department,e.payType==="hourly"?money(e.hourlyRateCents)+"/hr":money(e.annualSalaryCents)+"/year"].filter(Boolean).join(" • ");
-  const actions=canPayroll()?[button(e.status==="active"?"Place on leave":"Reactivate",async()=>{
+  const actions=canPayroll()?[button("Edit",async()=>{go("operations");const editor=await initializePhase2();editor.edit(e.id)},"small"),button(e.status==="active"?"On leave":"Reactivate",async()=>{
    const status=e.status==="active"?"leave":"active";
    const update=writeBatch(db);update.update(doc(db,"tenants",state.tenantId,"employees",e.id),{status,updatedAt:serverTimestamp()});
    auditClient(update,"personnel","employee-status",e.id,e.status+" → "+status);await update.commit();
    await refreshCompany();toast("Employee status updated.");
   },"small")]:[];
-  if(state.platformOwner)actions.push(button("Archive",()=>ownerActions.archiveEmployee(e),"small"),button("Delete",()=>ownerActions.remove("employees",e),"small danger"));
+  if(state.platformOwner)actions.push(button("Delete",()=>ownerActions.remove("employees",e),"small danger"));
   el.append(item(e.displayName,description,actions,e.status,e.status==="active"?"success":""));
  }
  if(employees.length>250)el.append(mk("p","fine-print","First 250 matching employees shown. Refine your search or load more records."));
