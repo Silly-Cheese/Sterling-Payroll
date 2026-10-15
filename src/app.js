@@ -503,9 +503,10 @@ function renderRuns(){
  for(const run of filtered.slice(0,250)){
   const css=run.status==="finalized"?"success":run.status==="rejected"?"danger":"";
   const actions=[button("Open",()=>selectRun(run.id),"small")];
-  if(state.platformOwner)actions.push(["draft","rejected"].includes(run.status)?
-   button("Delete",()=>ownerActions.remove("payrollRuns",run),"small danger"):
-   button("Correct / void",()=>go("owner"),"small"));
+  if(state.platformOwner){
+   if(!["draft","rejected"].includes(run.status))actions.push(button("Correct / void",()=>go("owner"),"small"));
+   actions.push(button("Delete permanently",()=>ownerActions.remove("payrollRuns",run),"small danger"));
+  }
   frag.append(item(run.periodStart+" — "+run.periodEnd,"Simulated payday: "+run.payDate,actions,run.status,css));
  }
  el.append(frag);
