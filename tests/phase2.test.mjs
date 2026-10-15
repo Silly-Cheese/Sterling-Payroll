@@ -26,19 +26,16 @@ test("reports duplicates for review but never merges based on name",()=>{
  assert.deepEqual(dup,[2,3]);
  assert.equal(rows.length,2);
 });
-test("owner claim restricted to designated verified email with single-use documents",()=>{
+test("existing owner remains protected; new accounts begin as clients",()=>{
  const rules=fs.readFileSync(new URL("../firestore.rules",import.meta.url),"utf8");
- assert.match(rules,/function ownerEmail\(\)/);
- assert.match(rules,/request\.auth\.token\.email_verified == true/);
- assert.match(rules,/!exists\(bootstrapPath\(\)\)/);
- assert.match(rules,/existsAfter\(bootstrapPath\(\)\)/);
- assert.match(rules,/request\.auth\.token\.email == ownerEmail\(\)/);
- assert.match(rules,/uid != request\.auth\.uid/);
+ assert.match(rules,/allow write: if false;/);
+ assert.match(rules,/request.resource.data.accountType == 'client'/);
+ assert.match(rules,/allow create: if owner\(\)/);
 });
 test("all deployed Phase 2 modules have an entry point",()=>{
  const html=fs.readFileSync(new URL("../index.html",import.meta.url),"utf8");
  assert.match(html,/id="page-operations"/);
- assert.match(html,/id="ownerBootstrap"/);
+ assert.match(html,/id="page-staff"/);
  const workflow=fs.readFileSync(new URL("../.github/workflows/pages.yml",import.meta.url),"utf8");
- for(const asset of ["phase2.html","src/phase2.js","src/bootstrap.js","src/phase2-core.js"])assert.ok(workflow.includes(asset));
+ for(const asset of ["phase2.html","src/phase2.js","src/staff.js","src/phase2-core.js"])assert.ok(workflow.includes(asset));
 });
