@@ -223,3 +223,66 @@ input:hover,textarea:hover,select:hover{border-color:#677166}
 @media(max-width:700px){.quick-nav-button{padding:9px}.overview-intro{align-items:flex-start;flex-direction:column}.quick-action-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.service-tabs button{font-size:11px;padding:10px}.service-entry{flex-direction:column;align-items:stretch}.service-entry .item-actions{justify-content:flex-start}.service-hero{padding:20px}.service-panel .three-fields,#ownerControlCenter .three-fields{grid-template-columns:1fr}}
 @media(max-width:430px){.quick-action-grid{grid-template-columns:1fr}.service-toolbar{flex-direction:column}.service-toolbar .btn{width:100%}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+
+/* Sterling 6.1: dense operations interface and compact primary navigation */
+.app-shell{grid-template-columns:232px minmax(0,1fr)}
+.sidebar{padding:14px 11px 11px;height:100dvh}
+.sidebar .brand-logo{margin-bottom:12px;padding-left:7px}
+.sidebar-group-label{margin:5px 11px 1px;font-size:9px;letter-spacing:.13em}
+.sidebar .nav{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;gap:2px;scrollbar-width:thin;scrollbar-color:#555044 transparent;padding-right:2px;padding-bottom:12px}
+.nav-section-heading{font-size:9px;letter-spacing:1.35px;padding:11px 10px 4px;margin:0;color:#aaa89f}
+.sidebar .nav-item{min-height:35px;padding:7px 10px;font-size:11.5px;line-height:1.25;gap:10px;border-radius:8px}
+.nav-item .nav-icon{font-size:15px;width:18px;min-width:18px}
+.nav-item.active:before{top:7px;bottom:7px;width:2px}
+.sidebar-bottom{margin-top:0;padding-top:9px;border-top:1px solid #343a36;gap:8px}
+.sidebar-account{margin:0;padding:8px 10px;gap:2px}
+.system-indicator{padding:8px 9px;gap:8px}
+.system-indicator strong{font-size:9px}.system-indicator small{font-size:9px;margin-top:2px}
+.profile{padding:7px 8px;gap:8px}
+.profile>span:first-child{height:30px;width:30px}
+.topbar{height:63px;min-height:63px}
+.content{max-width:none;padding:22px clamp(18px,2vw,34px);width:100%}
+.page-heading{margin-bottom:17px}.page-heading h1{font-size:clamp(26px,2.6vw,36px);margin:4px 0 5px}
+.page-heading p{font-size:12px;line-height:1.55}
+.overview-intro{margin:0 0 14px;padding:0}
+.overview-intro h2{font-size:clamp(23px,2.15vw,32px);margin:3px 0 5px}
+.metric-grid{gap:10px;margin-bottom:15px}
+.metric-grid .metric{min-height:91px;padding:13px 15px}
+.metric .metric-label{font-size:10px}.metric strong{font-size:clamp(22px,2vw,29px);margin:8px 0 3px}
+.quick-actions{margin:15px 0;padding:16px 18px}
+.quick-action-grid{margin-top:11px;gap:8px;grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+.quick-action-grid .btn{min-height:44px;padding:11px 12px;font-size:11.5px}
+.panel{padding:clamp(14px,1.5vw,22px)}
+.panel h2{font-size:clamp(20px,1.8vw,24px)}
+.two-col,.ops-grid{gap:14px}
+.list{gap:5px;margin-top:10px}
+.list-item{padding:10px 12px;gap:11px;margin-bottom:3px;border-radius:9px}
+.list-item strong{font-size:12px}
+.list-item small{font-size:10.5px;margin-top:4px}
+.list-item .item-actions{gap:6px}
+.list-item .item-actions .btn{padding:7px 10px;font-size:11px;min-height:32px}
+.status-chip{font-size:9px;padding:5px 8px}
+.list-toolbar{display:flex;align-items:center;gap:9px;margin:11px 0 10px;flex-wrap:wrap}
+.list-toolbar .search-input{flex:1 1 190px;min-width:0;margin:0}
+.list-toolbar select{width:auto;max-width:175px;flex:0 1 160px;min-width:110px;padding:10px}
+.list-toolbar .data-count{font-size:10px;color:#b0b6b3;white-space:nowrap}
+#clientList,#employeeList,#timeList,#runList{max-height:min(66vh,760px);overflow-y:auto;overflow-x:hidden;padding-right:5px;scrollbar-width:thin;scrollbar-color:#464c44 transparent}
+#clientList .list-item,#employeeList .list-item,#timeList .list-item,#runList .list-item{background:#181d1d}
+#timeCount,#runCount{margin:2px 0 9px}
+.attention-queue .list-item{background:#202521}
+.attention-queue .list-item strong{font-size:12px}
+.attention-queue .item-actions{margin-left:auto}
+.record-action-dialog{width:min(520px,calc(100% - 28px))}
+.record-action-dialog label{display:block;font-weight:650;font-size:12px;color:#e9d4a8}
+.record-action-dialog textarea{width:100%;min-height:105px;margin-top:7px;border:1px solid #6c5244;background:#101416;color:#f5f0e4;border-radius:9px;padding:11px;font:inherit;resize:vertical}
+.record-action-dialog .actions{margin-top:17px}
+.record-action-dialog .btn.danger,.btn.danger{color:#f2b2ad;border-color:#754646}
+body[data-density="comfortable"] .sidebar .nav-item{min-height:44px;padding:11px 12px;font-size:12px}
+body[data-density="comfortable"] .nav-section-heading{padding:19px 11px 8px}
+body[data-density="comfortable"] .panel{padding:clamp(18px,2vw,28px)}
+body[data-density="comfortable"] .list-item{padding:15px 17px}
+body[data-density="comfortable"] .metric-grid .metric{min-height:118px;padding:20px}
+body[data-density="comfortable"] .content{padding:31px clamp(22px,3vw,43px)}
+@media(max-width:1050px){.density-toggle{display:none}}
+@media(max-width:760px){.app-shell{display:block}.sidebar{height:100dvh}.topbar{height:61px}.content{padding:17px 13px}.list-toolbar select{max-width:none;flex:1}.quick-action-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.sidebar .nav-item{min-height:39px}}
+@media(max-width:480px){.list-toolbar{flex-direction:column;align-items:stretch}.list-toolbar select{width:100%}.quick-action-grid{grid-template-columns:1fr}}
