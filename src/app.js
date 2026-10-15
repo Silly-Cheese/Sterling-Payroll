@@ -136,6 +136,7 @@ async function loadTenantDirectory(){
  await chooseTenant(state.tenantId,false);
 }
 async function chooseTenant(id,writeStorage=true){
+ phase4?.clear();
  state.tenantId=id;state.role="";state.selectedRun=null;state.lines=[];
  // Never carry sensitive personnel data from a previous tenant into another workspace.
  state.employees=[];state.time=[];state.runs=[];
@@ -517,6 +518,7 @@ async function initializePhase2(){
  return phase2Pending;
 }
 onAuthStateChanged(auth,async user=>{
+ phase4?.clear();
  state.user=user;state.tenantId="";state.platform=false;state.tenants=[];state.role="";state.platformOwner=false;state.platformWrite=false;state.platformRole="client";
  $("authScreen").classList.toggle("hidden",!!user);$("shell").classList.toggle("hidden",!user);
  if(!user)return;
