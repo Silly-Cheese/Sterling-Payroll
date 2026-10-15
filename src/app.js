@@ -618,7 +618,7 @@ async function generateLines(run){
  const tenantId=state.tenantId;
  const {preview,policy}=await phase3.buildPreview(run);
  if(preview.issues.length)throw Error("Resolve "+preview.issues.length+" time and payroll exceptions before generating");
- const commission=await prepareRunCommissions(db,tenantId,run,preview.lines);
+ const commission=await prepareRunCommissions(db,tenantId,run,preview.lines,state.employees);
  const lines=commission.lines;
  preview.lines=lines;
  preview.totals=summarizeLines(lines);
