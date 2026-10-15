@@ -247,7 +247,7 @@ service cloud.firestore {
    }
    match /auditEvents/{eventId} {
     allow read: if clientAdmin(t) || platformView();
-    allow create: if clientView(t) &&
+    allow create: if (payrollStaff(t) || platformView()) &&
      request.resource.data.keys().hasOnly(['category','action','subject','detail','actor','at']) &&
      text(request.resource.data.category,50) &&
      text(request.resource.data.action,60) &&
