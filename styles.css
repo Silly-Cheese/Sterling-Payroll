@@ -407,3 +407,16 @@ body:has(.sterling-record-dialog[open]) .topbar{filter:brightness(.75)}
 #sterlingRecordDialog .record-dialog-content{overflow-y:auto}
 [data-portal-view].hidden,.workspace-collapsible.hidden,[hidden]{display:none!important}
 @media(max-width:680px){.workspace-action-bar{flex-direction:column;align-items:stretch}.workspace-action-bar .btn{width:100%}.workspace-form-dialog .workspace-form-panel{padding:15px}.portal-view-tabs button{min-width:105px}.portal-view-tabs{margin:12px 0}#employeePortal .phase4-hero{align-items:flex-start;flex-direction:column}}
+
+/* Tabbed sections occupy the full canvas instead of inheriting a former two-column grid. */
+#employeePortal .ops-grid:has(>.portal-view-tabs),
+#staffAccounts .ops-grid:has(>.portal-view-tabs){display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:0!important}
+#employeePortal .ops-grid:has(>.portal-view-tabs)>.portal-view-tabs,
+#employeePortal .ops-grid:has(>.portal-view-tabs)>.portal-view-content,
+#staffAccounts .ops-grid:has(>.portal-view-tabs)>.portal-view-tabs,
+#staffAccounts .ops-grid:has(>.portal-view-tabs)>.portal-view-content{grid-column:1/-1;min-width:0}
+#employeePortal .ops-grid:not(:has(>.panel)):not(:has(>.portal-view-tabs)){display:none}
+#employeePortal .portal-view-content>.panel,
+#staffAccounts .portal-view-content>.panel{width:100%;max-width:100%;min-width:0}
+#staffAccounts .portal-view-content .form-stack,
+#staffAccounts .portal-view-content label{max-width:690px}
