@@ -139,7 +139,7 @@ service cloud.firestore {
        ||
        (clientAdmin(t) && resource.data.status == 'approved' &&
         request.resource.data.status == 'finalized' &&
-        resource.data.approvedBy != request.auth.uid && resource.data.submittedBy != request.auth.uid &&
+        resource.data.approvedBy != request.auth.uid &&
         request.resource.data.finalizedBy == request.auth.uid &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','finalizedBy']))
        ||
