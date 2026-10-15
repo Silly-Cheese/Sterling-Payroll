@@ -731,7 +731,7 @@ onAuthStateChanged(auth,async user=>{
    catch(error){console.error("Assurance module unavailable",error);toast("Assurance tools are not yet deployed.",true)}
   }
   if(state.platformOwner&&!ownerUI){
-   try{const {mountOwnerControls}=await import("./owner.js?v=sterling-ui-v2");ownerUI=mountOwnerControls({db,getState:()=>state,notify:toast,confirmAction,refreshCompany})}
+   try{const {mountOwnerControls}=await import("./owner.js?v=sterling-ui-v2");ownerUI=mountOwnerControls({db,getState:()=>state,notify:toast,confirmAction,requestDeletion:sterlingModals.deleteRecord,refreshCompany})}
    catch(error){console.error("Owner control module unavailable",error);toast("Record management tools are not yet deployed.",true)}
   }
   if(state.platformOwner)await staffUI?.refresh();
