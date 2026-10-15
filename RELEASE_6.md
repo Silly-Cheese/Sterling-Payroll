@@ -71,6 +71,12 @@ The sign-in Phase 5 initialization bug is fixed. Navigation is more compact, wit
 
 The trusted owner can now bypass normal independent reviewer requirements for fictional payroll periods (draft, submitted, approved, rejected and finalized) and for time entries, correction requests and paid leave (pending, approved and rejected). Every override requires a reason, confirmation and a recorded actor. Payroll signoff changes create a before/after revision linked to the same payroll run. These are owner-only exceptions; ordinary client and payroll accounts must continue to follow separation-of-duties rules.
 
-Go to **Owner Controls** → choose company → **Record type** → select the specific record → choose outcome → enter reason → **Override approval / signoff**. Payroll Runs and Phase 3 review queues also include **Owner signoff / Owner override** shortcuts that open the chosen record directly.
+Use the inline **Owner signoff**, **Owner override** or **Correct / void** action on the record itself. The Owner Controls navigation page has been removed.
 
 Permanent deletion of finalized payroll runs with associated lines, snapshots and revisions is supported by the owner for a bounded set of child documents in a single Firestore batch. Oversized child collections remain restricted to prevent partial or orphaned records. The updated Firestore Rules must be manually published in Firebase Console; publishing GitHub Pages alone does not grant the new owner signoff or deletion permissions.
+
+## Streamlined portal / owner-deletion update
+
+The interface now shows searchable records before creation forms, with on-demand Sterling-branded dialogs. Employee self-service has separate pay, messages, requests, news and profile views. Client billing and support forms open only when requested. Staff and company access use focused tabs.
+
+Owner deletion can remove supported fictional records including finalized payroll periods and their discovered dependent pay lines, snapshots and revisions. Deletion is explicitly confirmed with a reason and the phrase `DELETE PERMANENTLY`. A protected deletion receipt survives the operation and may show an interrupted multi-batch deletion. Records stored in unrecognized future subcollections may need a separate administrator cleanup. The delete engine limits a single browser operation to 15,000 documents and does not remove Firebase Auth identities. Firebase rules must be published separately before new operations can work.
