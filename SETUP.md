@@ -87,16 +87,16 @@ Linked employees can view only their own finalized fictional pay history; downlo
 
 Company employees do **not** get access to the full employee directory or payroll line collection. The account linkage and per-record read permissions must be enforced by the published Firestore rules.
 
-## Owner Control Center — trusted owner only
+## Contextual owner actions — trusted owner only
 
-The trusted owner sees Owner Controls, subject to the existing `platformAdmins/{uid}` authorization. Features include:
+The trusted owner sees actions directly on authorized records. The standalone Owner Controls page has been removed; owner access continues to rely on `platformAdmins/{uid}` authorization. Features include:
 
 - In-place correction of simulated pay-period dates and status, including finalized periods.
 - In-place correction of finalized payroll line amounts and hours, recalculating simulated gross/net.
 - Immutable before/after revision documents in each affected payroll run and per-client owner activity records.
 - Delete selected employee, time, correction, leave, announcement, fictional invoice and support records, with a reason and confirmation.
-- Void payroll periods while preserving historical pay lines and revisions. A payroll-period document with child data cannot be deleted through the owner UI.
-- Archive employees as inactive. Deletion of an employee linked to a portal account is blocked until they are unlinked.
+- Correct or void finalized payroll periods in place, or deliberately delete the period and its discovered pay lines, snapshots and revisions with typed confirmation.
+- Archive employees to preserve history, or permanently delete a fictional employee and discovered related time records, portal links and individual pay lines.
 
 Deletion of Firebase Authentication user accounts, full recursive deletion of arbitrary Firestore subcollections and deletion from unrelated Firebase projects is **not** supported by this browser-only owner console. Owner powers do not bypass authentication or allow public self-privilege escalation. **Keep the initial platform owner grant private and protected.**
 
@@ -112,13 +112,19 @@ The Client Services page includes simulated service invoices (draft, issued, set
 
 Publishing JavaScript to GitHub Pages does not update Firestore authorization. Owner corrections, employee linking and Phase 5 invoicing will fail with `permission-denied` until the current rules are published.
 
-Owner Controls also allow directly overriding time-entry, paid-leave and correction-request approval statuses, with a required reason and an owner action record. Such changes do not retroactively recompute finalized pay lines; use the finalized-period correction editor to revise fictional pay values in place.
+The contextual owner record dialog also allows directly overriding time-entry, paid-leave and correction-request approval statuses, with a required reason and an owner action record. Such changes do not retroactively recompute finalized pay lines; use the finalized-period correction editor to revise fictional pay values in place.
 
 
 ## Owner second-party approval override
 
 The trusted owner can now bypass normal independent reviewer requirements for fictional payroll periods (draft, submitted, approved, rejected and finalized) and for time entries, correction requests and paid leave (pending, approved and rejected). Every override requires a reason, confirmation and a recorded actor. Payroll signoff changes create a before/after revision linked to the same payroll run. These are owner-only exceptions; ordinary client and payroll accounts must continue to follow separation-of-duties rules.
 
-Go to **Owner Controls** → choose company → **Record type** → select the specific record → choose outcome → enter reason → **Override approval / signoff**. Payroll Runs and Phase 3 review queues also include **Owner signoff / Owner override** shortcuts that open the chosen record directly.
+Open a payroll or review record and select **Owner signoff**, **Owner override**, or **Correct / void**. A focused Sterling modal opens the selected record directly; type a reason and confirm the action. Permanent deletion also requires typing `DELETE PERMANENTLY`.
 
 Permanent deletion of finalized payroll runs with associated lines, snapshots and revisions is supported by the owner for a bounded set of child documents in a single Firestore batch. Oversized child collections remain restricted to prevent partial or orphaned records. The updated Firestore Rules must be manually published in Firebase Console; publishing GitHub Pages alone does not grant the new owner signoff or deletion permissions.
+
+### October 2026 streamlined interface
+
+Creation forms open in custom dialogs instead of occupying a permanent column. Employee management offers Edit on each record, and the personnel workspace separates bulk changes and CSV import into tabs. Client services show invoice and support lists first with on-demand creation, while the linked employee portal has focused pay, messages, requests, news and profile tabs. All access remains scoped by published Firestore rules.
+
+The owner-only deletion planner enumerates supported dependent Firestore records, including finalized payroll lines and revisions, before showing a typed confirmation. It writes a separate owner-only deletion receipt under `deletionReceipts/`, commits in bounded batches and reports incomplete deletion if interrupted. This is irreversible and can delete up to 15,000 discovered documents in one client session. It does not delete Firebase Authentication users or guarantee a complete scan of arbitrary undocumented collections. **Publish the latest repository Firestore rules manually** to activate this functionality.
