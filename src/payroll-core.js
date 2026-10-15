@@ -54,7 +54,7 @@ export function canTransition(from,to,actor,run,role,platform=false){
  const privileged=platform||role==="client_admin";
  if(from==="draft"&&to==="submitted")return platform||role==="payroll_specialist"||privileged;
  if(from==="submitted"&&(to==="approved"||to==="rejected"))return privileged&&run.submittedBy!==actor;
- if(from==="approved"&&to==="finalized")return privileged&&run.approvedBy!==actor&&run.submittedBy!==actor;
+ if(from==="approved"&&to==="finalized")return privileged&&run.approvedBy!==actor;
  if(from==="rejected"&&to==="draft")return platform||role==="payroll_specialist"||privileged;
  return false;
 }
