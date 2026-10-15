@@ -51,3 +51,30 @@ Two different authorized accounts remain required for preparing and approving pa
 The web app is static and uses browser-side calculations. Firestore rules protect tenant and staff access plus basic transition constraints, but do not independently recalculate gross/net pay. Time entries, corrections and leave are bounded to protect free-tier Firestore resources; large client histories need further pagination. Existing time entries created before Phase 3 may not yet have review statuses and should be reviewed before payroll.
 
 Staff and Phase 3 functions require **real browser and Firebase rules tests** before declaring production-readiness.
+
+## Phase 4 — Private employee portal and employer linking
+
+**Mandatory:** Publish the newest [Firestore rules](./firestore.rules) in the Firebase Console. Publishing GitHub Pages files never publishes security rules.
+
+The employee portal does not trust an email match or a user-typed employee ID. The employer must independently confirm whose account it is linking. No email-verification prompt is required for ordinary Firebase registration.
+
+1. Employee registers/signs in normally with an email/password, creating a client-default account.
+2. The existing Sterling owner opens **Staff & Accounts**, selects the registered account and company, chooses **Employee portal**, and assigns it to that company.
+3. A company administrator opens the company selector, then **Team Access → Manage membership roles**. The employee account appears by email; choose the actual employee from the **Linked employee** dropdown and select **Link employee**. Employer approval is required before private payroll access opens.
+4. Employee refreshes or signs in, chooses the company, and opens **Employee Portal**. Employee-only accounts start there automatically.
+5. An employee with no approved HR link sees an access-pending message, not another person's payroll data.
+
+Employee portal features:
+
+- **My profile:** Displays employer-controlled HR name, position, and employment status. Preferred display name and in-app notification preferences are saved separately from payroll records.
+- **My simulated pay:** Reads only finalized payroll runs and the single pay line belonging to the employer-linked employee. Printable/downloadable HTML paystub is prominently labeled simulated and can be saved as a PDF using the browser print control.
+- **Company announcements:** Company administrators publish messages; linked employees read company announcements.
+- **Private messages:** One employer-to-employee thread per linked account, accessible only to the employee and authorized company administrators.
+- **Forms and acknowledgments:** An employer assigns text-only requests; employees can submit responses and administrators can complete or reopen requests. The in-app badge counts pending requests when the portal is visited/refreshed.
+- **Responsive interface:** Mobile layout for employee cards, conversations, and pay statements.
+
+**Limitations:** This phase does not send email, push notifications, transfer money, create authentic pay documents, upload private files, or automatically verify real-world identity. It does not accept banking/SSN/tax documentation. Employee pay history is currently limited to 50 finalized runs per portal load; announcements, requests and messages have bounded lists, with full pagination planned. Employer approval of identity must happen outside the app before linking.
+
+**Security:** Employee-only accounts cannot query the company's complete employee directory, timesheets, payroll lines, or employee conversations. A member's active status and the employer-approved `employeeLinks/{uid}` mapping are checked by rules. Suspended company membership revokes that portal access.
+
+**Testing:** JavaScript regression checks and static rule assertions run in GitHub Actions, but multi-account live Firestore rule tests are still needed before treating these permissions as independently verified.
