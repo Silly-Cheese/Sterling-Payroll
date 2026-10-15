@@ -1,0 +1,166 @@
+rules_version = '2';
+service cloud.firestore {
+ match /databases/{database}/documents {
+  function signedIn(){return request.auth != null;}
+  function platformPath(){return /databases/$(database)/documents/platformAdmins/$(request.auth.uid);}
+  function platform(){return signedIn() && exists(platformPath()) && get(platformPath()).data.active == true;}
+  function memberPath(t){return /databases/$(database)/documents/tenants/$(t)/members/$(request.auth.uid);}
+  function member(t){return signedIn() && exists(memberPath(t)) && get(memberPath(t)).data.status == 'active';}
+  function role(t){return get(memberPath(t)).data.role;}
+  function clientAdmin(t){return platform() || (member(t) && role(t) == 'client_admin');}
+  function payrollStaff(t){return clientAdmin(t) || (member(t) && role(t) == 'payroll_specialist');}
+  function clientView(t){return platform() || member(t);}
+  function text(v,n){return v is string && v.size() > 0 && v.size() <= n;}
+  function cent(v){return v is int && v >= 0 && v <= 1000000000;}
+  function hours(v){return v is number && v >= 0 && v <= 744;}
+  function date(v){return v is string && v.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');}
+  function employeePath(t,e){return /databases/$(database)/documents/tenants/$(t)/employees/$(e);}
+  function runPath(t,r){return /databases/$(database)/documents/tenants/$(t)/payrollRuns/$(r);}
+
+  // Owner/operator grants are provisioned in the trusted Firebase Console only.
+  match /platformAdmins/{uid} {
+   allow get: if signedIn() && (request.auth.uid == uid || platform());
+   allow list: if platform();
+   allow write: if false;
+  }
+  match /tenants/{t} {
+   allow read: if clientView(t);
+   allow create: if platform() &&
+    request.resource.data.keys().hasOnly(['name','status','createdAt','createdBy']) &&
+    text(request.resource.data.name,120) &&
+    request.resource.data.status == 'active' &&
+    request.resource.data.createdBy == request.auth.uid;
+   allow update: if platform() &&
+    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name','status']) &&
+    text(request.resource.data.name,120) &&
+    request.resource.data.status in ['active','suspended'];
+   allow delete: if false;
+
+   match /invites/{email} {
+    allow get: if clientAdmin(t) || (signedIn() && request.auth.token.email_verified == true &&
+       request.auth.token.email.lower() == email);
+    allow list: if clientAdmin(t);
+    allow create: if clientAdmin(t) &&
+      request.resource.data.keys().hasOnly(['email','role','createdBy','createdAt']) &&
+      request.resource.data.email == email &&
+      request.resource.data.email is string &&
+      request.resource.data.email.size() <= 254 &&
+      request.resource.data.role in ['client_admin','payroll_specialist','viewer'] &&
+      request.resource.data.createdBy == request.auth.uid;
+    allow update,delete: if clientAdmin(t) && request.resource.data == resource.data; // effectively immutable
+   }
+
+   match /members/{uid} {
+    allow get: if platform() || (signedIn() && request.auth.uid == uid) || clientAdmin(t);
+    allow list: if clientAdmin(t);
+    // Users only accept invitations addressed to their verified email.
+    allow create: if signedIn() && request.auth.uid == uid &&
+      request.auth.token.email_verified == true &&
+      exists(/databases/$(database)/documents/tenants/$(t)/invites/$(request.auth.token.email.lower())) &&
+      request.resource.data.keys().hasOnly(['email','role','status','joinedAt']) &&
+      request.resource.data.email == request.auth.token.email.lower() &&
+      request.resource.data.role ==
+         get(/databases/$(database)/documents/tenants/$(t)/invites/$(request.auth.token.email.lower())).data.role &&
+      request.resource.data.status == 'active';
+    allow update,delete: if false;
+   }
+
+   match /employees/{e} {
+    allow read: if clientView(t);
+    allow create: if payrollStaff(t) &&
+     request.resource.data.keys().hasOnly(['displayName','department','jobTitle','payType','payFrequency',
+      'hourlyRateCents','annualSalaryCents','status','createdAt','createdBy','updatedAt']) &&
+     text(request.resource.data.displayName,120) &&
+     request.resource.data.jobTitle is string && request.resource.data.jobTitle.size() <= 100 &&
+     request.resource.data.department is string && request.resource.data.department.size() <= 100 &&
+     request.resource.data.payType in ['hourly','salary'] &&
+     request.resource.data.payFrequency in ['weekly','biweekly','semimonthly','monthly'] &&
+     cent(request.resource.data.hourlyRateCents) && cent(request.resource.data.annualSalaryCents) &&
+     request.resource.data.status == 'active' &&
+     request.resource.data.createdBy == request.auth.uid;
+    allow update: if payrollStaff(t) &&
+     request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName','department','jobTitle',
+      'payType','payFrequency','hourlyRateCents','annualSalaryCents','status','updatedAt']) &&
+     text(request.resource.data.displayName,120) &&
+     request.resource.data.status in ['active','inactive','leave'] &&
+     request.resource.data.payType in ['hourly','salary'] &&
+     request.resource.data.payFrequency in ['weekly','biweekly','semimonthly','monthly'] &&
+     cent(request.resource.data.hourlyRateCents) && cent(request.resource.data.annualSalaryCents);
+    allow delete: if false;
+   }
+
+   match /timeEntries/{id} {
+    allow read: if clientView(t);
+    allow create: if payrollStaff(t) &&
+     request.resource.data.keys().hasOnly(['employeeId','workDate','regularHours','overtimeHours','note','createdAt','createdBy']) &&
+     text(request.resource.data.employeeId,128) &&
+     exists(employeePath(t,request.resource.data.employeeId)) &&
+     date(request.resource.data.workDate) &&
+     hours(request.resource.data.regularHours) && hours(request.resource.data.overtimeHours) &&
+     request.resource.data.note is string && request.resource.data.note.size() <= 250 &&
+     request.resource.data.createdBy == request.auth.uid;
+    allow update,delete: if false;
+   }
+
+   match /payrollRuns/{r} {
+    allow read: if clientView(t);
+    allow create: if payrollStaff(t) &&
+     request.resource.data.keys().hasOnly(['periodStart','periodEnd','payDate','status','createdAt','createdBy',
+      'submittedBy','approvedBy','finalizedBy']) &&
+     date(request.resource.data.periodStart) && date(request.resource.data.periodEnd) &&
+     date(request.resource.data.payDate) &&
+     request.resource.data.periodStart <= request.resource.data.periodEnd &&
+     request.resource.data.periodEnd <= request.resource.data.payDate &&
+     request.resource.data.status == 'draft' &&
+     request.resource.data.createdBy == request.auth.uid &&
+     request.resource.data.submittedBy == '' && request.resource.data.approvedBy == '' &&
+     request.resource.data.finalizedBy == '';
+    allow update: if (
+       (payrollStaff(t) && resource.data.status == 'draft' &&
+        request.resource.data.status == 'submitted' &&
+        request.resource.data.submittedBy == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','submittedBy']))
+       ||
+       (clientAdmin(t) && resource.data.status == 'submitted' &&
+        request.resource.data.status in ['approved','rejected'] &&
+        resource.data.submittedBy != request.auth.uid &&
+        request.resource.data.approvedBy == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','approvedBy']))
+       ||
+       (clientAdmin(t) && resource.data.status == 'approved' &&
+        request.resource.data.status == 'finalized' &&
+        resource.data.approvedBy != request.auth.uid && resource.data.submittedBy != request.auth.uid &&
+        request.resource.data.finalizedBy == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','finalizedBy']))
+       ||
+       (payrollStaff(t) && resource.data.status == 'rejected' &&
+        request.resource.data.status == 'draft' &&
+        request.resource.data.submittedBy == '' && request.resource.data.approvedBy == '' &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','submittedBy','approvedBy']))
+     );
+    allow delete: if false;
+
+    match /lines/{employeeId} {
+     allow read: if clientView(t);
+     allow create, update: if payrollStaff(t) &&
+       exists(runPath(t,r)) && get(runPath(t,r)).data.status == 'draft' &&
+       exists(employeePath(t,employeeId)) &&
+       request.resource.data.keys().hasOnly(['employeeId','employeeName','payType','regularHours','overtimeHours',
+         'regularCents','overtimeCents','bonusCents','deductionCents','grossCents','netCents']) &&
+       request.resource.data.employeeId == employeeId &&
+       text(request.resource.data.employeeName,120) &&
+       request.resource.data.payType in ['hourly','salary'] &&
+       hours(request.resource.data.regularHours) && hours(request.resource.data.overtimeHours) &&
+       cent(request.resource.data.regularCents) && cent(request.resource.data.overtimeCents) &&
+       cent(request.resource.data.bonusCents) && cent(request.resource.data.deductionCents) &&
+       cent(request.resource.data.grossCents) && cent(request.resource.data.netCents) &&
+       request.resource.data.netCents == request.resource.data.grossCents - request.resource.data.deductionCents;
+     allow delete: if payrollStaff(t) && exists(runPath(t,r)) &&
+       get(runPath(t,r)).data.status == 'draft';
+    }
+   }
+   match /{other=**} {allow read,write: if false;}
+  }
+  match /{other=**} {allow read,write: if false;}
+ }
+}
