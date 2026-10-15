@@ -8,7 +8,7 @@
   <title>Sterling Payroll | Sterling Group</title>
   <meta name="description" content="Sterling Payroll — simulated client payroll management by Sterling Group.">
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./styles.css?v=phase2">
+  <link rel="stylesheet" href="./styles.css?v=phase3">
 </head>
 <body>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
@@ -47,6 +47,7 @@
       <div class="sidebar-group-label">WORKSPACE</div>
       <nav id="nav" class="nav">
         <button data-page="dashboard" class="nav-item active" type="button"><span class="nav-icon">◫</span> Overview</button>
+        <button data-page="staff" class="nav-item owner-only hidden" type="button"><span class="nav-icon">♜</span> Staff & Accounts</button>
         <button data-page="clients" class="nav-item platform-only hidden" type="button"><span class="nav-icon">▦</span> Client Companies</button>
         <button data-page="operations" class="nav-item client-only" type="button"><span class="nav-icon">▤</span> Personnel Operations</button>
         <button data-page="employees" class="nav-item client-only" type="button"><span class="nav-icon">♙</span> Employees</button>
@@ -76,15 +77,11 @@
           <h1 id="pageTitle">Executive overview</h1>
           <p id="pageDescription">Everything you need to manage simulated payroll across client businesses.</p></div>
         </div>
-        <section id="ownerBootstrap" class="panel bootstrap-banner hidden" aria-live="polite"></section>
+        
         <div id="noClient" class="panel message-panel hidden">
           <h2>Choose a company workspace</h2>
           <p class="muted">Your payroll data is kept separate for every client. Select a company above or accept an invitation.</p>
-          <form id="joinForm" class="inline-form">
-            <label>Company code / workspace ID<input id="joinCode" required placeholder="Paste the company code"></label>
-            <button class="btn primary" type="submit">Accept my invitation</button>
-          </form>
-          <p class="fine-print">You must have an invitation for your verified account email. New account registration does not create company access.</p>
+          <p class="fine-print">If you need access to a company, contact a Sterling Payroll administrator. No email verification or company code is required.</p>
         </div>
         <section id="page-dashboard" class="page">
           <div id="metrics" class="metric-grid"></div>
@@ -103,6 +100,7 @@
             </article>
           </div>
         </section>
+        <section id="page-staff" class="page hidden"><div id="staffAccounts"></div></section>
         <section id="page-clients" class="page hidden">
           <div class="two-col asymmetric">
             <article class="panel"><h2>Onboard a client</h2><p class="muted">Register a separate simulated business workspace.</p>
@@ -147,6 +145,7 @@
             <article class="panel"><h2>Recent time entries</h2><div id="timeList" class="list"></div><button id="loadMoreTime" class="btn hidden" type="button">Load more time entries</button></article>
           </div>
         </section>
+        <div id="phase3Time" class="phase3-section client-only hidden"></div>
         <section id="page-payroll" class="page hidden">
           <div class="two-col asymmetric">
             <article class="panel"><h2>New payroll run</h2><p class="muted">Create a draft period, then generate fictional pay line items from employee compensation and time records.</p>
@@ -167,10 +166,11 @@
             <div id="runActions" class="actions"></div>
           </article>
         </section>
+        <div id="phase3Payroll" class="phase3-section client-only hidden"></div>
         <section id="page-access" class="page hidden">
           <div class="two-col asymmetric">
-            <article class="panel"><h2>Invite a company teammate</h2><p class="muted">Invite an existing or new Payroll account by email. They must verify their email and accept the invitation.</p>
-              <form id="inviteForm" class="form-stack">
+            <article class="panel"><h2>Invite a company teammate</h2><p class="muted">Sterling administrators now assign existing accounts directly. Legacy invitations are no longer needed for new company access.</p>
+              <form id="inviteForm" class="form-stack hidden">
                 <label>Invitee email<input id="inviteEmail" type="email" required></label>
                 <label>Access role<select id="inviteRole">
                     <option value="client_admin">Client administrator</option>
@@ -190,6 +190,6 @@
     </div>
   </div>
   <dialog id="sterlingDialog" class="sterling-dialog"><form method="dialog"><h2 id="dialogTitle">Review action</h2><p id="dialogText" class="muted"></p><div class="actions"><button value="cancel" class="btn">Cancel</button><button id="dialogConfirm" value="confirm" class="btn primary">Confirm</button></div></form></dialog>
-  <script type="module" src="./src/app.js?v=phase2"></script>
+  <script type="module" src="./src/app.js?v=phase3"></script>
 </body>
 </html>
