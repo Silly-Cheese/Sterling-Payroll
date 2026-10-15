@@ -23,11 +23,11 @@ test("owner operation reason and invalid payroll amounts are rejected",()=>{
  assert.equal(canHardDelete("payrollRuns",false),true);
 });
 test("Phase 5 simulates service invoices, not payment rails",()=>{
- assert.deepEqual(invoiceInput("Monthly subscription","99.99"),{description:"Monthly subscription",amountCents:9999});
+ assert.deepEqual(invoiceInput("Monthly subscription","99.99"),{description:"Monthly subscription",amountCents:9999,dueDate:""});
  assert.throws(()=>invoiceInput("aa","5"));
- assert.deepEqual(ticketInput("Missing hours","Please review the fictional time sheet"),{subject:"Missing hours",details:"Please review the fictional time sheet"});
+ assert.deepEqual(ticketInput("Missing hours","Please review the fictional time sheet"),{subject:"Missing hours",details:"Please review the fictional time sheet",priority:"normal",category:"general"});
  const sum=summarizeInvoices([{status:"issued",amountCents:2500},{status:"settled",amountCents:5000},{status:"draft",amountCents:1000}]);
- assert.deepEqual(sum,{outstandingCents:2500,settledCents:5000,draftCount:1});
+ assert.deepEqual(sum,{outstandingCents:2500,settledCents:5000,draftCount:1,voidCount:0});
 });
 test("owner revisions and Phase 5 records are access-controlled in Firestore",()=>{
  const rules=fs.readFileSync(new URL("../firestore.rules",import.meta.url),"utf8");
