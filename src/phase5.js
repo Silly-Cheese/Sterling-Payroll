@@ -4,7 +4,7 @@ import {money} from "./payroll-core.js";
 const E=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=String(text);return n};
 const O=(id,label)=>{const n=E("option","",label);n.value=id;return n};
 const PAGE=50;
-export async function mountPhase5({db,getState,notify,confirmAction}){
+export async function mountPhase5({db,getState,notify,confirmAction,ownerDelete}){
  const root=document.getElementById("phase5Suite"),response=await fetch("./phase5.html?v=6");
  if(!root||!response.ok)throw Error("Client services template was not deployed");
  root.innerHTML=await response.text();
@@ -107,6 +107,7 @@ export async function mountPhase5({db,getState,notify,confirmAction}){
     };
     actions.append(next);
    }
+   if(S().platformOwner&&ownerDelete)actions.append(control("Delete",()=>ownerDelete("billingInvoices",record),"danger"));
    row.append(actions);box.append(row);
   }
   if(!results.length)box.append(E("p","muted","No matching invoices. Use the search or create a new draft."));
@@ -129,6 +130,7 @@ export async function mountPhase5({db,getState,notify,confirmAction}){
     }catch(e){state.value=before;err("Support update failed",e)}};
     actions.append(state);
    }
+   if(S().platformOwner&&ownerDelete)actions.append(control("Delete",()=>ownerDelete("supportTickets",t),"danger"));
    row.append(actions);box.append(row);
   }
   $("p5SupportCount").textContent=tickets.length+(moreTickets?"+":"")+" cases";
