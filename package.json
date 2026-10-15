@@ -1,0 +1,11 @@
+{
+  "name": "sterling-payroll",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Standalone Sterling Group simulated multi-client payroll system",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "check": "node --check src/app.js && node --check src/payroll-core.js"
+  }
+}
