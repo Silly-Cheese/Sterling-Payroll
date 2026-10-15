@@ -749,11 +749,11 @@ onAuthStateChanged(auth,async user=>{
   if(!staffUI)staffUI=mountStaffAccounts({db,getState:()=>state,notify:toast,confirmAction});
   if(!phase3)phase3=await mountPhase3({db,getState:()=>state,refreshCompany,notify:toast,confirmAction,ownerDelete:(kind,record)=>ownerActions.remove(kind,record),openOwnerReview});
   if(!phase4){
-   try{const {mountPhase4}=await import("./phase4.js?v=phase6-final");phase4=await mountPhase4({db,getState:()=>state,notify:toast,confirmAction,ownerDelete:(kind,record)=>ownerActions.remove(kind,record)})}
+   try{const {mountPhase4}=await import("./phase4.js?v=sterling-commissions-20261015");phase4=await mountPhase4({db,getState:()=>state,notify:toast,confirmAction,ownerDelete:(kind,record)=>ownerActions.remove(kind,record)})}
    catch(error){console.error("Employee portal module unavailable",error);toast("Employee portal assets are still deploying. Please refresh after GitHub Pages finishes.",true)}
   }
   if(!phase5){
-   try{const {mountPhase5}=await import("./phase5.js?v=phase6-final");phase5=await mountPhase5({db,getState:()=>state,notify:toast,confirmAction,ownerDelete:(kind,record)=>ownerActions.remove(kind,record)})}
+   try{const {mountPhase5}=await import("./phase5.js?v=sterling-commissions-20261015");phase5=await mountPhase5({db,getState:()=>state,notify:toast,confirmAction,ownerDelete:(kind,record)=>ownerActions.remove(kind,record)})}
    catch(error){console.error("Client services module unavailable",error);toast("Client services are not yet available; check the deployment.",true)}
   }
   if(!commissionsUI){
@@ -768,7 +768,7 @@ onAuthStateChanged(auth,async user=>{
    catch(error){console.error("Assurance module unavailable",error);toast("Assurance tools are not yet deployed.",true)}
   }
   if(state.platformOwner&&!ownerUI){
-   try{const {mountOwnerControls}=await import("./owner.js?v=sterling-ui-v2");ownerUI=mountOwnerControls({db,getState:()=>state,notify:toast,confirmAction,requestDeletion:sterlingModals.deleteRecord,refreshCompany})}
+   try{const {mountOwnerControls}=await import("./owner.js?v=sterling-commissions-20261015");ownerUI=mountOwnerControls({db,getState:()=>state,notify:toast,confirmAction,requestDeletion:sterlingModals.deleteRecord,refreshCompany})}
    catch(error){console.error("Owner control module unavailable",error);toast("Record management tools are not yet deployed.",true)}
   }
   if(state.platformOwner)await staffUI?.refresh();
