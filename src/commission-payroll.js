@@ -3,7 +3,15 @@ import {attachApprovedSales} from "./commission-core.js";
 import {calculateLine} from "./payroll-core.js";
 const MAX_SALES=140;
 export async function prepareRunCommissions(db,tenantId,run,lines,employees=[]){
- const settings=await getDoc(doc(db,"tenants",tenantId,"commissionSettings","current"));
+ let settings;
+ try{settings=await getDoc(doc(db,"tenants",tenantId,"commissionSettings","current"))}
+ catch(error){
+  // A client that has never enabled commissions must still be able to run its
+  // original simulated payroll before an administrator publishes new rules.
+  if(error?.code==="permission-denied")return {lines,claim:[],release:[],commissionCents:0,
+   enabled:false,notice:"Commission security rules are not published yet; no commissions will be included."};
+  throw error;
+ }
  const enabled=settings.exists()&&settings.data().enabled===true;
  const ref=collection(db,"tenants",tenantId,"commissionSales");
  const [already,available]=await Promise.all([
