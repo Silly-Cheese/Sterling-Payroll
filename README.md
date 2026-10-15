@@ -17,13 +17,19 @@ Sterling Payroll is a standalone, multi-client roleplay payroll platform. It doe
 Initial foundation includes working versions of client onboarding, employee records and simulated payroll operations so it is useful from the first release; advanced workflows arrive across later phases.
 
 ## Quick start
-See [SETUP.md](./SETUP.md) for Firebase Authentication, Firestore rules deployment and platform owner assignment. **No one becomes platform owner by registering**: configure the designated verified owner email once in `firestore.rules`, publish those rules, then sign in and use the in-app **Complete owner setup** action. No manual UID entry is required.
+See [SETUP.md](./SETUP.md) for Firebase Authentication, Firestore rules deployment and owner-managed staff permissions. **No one becomes platform owner by registering.** The established owner grant in `platformAdmins/{uid}` is required before the Staff & Accounts page is available. Ordinary sign-ups become client accounts without an email-verification prompt; administrators assign client memberships through registered-account dropdowns.
 
 ## Phase 2 features
 - Client company management: contact, service tier, industry, notes and suspension.
 - Personnel operations: edit records, fictional compensation, lifecycle status and CSV bulk import.
 - Staff permissions: manage roles and suspend members, with self-role changes blocked.
 - Paginated employee, timekeeping and payroll lists; full-list checks before payroll generation.
+
+## Phase 3 additions
+- Pending time entries, independent approval, immutable correction requests and simulated paid leave.
+- Versioned fictional pay policies, exception-aware payroll calculation and draft snapshots.
+- Correction payroll runs, run comparisons and downloadable simulation-labeled CSV statements.
+- Sterling-wide staff roles granted by the existing owner only, with independent client-company memberships.
 
 ## Hosting
 Static web frontend, compatible with GitHub Pages; Firebase project: `sterling-payroll-5d200`.
