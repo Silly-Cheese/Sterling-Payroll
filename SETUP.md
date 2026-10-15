@@ -78,3 +78,36 @@ Employee portal features:
 **Security:** Employee-only accounts cannot query the company's complete employee directory, timesheets, payroll lines, or employee conversations. A member's active status and the employer-approved `employeeLinks/{uid}` mapping are checked by rules. Suspended company membership revokes that portal access.
 
 **Testing:** JavaScript regression checks and static rule assertions run in GitHub Actions, but multi-account live Firestore rule tests are still needed before treating these permissions as independently verified.
+
+## Phase 4 — Employee portal (complete initial release)
+
+The employer uses Employee Portal to explicitly link a registered **employee-role** member to an existing employee record. Linking by display name or unverified email is never automatic.
+
+Linked employees can view only their own finalized fictional pay history; download/print clearly labeled simulated paystubs; configure preferred name and notification preference; read announcements; exchange private company messages; and submit text-only responses to employer information requests. Company administrators can create announcements, link/unlink accounts, message linked employees, create requests and complete responses.
+
+Company employees do **not** get access to the full employee directory or payroll line collection. The account linkage and per-record read permissions must be enforced by the published Firestore rules.
+
+## Owner Control Center — trusted owner only
+
+The trusted owner sees Owner Controls, subject to the existing `platformAdmins/{uid}` authorization. Features include:
+
+- In-place correction of simulated pay-period dates and status, including finalized periods.
+- In-place correction of finalized payroll line amounts and hours, recalculating simulated gross/net.
+- Immutable before/after revision documents in each affected payroll run and per-client owner activity records.
+- Delete selected employee, time, correction, leave, announcement, fictional invoice and support records, with a reason and confirmation.
+- Void payroll periods while preserving historical pay lines and revisions. A payroll-period document with child data cannot be deleted through the owner UI.
+- Archive employees as inactive. Deletion of an employee linked to a portal account is blocked until they are unlinked.
+
+Deletion of Firebase Authentication user accounts, full recursive deletion of arbitrary Firestore subcollections and deletion from unrelated Firebase projects is **not** supported by this browser-only owner console. Owner powers do not bypass authentication or allow public self-privilege escalation. **Keep the initial platform owner grant private and protected.**
+
+Changes are written with client-side Firestore batches, but there is no trusted backend to independently verify payroll mathematics. These remain fictional and subject to emulator/live permission testing.
+
+## Phase 5 — Client service foundation underway
+
+The Client Services page includes simulated service invoices (draft, issued, settled, void) and client support tickets (open, in progress, resolved, closed). No invoice triggers real payment or banking activity. Client service tiers are managed in Client Companies; advanced billing plans, support assignments and automation remain in Phase 5.
+
+## Critical Firebase setup
+
+**After every update to `firestore.rules`, publish the repository contents manually in** https://console.firebase.google.com/project/sterling-payroll-5d200/firestore/rules
+
+Publishing JavaScript to GitHub Pages does not update Firestore authorization. Owner corrections, employee linking and Phase 5 invoicing will fail with `permission-denied` until the current rules are published.
