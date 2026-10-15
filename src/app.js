@@ -14,7 +14,7 @@ const app=initializeApp({
  appId:"1:755423368876:web:da8513d0923f1d14033109"
 });
 const auth=getAuth(app),db=getFirestore(app),$=id=>document.getElementById(id);
-const state={user:null,platform:false,tenants:[],tenantId:"",role:"",employees:[],time:[],runs:[],selectedRun:null,lines:[],page:"dashboard",register:false,moreEmployees:false,moreTime:false,moreRuns:false,employeeCursor:null,timeCursor:null,runCursor:null};
+const state={user:null,platform:false,tenants:[],tenantId:"",role:"",employees:[],time:[],runs:[],selectedRun:null,lines:[],page:"dashboard",register:false,moreEmployees:false,moreTime:false,moreRuns:false,employeeCursor:null,timeCursor:null,runCursor:null,clientCursor:null,moreClients:false};
 const titles={
  dashboard:["Executive overview","Everything you need to manage simulated payroll across client businesses."],
  clients:["Client companies","Manage the businesses using Sterling Payroll."],
@@ -100,8 +100,10 @@ $("resetPassword").addEventListener("click",async()=>{
 async function loadTenantDirectory(){
  state.tenants=[];
  if(state.platform){
-  const snap=await getDocs(query(collection(db,"tenants"),limit(250)));
+  const snap=await getDocs(query(collection(db,"tenants"),orderBy(documentId()),limit(100)));
   state.tenants=snap.docs.map(d=>({id:d.id,...d.data()}));
+  state.clientCursor=snap.docs.at(-1)||null;state.moreClients=snap.size===100;
+  $("loadMoreClients").classList.toggle("hidden",!state.moreClients);
  }else{
   const index=await getDocs(query(collection(db,"userTenants",state.user.uid,"items"),limit(100)));
   for(const entry of index.docs){
@@ -207,6 +209,22 @@ function renderClients(){
   el.append(item(c.name,"Client workspace • "+c.id,[button("Manage",async()=>{await chooseTenant(c.id);go("employees")},"small")],c.status,c.status==="active"?"success":"danger"));
  }
 }
+$("loadMoreClients").addEventListener("click",async()=>{
+ if(!state.platform||!state.clientCursor)return;
+ $("loadMoreClients").disabled=true;
+ try{
+  const snap=await getDocs(query(collection(db,"tenants"),orderBy(documentId()),startAfter(state.clientCursor),limit(100)));
+  const seen=new Set(state.tenants.map(t=>t.id));
+  state.tenants.push(...snap.docs.filter(d=>!seen.has(d.id)).map(d=>({id:d.id,...d.data()})));
+  state.tenants.sort((a,b)=>String(a.name||"").localeCompare(String(b.name||"")));
+  state.clientCursor=snap.docs.at(-1)||null;state.moreClients=snap.size===100;
+  $("loadMoreClients").classList.toggle("hidden",!state.moreClients);
+  const selector=$("companySelect");selector.replaceChildren(new Option("Select company",""));
+  for(const t of state.tenants)selector.append(new Option(t.name,t.id));
+  selector.value=state.tenantId;
+  renderDashboard();renderClients();phase2?.refresh();
+ }catch(error){fail(error,"Unable to load additional clients")}finally{$("loadMoreClients").disabled=false}
+});
 $("clientForm").addEventListener("submit",async event=>{
  event.preventDefault();if(!state.platform)return;
  const name=$("clientName").value.trim();if(name.length<2)return toast("Enter a company name.",true);
