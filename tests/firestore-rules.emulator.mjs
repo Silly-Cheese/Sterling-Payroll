@@ -89,3 +89,14 @@ test("trusted owner can correct a finalized pay line in place only with a linked
  await assertSucceeds(batch.commit());
  assert.equal((await getDoc(lineRef)).data().netCents,1500);
 });
+
+test("client viewer can open a scoped support ticket without permission to fake an audit event",async()=>{
+ const db=as("viewer");
+ await assertSucceeds(setDoc(doc(db,"tenants","north","supportTickets","client-case"),{
+  subject:"Sample payroll question",details:"This is a fictional support case.",priority:"normal",category:"payroll",
+  status:"open",assignedUid:"",createdBy:"viewer",createdAt:serverTimestamp(),updatedAt:serverTimestamp()
+ }));
+ await assertFails(setDoc(doc(db,"tenants","north","auditEvents","fake"),{
+  category:"support",action:"fake",subject:"client-case",detail:"not allowed",actor:"viewer",at:serverTimestamp()
+ }));
+});
