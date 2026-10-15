@@ -1,16 +1,17 @@
 import {collection,doc,getDoc,getDocs,query,where,limit,writeBatch,serverTimestamp} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
+import {DELETE_CONFIRMATION,requireConfirmation} from "./deletion-contract.js";
 export function createOwnerRecordActions({db,getState,notify,onChanged,confirmAction}){
  const S=()=>getState();
  const dialog=document.createElement("dialog");dialog.className="sterling-dialog record-action-dialog";
- dialog.innerHTML='<h2>Delete record</h2><p id="recordDeleteSummary"></p><p class="fine-print">This action is owner-only. Related historical records must be preserved.</p><form method="dialog" id="recordDeleteForm"><label>Reason for deletion<textarea id="recordDeleteReason" maxlength="500" minlength="10" required placeholder="Why should this fictional record be deleted?"></textarea></label><div class="actions"><button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn danger" value="confirm">Delete record</button></div></form>';
+ dialog.innerHTML='<h2>Delete record</h2><p id="recordDeleteSummary"></p><p class="fine-print">This owner-only action is irreversible. Records with protected dependencies cannot be deleted using this form.</p><form method="dialog" id="recordDeleteForm"><label>Reason for deletion<textarea id="recordDeleteReason" maxlength="500" minlength="10" required placeholder="Why should this fictional record be deleted?"></textarea></label><label>Type DELETE PERMANENTLY to confirm<input id="recordDeletePhrase" autocomplete="off" spellcheck="false" placeholder="DELETE PERMANENTLY" required></label><div class="actions"><button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn danger" value="confirm">Delete record</button></div></form>';
  document.body.append(dialog);
- const reason=dialog.querySelector("#recordDeleteReason");
+ const reason=dialog.querySelector("#recordDeleteReason"),phrase=dialog.querySelector("#recordDeletePhrase");
  const reasonDialog=async(kind,title)=>{
   dialog.querySelector("h2").textContent="Delete "+kind;
   dialog.querySelector("#recordDeleteSummary").textContent=title+" will be deleted if no dependent records exist.";
-  reason.value="";dialog.showModal();reason.focus();
+  reason.value="";phrase.value="";dialog.showModal();reason.focus();
   return await new Promise(resolve=>{
-   const complete=()=>resolve(dialog.returnValue==="confirm"?reason.value.trim():null);
+   const complete=()=>resolve(dialog.returnValue==="confirm"?{reason:reason.value.trim(),phrase:phrase.value.trim()}:null);
    dialog.addEventListener("close",complete,{once:true});
   });
  };
@@ -57,9 +58,10 @@ export function createOwnerRecordActions({db,getState,notify,onChanged,confirmAc
   const supported=["employees","timeEntries","payrollRuns","billingInvoices","supportTickets","announcements","leaveRequests","timeCorrections"];
   if(!supported.includes(kind)||!record?.id)throw Error("Unsupported record type");
   const currentTenant=tenant(),label=record.displayName||record.description||record.subject||record.title||record.workDate||record.periodStart||record.id;
-  const why=await reasonDialog(kind,label);
-  if(why===null)return false;
-  if(why.length<10||why.length>500)throw Error("An owner deletion reason must contain 10–500 characters");
+  const confirmation=await reasonDialog(kind,label);
+  if(confirmation===null)return false;
+  const why=requireConfirmation(confirmation.phrase,confirmation.reason);
+  if(why.length>500)throw Error("Deletion reason cannot exceed 500 characters.");
   if(currentTenant!==tenant()||!S().platformOwner)throw Error("Company or permissions changed; try again.");
   const data=await getDoc(recordRef(kind,record.id));if(!data.exists())throw Error("Record was already removed. Refresh the list.");
   const latest={id:record.id,...data.data()};
