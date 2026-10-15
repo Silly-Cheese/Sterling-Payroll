@@ -427,3 +427,39 @@ body:has(.sterling-record-dialog[open]) .topbar{filter:brightness(.75)}
 #phase2Operations .portal-view-content>.panel{min-height:270px;margin:0 0 18px}
 #phase2Operations .portal-view-content .list{max-height:65vh;overflow:auto}
 #phase2Operations .workspace-form-dialog .form-stack{max-width:none}
+
+/* Optional per-client fictional commissions */
+#commissionsWorkspace{display:grid;gap:18px;min-width:0}
+#commissionsWorkspace .commission-top{display:flex;gap:24px;align-items:center;justify-content:space-between;padding:22px 25px}
+#commissionsWorkspace .commission-top h2{font:500 clamp(27px,2.8vw,37px)/1.12 Georgia,serif;color:#f0e4cf;margin:6px 0 9px}
+#commissionsWorkspace .commission-top p{margin:0;max-width:760px;line-height:1.7;font-size:12px}
+#commissionsWorkspace .commission-flag{flex:none}
+#commissionsWorkspace .commission-actions{display:flex;justify-content:space-between;gap:18px;align-items:center;padding:12px 4px}
+#commissionsWorkspace .commission-actions.panel{padding:18px 23px}
+#commissionsWorkspace .commission-actions>div{display:grid;gap:4px}
+#commissionsWorkspace .commission-actions strong{font-size:14px}
+#commissionsWorkspace .commission-actions small{font-size:11px;color:#acb8b0}
+#commissionsWorkspace .commission-actions h2{font:500 24px Georgia,serif;margin:2px 0}
+#commissionsWorkspace .commission-actions .btn{min-width:125px}
+#commissionContent{min-width:0}
+#commissionsWorkspace .commission-records{display:grid;gap:6px;margin:12px 0 26px;max-height:min(54vh,630px);overflow-y:auto;scrollbar-color:#655842 transparent;scrollbar-width:thin}
+.commission-row{display:flex;justify-content:space-between;align-items:center;gap:16px;border:1px solid #333f39;border-radius:10px;padding:12px 15px;background:#171e1d}
+.commission-row:hover{border-color:#746348;background:#202725}
+.commission-row-copy{display:grid;min-width:0;gap:6px}
+.commission-row-copy strong{font-size:12px;color:#f3ebd9}
+.commission-row-copy small{font-size:11px;color:#aeb9b2;line-height:1.5}
+.commission-row-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap;flex-shrink:0}
+.commission-dialog-body{padding:19px 24px 25px}
+.commission-dialog-body form{display:grid;gap:13px}
+.commission-dialog-body .data-note{padding:15px;border:1px solid #3d4b40;border-radius:10px;background:#1e2821;color:#e9e3d5}
+#commissionsWorkspace #commissionFilter{width:auto;min-width:140px}
+#commissionsWorkspace #commissionSearch{min-width:200px;flex:1}
+#commissionsWorkspace #commissionMore{margin:0 0 10px}
+@media(max-width:720px){
+ #commissionsWorkspace .commission-top{align-items:flex-start;flex-direction:column;padding:17px}
+ #commissionsWorkspace .commission-actions{align-items:stretch;flex-direction:column;gap:10px}
+ #commissionsWorkspace .commission-actions.panel{padding:17px}
+ .commission-row{align-items:flex-start;flex-direction:column}
+ .commission-row-actions{justify-content:flex-start}
+ #commissionsWorkspace #commissionFilter,#commissionsWorkspace #commissionSearch{width:100%;min-width:0}
+}
