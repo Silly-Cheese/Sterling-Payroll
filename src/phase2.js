@@ -1,4 +1,4 @@
-import {collection,doc,updateDoc,getDocs,query,limit,writeBatch,serverTimestamp} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
+import {collection,doc,updateDoc,getDocs,query,limit,writeBatch,serverTimestamp,setDoc} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 import {toCents,money} from "./payroll-core.js";
 import {CLIENT_PLANS,EMPLOYEE_STATUSES,PAY_FREQUENCIES,ACCESS_ROLES,importEmployees,findPossibleDuplicates} from "./phase2-core.js";
 const $=id=>document.getElementById(id);
@@ -138,8 +138,12 @@ export async function mountPhase2({db,getState,refreshCompany,loadTenantDirector
   const target=$("p2Members");target.replaceChildren();
   if(!S().tenantId||!canAdmin())return;
   const tenantId=S().tenantId;
-  const snap=await getDocs(query(collection(db,"tenants",tenantId,"members"),limit(200)));
+  const [snap,links]=await Promise.all([
+   getDocs(query(collection(db,"tenants",tenantId,"members"),limit(200))),
+   getDocs(query(collection(db,"tenants",tenantId,"employeeLinks"),limit(200)))
+  ]);
   if(S().tenantId!==tenantId)return;
+  const linked=new Map(links.docs.map(d=>[d.id,d.data().employeeId]));
   for(const d of snap.docs){
    const member=d.data(),edit=document.createElement("div");edit.className="item-actions";
    const roleSelect=document.createElement("select"),statusSelect=document.createElement("select");
@@ -154,9 +158,26 @@ export async function mountPhase2({db,getState,refreshCompany,loadTenantDirector
      notify("Membership updated.");await renderMembers();
     }));
    }
+   if(member.role==="employee"&&member.status==="active"){
+    const employeeSelect=document.createElement("select");
+    employeeSelect.setAttribute("aria-label","Linked employee for "+member.email);
+    employeeSelect.append(option("","Choose HR employee"));
+    for(const e of S().employees)employeeSelect.append(option(e.id,e.displayName+" — "+(e.jobTitle||"Employee")));
+    employeeSelect.value=linked.get(d.id)||"";
+    edit.append(employeeSelect,button("Link employee",async()=>{
+     controls();const e=S().employees.find(x=>x.id===employeeSelect.value);
+     if(!e)throw Error("Choose an employee record first");
+     if(!await confirmAction("Link employee identity","Grant "+member.email+" private access to payroll records for "+e.displayName+"? Verify their identity first."))return;
+     await setDoc(doc(db,"tenants",tenantId,"employeeLinks",d.id),{
+      employeeId:e.id,linkedBy:S().user.uid,linkedAt:serverTimestamp()
+     });
+     notify("Employee portal access linked.");await renderMembers();
+    }));
+   }
    target.append(makeCard(member.email||"Team member",d.id===S().user.uid?"Your own membership":member.role,edit));
   }
   if(snap.empty)target.append(el("p","No accepted members yet.","muted"));
+  if(snap.size===200||links.size===200)target.append(el("p","Large membership list reached the page limit. Some accounts may not be shown.","muted"));
  }
  function refresh(){
   const s=S(),person=$("p2Person"),previous=person.value;person.replaceChildren(option("","Select employee"));
