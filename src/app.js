@@ -257,9 +257,9 @@ function renderDashboard(){
  for(const [page,label] of links)quick.append(button(label,()=>go(page),"quick-action"));
  if(!links.length)quick.append(mk("p","muted","Ask a Sterling administrator to assign an authorized company workspace."));
  const metrics=[
-  ["Client companies",state.platform?state.tenants.length:state.tenants.length,"Managed client workspaces"],
-  ["Employees",state.tenantId?state.employees.length:"—","Current company directory"],
-  ["Payroll runs",state.tenantId?state.runs.length:"—","Simulated processing periods"],
+  ["Client companies",state.tenants.length+(state.moreClients?"+":""),"Loaded client workspaces"],
+  ["Employees",state.tenantId?String(state.employees.length)+(state.moreEmployees?"+":""):"—","Current company · loaded records"],
+  ["Payroll runs",state.tenantId?String(state.runs.length)+(state.moreRuns?"+":""):"—","Current company · loaded periods"],
   ["Awaiting approval",state.tenantId?state.runs.filter(r=>r.status==="submitted").length:"—","Pending client authorization"]
  ];
  const attention=$("attentionQueue");attention.replaceChildren();
@@ -674,7 +674,7 @@ onAuthStateChanged(auth,async user=>{
   await loadTenantDirectory();
   await initializePhase2();
   if(!staffUI)staffUI=mountStaffAccounts({db,getState:()=>state,notify:toast,confirmAction});
-  if(!phase3)phase3=await mountPhase3({db,getState:()=>state,refreshCompany,notify:toast,confirmAction});
+  if(!phase3)phase3=await mountPhase3({db,getState:()=>state,refreshCompany,notify:toast,confirmAction,ownerDelete:(kind,record)=>ownerActions.remove(kind,record)});
   if(!phase4){
    try{const {mountPhase4}=await import("./phase4.js?v=phase6-final");phase4=await mountPhase4({db,getState:()=>state,notify:toast,confirmAction})}
    catch(error){console.error("Employee portal module unavailable",error);toast("Employee portal assets are still deploying. Please refresh after GitHub Pages finishes.",true)}
