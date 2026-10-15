@@ -37,12 +37,24 @@ test("Deploy bundle contains owner record manager",()=>{
  assert.match(verify,/node --check src\/record-actions\.js/);
 });
 
-test("Direct record deletion requires a typed phrase and explicit reason",()=>{
- const modal=read("src/record-actions.js");
- assert.match(modal,/DELETE PERMANENTLY/);
- assert.match(modal,/recordDeletePhrase/);
- assert.match(modal,/requireConfirmation\(confirmation\.phrase,confirmation\.reason\)/);
- assert.match(modal,/ownerAudit/);
+test("Owner deletion uses the shared custom modal with typed phrase",()=>{
+ const dialogs=read("src/modals.js"),manager=read("src/record-actions.js"),app=read("src/app.js");
+ assert.match(dialogs,/DELETE PERMANENTLY/);
+ assert.match(dialogs,/deleteRecord/);
+ assert.match(dialogs,/saCancel/);
+ assert.match(manager,/requestDeletion\(\{/);
+ assert.match(manager,/ownerAudit/);
+ assert.match(app,/createSterlingModals\(\)/);
+});
+test("Owner page removed without losing contextual authority",()=>{
+ const html=read("index.html"),app=read("src/app.js"),owner=read("src/owner.js");
+ assert.doesNotMatch(html,/data-page="owner"/);
+ assert.doesNotMatch(html,/id="page-owner"/);
+ assert.match(html,/id="sterlingRecordDialog"/);
+ assert.match(app,/openOwnerReview/);
+ assert.match(app,/openPayrollEditor/);
+ assert.match(owner,/async function openPeriod/);
+ assert.match(owner,/dialog\.showModal\(\)/);
 });
 test("Directory search uses bounded queries and rejects stale company responses",()=>{
  const app=read("src/app.js");
