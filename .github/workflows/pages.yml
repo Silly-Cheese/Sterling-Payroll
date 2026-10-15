@@ -21,12 +21,15 @@ jobs:
       - name: Assemble public site
         run: |
           mkdir -p _site/src
-          cp index.html styles.css favicon.svg phase2.html phase3-time.html phase3-payroll.html phase4.html _site/
-          cp src/app.js src/payroll-core.js src/phase2.js src/phase2-core.js src/staff.js src/phase3.js src/phase3-core.js src/phase4.js src/phase4-core.js src/owner.js src/owner-core.js src/phase5.js src/phase5-core.js _site/src/
+          cp index.html styles.css favicon.svg phase2.html phase3-time.html phase3-payroll.html phase4.html phase5.html phase6.html _site/
+          cp src/app.js src/payroll-core.js src/phase2.js src/phase2-core.js src/staff.js src/phase3.js src/phase3-core.js src/phase4.js src/phase4-core.js src/owner.js src/owner-core.js src/phase5.js src/phase5-core.js src/phase6.js src/phase6-core.js _site/src/
           touch _site/.nojekyll
-          for file in _site/src/phase4.js _site/src/phase4-core.js _site/src/owner.js _site/src/owner-core.js _site/src/phase5.js _site/src/phase5-core.js; do
+          for file in _site/src/*.js _site/*.html; do
             test -s "$file" || { echo "Missing deploy asset: $file"; exit 1; }
           done
+          node --check _site/src/app.js
+          node --check _site/src/phase5.js
+          node --check _site/src/phase6.js
       - uses: actions/configure-pages@v5
         with:
           enablement: true
