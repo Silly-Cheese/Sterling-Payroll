@@ -13,7 +13,7 @@ service cloud.firestore {
   function sterlingSupport(){return platform() || staffRole() == 'support';}
   function clientHelpDesk(t){return member(t) && role(t) != 'employee';}
   function canSeeTicket(t,createdBy){return sterlingSupport() ||
-    (clientHelpDesk(t) && (role(t) == 'client_admin' || createdBy == request.auth.uid));}
+    (clientHelpDesk(t) && createdBy == request.auth.uid);}
   function memberPath(t){return /databases/$(database)/documents/tenants/$(t)/members/$(request.auth.uid);}
   function member(t){return signedIn() && exists(memberPath(t)) && get(memberPath(t)).data.status == 'active' &&
     get(/databases/$(database)/documents/tenants/$(t)).data.status == 'active';}
