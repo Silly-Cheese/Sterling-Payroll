@@ -33,8 +33,8 @@ export function mountBulkTimecardApprovals({db, getState, refreshCompany, refres
   selectAll.focus({preventScroll: true});
  };
  const registerPanel = document.getElementById("timeList")?.closest(".panel");
- const importButton = registerPanel?.querySelector(".timecard-import-launch");
- if (importButton) importButton.after(quickLink);
+ const filterBar = registerPanel?.querySelector(".list-toolbar");
+ if (filterBar) filterBar.append(quickLink);
  else registerPanel?.querySelector("h2")?.after(quickLink);
 
  let selected = new Set(), loaded = [], currentTenant = "", busy = false, lastOutcome = "";
