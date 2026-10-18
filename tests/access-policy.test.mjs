@@ -8,7 +8,7 @@ test("client company admin can manage payroll, not Sterling billing, support sta
  assert.equal(cap.supportManage,false);
  assert.equal(cap.supportInternal,false);
  assert.equal(cap.companyAccessWrite,false);
- assert.equal(cap.allCompanyCases,true);
+ assert.equal(cap.allCompanyCases,false);
  assert.equal(cap.caseCreate,true);
 });
 test("read-only client users can write only their own support conversation",()=>{
