@@ -3,7 +3,7 @@ import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmai
 import {getFirestore,collection,doc,getDoc,getDocs,addDoc,setDoc,updateDoc,query,limit,writeBatch,serverTimestamp,orderBy,documentId,startAfter,startAt,endAt} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 import {calculateLine,summarizeLines,toCents,money,hoursValue,canTransition,validPeriod,cleanEmail} from "./payroll-core.js";
 import {mountStaffAccounts} from "./staff.js";
-import {mountPhase3} from "./phase3.js?v=sterling-bulk-timecards-20261017";
+import {mountPhase3} from "./phase3.js?v=sterling-complete-payroll-20261017";
 // Phase 4 loads lazily, so a pending Pages deployment cannot break the sign-in screen.
 import {buildPayrollPreview,DEFAULT_POLICY} from "./phase3-core.js";
 import {mountPhase2} from "./phase2.js";
@@ -619,9 +619,9 @@ function renderRunDetails(){
 async function generateLines(run){
  if(!canPayroll()||!phase3)throw Error("Payroll permissions or Phase 3 module unavailable");
  const tenantId=state.tenantId;
- const {preview,policy}=await phase3.buildPreview(run);
+ const {preview,policy,employees}=await phase3.buildPreview(run);
  if(preview.issues.length)throw Error("Resolve "+preview.issues.length+" time and payroll exceptions before generating");
- const commission=await prepareRunCommissions(db,tenantId,run,preview.lines,state.employees);
+ const commission=await prepareRunCommissions(db,tenantId,run,preview.lines,employees);
  const lines=commission.lines;
  preview.lines=lines;
  preview.totals=summarizeLines(lines);
@@ -630,7 +630,12 @@ async function generateLines(run){
  if(lines.length+commission.claim.length+commission.release.length>440)throw Error("Too many commission and pay-line writes for one atomic batch. Split the pay period.");
  if(!await confirmAction("Generate payroll preview","Generate "+lines.length+" reviewed pay lines with "+money(preview.totals.grossCents)+" fictional gross pay (including "+money(commission.commissionCents)+" commissions)? Existing draft lines will be replaced."))return;
  if(commission.notice)toast(commission.notice,true);
- if(tenantId!==state.tenantId)throw Error("Company changed during payroll preparation");
+ if(tenantId!==state.tenantId||run.id!==state.selectedRun)
+  throw Error("Company or payroll selection changed during preparation. Reopen the run and retry.");
+ const runSnapshot=await getDoc(doc(db,"tenants",tenantId,"payrollRuns",run.id));
+ if(!runSnapshot.exists()||runSnapshot.data().status!=="draft"||
+  runSnapshot.data().periodStart!==run.periodStart||runSnapshot.data().periodEnd!==run.periodEnd)
+  throw Error("The payroll draft changed while it was being prepared. Reopen the run and retry.");
  const base=collection(db,"tenants",tenantId,"payrollRuns",run.id,"lines");
  const oldSnapshot=await getDocs(query(base,limit(251)));
  if(oldSnapshot.size>250)throw Error("Existing lines exceed safe batch limit");
