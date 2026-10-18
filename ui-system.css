@@ -228,3 +228,13 @@ body[data-density="compact"] .page .panel{padding:clamp(14px,1.5vw,20px)}
  .auth-brand{min-height:280px}
 }
 @media(prefers-reduced-motion:reduce){.btn,button,.list-item{transition:none!important}}
+
+.nav-scrim{display:none}
+@media(max-width:760px){
+ .nav-scrim:not(.hidden){
+  display:block!important;position:fixed;inset:0;z-index:45;
+  background:rgba(4,10,10,.64);border:0;border-radius:0;
+  width:100vw;height:100dvh;cursor:pointer
+ }
+ .sidebar{z-index:50}
+}
