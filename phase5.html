@@ -2,6 +2,7 @@
  <div><div class="eyebrow">CLIENT RELATIONSHIPS / SIMULATION</div><h2>Billing and support, in one place.</h2><p class="muted">Manage fictional subscriptions, invoice history and client support without real charges or banking details.</p></div>
  <div class="service-toolbar"><button id="p5Refresh" class="btn">Refresh workspace</button><button id="p5Export" class="btn primary">Export invoice statement</button></div>
 </div>
+<div id="p5GovernanceNotice" class="service-governance-note" role="note"><strong>Clear responsibilities.</strong> Client companies can view their billing and send support requests. Sterling alone controls agreement terms, invoice updates, case assignments, and internal support notes.</div>
 <div class="metric-grid compact" id="p5Metrics"></div>
 <div class="service-tabs" role="tablist" aria-label="Client services">
  <button data-p5-tab="overview" class="active" type="button">Overview & plan</button>
@@ -10,7 +11,7 @@
 </div>
 <section data-p5-panel="overview" class="service-panel">
  <div class="ops-grid">
- <article class="panel"><div class="eyebrow">SERVICE AGREEMENT</div><h2>Client plan</h2><p class="muted">All plan rates and contract states are simulated.</p>
+ <article class="panel"><div class="eyebrow">SERVICE AGREEMENT</div><h2>Client plan</h2><p class="muted">All plan rates and contract states are simulated. Agreement changes are made only by Sterling.</p>
  <form id="p5AgreementForm" class="form-stack">
  <div class="two-fields"><label>Plan<select id="p5Tier"><option value="starter">Starter</option><option value="standard">Standard</option><option value="enterprise">Enterprise</option></select></label>
  <label>Billing cycle<select id="p5BillingCycle"><option value="monthly">Monthly</option><option value="annual">Annual</option></select></label></div>
@@ -53,10 +54,11 @@
 <section data-p5-panel="support" class="service-panel hidden">
  <div class="two-col asymmetric">
   <article class="panel"><div class="eyebrow">CLIENT SUPPORT</div><h2>Open a case</h2>
+   <p class="fine-print">A case is the official in-app communication channel between your company and Sterling. Sterling staff decide assignments and case status.</p>
    <form id="p5TicketForm" class="form-stack">
     <label>Subject<input id="p5Subject" maxlength="120" required></label>
     <div class="two-fields"><label>Category<select id="p5Category"><option value="payroll">Payroll</option><option value="employee">Employee</option><option value="billing">Billing</option><option value="technical">Technical</option><option value="general">General</option></select></label>
-    <label>Priority<select id="p5Priority"><option value="normal">Normal</option><option value="low">Low</option><option value="high">High</option><option value="urgent">Urgent</option></select></label></div>
+    <label>Priority<select id="p5Priority"><option value="normal">Normal</option><option value="low">Low</option><option value="high">High</option><option value="urgent">Urgent — Sterling staff only</option></select></label></div>
     <label>Details<textarea id="p5Details" maxlength="1500" minlength="10" rows="4" required></textarea></label>
     <button class="btn primary" type="submit">Submit support case</button>
    </form>
@@ -67,9 +69,10 @@
   </article>
  </div>
  <article class="panel phase3-spaced"><h2>Case conversation</h2><div id="p5SelectedTicket" class="data-note">Choose a case in the queue.</div>
+  <p id="p5ClientNotice" class="service-message-policy" role="note">Messages are retained with their support case. Only Sterling staff can view internal notes.</p>
   <div id="p5Notes" class="list"></div>
   <form id="p5NoteForm" class="form-stack hidden"><label>Message<textarea id="p5NoteText" maxlength="1600" minlength="2" rows="3" required></textarea></label>
-   <label class="checkline"><input type="checkbox" id="p5Internal"> Internal staff note (hidden from regular client viewers)</label>
+   <label class="checkline"><input type="checkbox" id="p5Internal"> Internal Sterling staff note (never visible to client-company users)</label>
    <button class="btn primary" type="submit">Add case update</button>
   </form>
  </article>
