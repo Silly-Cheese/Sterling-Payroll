@@ -590,35 +590,40 @@ export async function mountCommissions({db,getState,notify,confirmAction,ownerDe
   let created=0,skipped=0;
   try{
    const used=new Set(),candidates=[];
-   for(let i=0;i<ready.length;i+=12){
-    guard(company,actor);
-    const group=ready.slice(i,i+12),snapshots=await Promise.all(group.map(x=>getDoc(doc(coll("commissionSales"),x.id))));
-    guard(company,actor);
-    for(let j=0;j<group.length;j++){
-     const row=group[j],snapshot=snapshots[j];
-     if(used.has(row.id)||snapshot.exists()){skipped++;continue;}
-     used.add(row.id);candidates.push(row);
-    }
-    $("commissionImportStatus").textContent="Checking duplicates… "+Math.min(i+12,ready.length)+"/"+ready.length;
+   for(const item of ready){
+    if(used.has(item.id)){skipped++;continue;}
+    used.add(item.id);candidates.push(item);
    }
    for(let i=0;i<candidates.length;i+=BATCH_SIZE){
     guard(company,actor);
     const group=candidates.slice(i,i+BATCH_SIZE);
-    const batch=writeBatch(db);
-    for(const sale of group){
-     batch.set(doc(coll("commissionSales"),sale.id),{
-      employeeId:sale.employeeId,saleDate:sale.saleDate,description:sale.description,
-      saleAmountCents:sale.saleAmountCents,commissionCents:sale.commissionCents,
-      type:sale.type,rateBasisPoints:sale.rateBasisPoints,fixedCents:sale.fixedCents,
-      status:"pending",approvedBy:"",paidRunId:"",createdBy:actor,createdAt:serverTimestamp()
+    try{
+     // Reads and creates are in one Firestore transaction. Previously approved,
+     // payroll-linked or simultaneously imported sales can never be overwritten.
+     const result=await runTransaction(db,async transaction=>{
+      guard(company,actor);
+      const references=group.map(sale=>doc(db,"tenants",company,"commissionSales",sale.id));
+      const snapshots=await Promise.all(references.map(ref=>transaction.get(ref)));
+      let added=0,existing=0;
+      for(let n=0;n<group.length;n++){
+       const sale=group[n];
+       if(snapshots[n].exists()){existing++;continue;}
+       transaction.set(references[n],{
+        employeeId:sale.employeeId,saleDate:sale.saleDate,description:sale.description,
+        saleAmountCents:sale.saleAmountCents,commissionCents:sale.commissionCents,
+        type:sale.type,rateBasisPoints:sale.rateBasisPoints,fixedCents:sale.fixedCents,
+        status:"pending",approvedBy:"",paidRunId:"",createdBy:actor,createdAt:serverTimestamp()
+       });
+       added++;
+      }
+      return {added,existing};
      });
-    }
-    try{await batch.commit();created+=group.length;}
-    catch(error){
+     created+=result.added;skipped+=result.existing;
+    }catch(error){
      throw Error("Batch "+(Math.floor(i/BATCH_SIZE)+1)+" failed: "+
       (error?.code||error?.message||error)+". "+created+" earlier records were saved. Re-upload the same CSV to retry safely.");
     }
-    $("commissionImportStatus").textContent="Saving pending sales… "+created+" of "+candidates.length+
+    $("commissionImportStatus").textContent="Safely importing pending sales… "+(created+skipped)+" / "+ready.length+
      (skipped?" · "+skipped+" duplicates skipped":"");
    }
    $("commissionImportStatus").textContent=created+" sales imported as pending · "+skipped+" duplicates skipped · "+
