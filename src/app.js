@@ -440,11 +440,20 @@ $("employeeForm").addEventListener("submit",async event=>{
 });
 $("empSearch").addEventListener("input",()=>{renderEmployees();scheduleDirectorySearch("employees")});
 $("empStatus").addEventListener("change",renderEmployees);
+$("empSort").addEventListener("change",renderEmployees);
 function renderEmployees(){
  const el=$("employeeList");el.replaceChildren();
  const q=$("empSearch").value.trim().toLowerCase();
  const status=$("empStatus").value;
- const employees=state.employees.filter(e=>(status==="all"||e.status===status)&&[e.displayName,e.jobTitle,e.department].join(" ").toLowerCase().includes(q));
+ const sortBy=$("empSort").value;
+ const employeePay=e=>e.payType==="salary"?Number(e.annualSalaryCents||0):Number(e.hourlyRateCents||0)*2080;
+ const employees=state.employees.filter(e=>(status==="all"||e.status===status)&&[e.displayName,e.jobTitle,e.department].join(" ").toLowerCase().includes(q))
+ .sort((a,b)=>{
+  if(sortBy==="name-desc")return String(b.displayName||"").localeCompare(String(a.displayName||""));
+  if(sortBy==="department")return String(a.department||"").localeCompare(String(b.department||""))||String(a.displayName||"").localeCompare(String(b.displayName||""));
+  if(sortBy==="pay-desc")return employeePay(b)-employeePay(a)||String(a.displayName||"").localeCompare(String(b.displayName||""));
+  return String(a.displayName||"").localeCompare(String(b.displayName||""));
+ });
  $("empCount").textContent=employees.length+" shown / "+state.employees.length+" loaded"+(state.moreEmployees?"+":"");
  if(!employees.length)empty(el,"No employee records match this search.");
  for(const e of employees.slice(0,250)){
@@ -733,7 +742,14 @@ $("runForm").addEventListener("submit",async event=>{
 function renderRuns(){
  const el=$("runList");el.replaceChildren();
  const q=$("runSearch").value.toLowerCase().trim(),status=$("runStatus").value;
- const filtered=state.runs.filter(r=>(status==="all"||r.status===status)&&[r.periodStart,r.periodEnd,r.payDate,r.status].join(" ").toLowerCase().includes(q));
+ const sortBy=$("runSort").value;
+ const filtered=state.runs.filter(r=>(status==="all"||r.status===status)&&[r.periodStart,r.periodEnd,r.payDate,r.status].join(" ").toLowerCase().includes(q))
+ .sort((a,b)=>{
+  if(sortBy==="oldest")return String(a.periodStart||"").localeCompare(String(b.periodStart||""));
+  if(sortBy==="payday")return String(b.payDate||"").localeCompare(String(a.payDate||""));
+  if(sortBy==="status")return String(a.status||"").localeCompare(String(b.status||""))||String(b.periodStart||"").localeCompare(String(a.periodStart||""));
+  return String(b.periodStart||"").localeCompare(String(a.periodStart||""));
+ });
  $("runCount").textContent=filtered.length+" matching / "+state.runs.length+" loaded"+(state.moreRuns?"+":"");
  if(!filtered.length)empty(el,"No payroll periods match these filters.");
  const frag=document.createDocumentFragment();
@@ -753,6 +769,9 @@ function renderRuns(){
 }
 $("runSearch").addEventListener("input",renderRuns);
 $("runStatus").addEventListener("change",renderRuns);
+$("runSort").addEventListener("change",renderRuns);
+$("lineSearch").addEventListener("input",renderRunDetails);
+$("lineSort").addEventListener("change",renderRunDetails);
 async function openOwnerReview(kind,id){
  if(!state.platformOwner||!ownerUI)throw Error("Owner record management is not available yet");
  await ownerUI.openReview(kind,id,state.tenantId);
@@ -771,6 +790,8 @@ async function selectRun(id){
   if(state.tenantId!==tenantId||state.selectedRun!==id)return;
   state.lines=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.employeeName.localeCompare(b.employeeName));
   renderRunDetails();
+  if(state.page==="payroll"&&!window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+   $("runDetails").scrollIntoView({behavior:"smooth",block:"start"});
  }catch(e){fail(e,"Unable to open payroll run")}
 }
 function renderRunDetails(){
@@ -785,13 +806,21 @@ function renderRunDetails(){
   const el=mk("div","metric");el.append(mk("div","metric-label",title),mk("strong","",amount));box.append(el);
  }
  const wrap=$("runLines");wrap.replaceChildren();
+ const term=$("lineSearch").value.trim().toLowerCase(),lineSort=$("lineSort").value;
+ const visibleLines=state.lines.filter(line=>String(line.employeeName||"").toLowerCase().includes(term)).sort((a,b)=>{
+  if(lineSort==="gross")return b.grossCents-a.grossCents||a.employeeName.localeCompare(b.employeeName);
+  if(lineSort==="net")return b.netCents-a.netCents||a.employeeName.localeCompare(b.employeeName);
+  return a.employeeName.localeCompare(b.employeeName);
+ });
+ $("lineCount").textContent=visibleLines.length+" of "+state.lines.length+" pay lines";
  if(!state.lines.length)wrap.append(mk("p","muted","No pay lines yet. Generate a preview while this run is in draft."));
+ else if(!visibleLines.length)wrap.append(mk("p","muted","No employees match that search. Clear it to see the full draft."));
  else{
   const table=mk("table"),head=mk("thead"),hrow=mk("tr");
   for(const label of ["Employee","Regular","Overtime","Bonus","Commission","Deductions","Gross","Net","Adjust"] )hrow.append(mk("th","",label));
   head.append(hrow);table.append(head);
   const tbody=mk("tbody");
-  for(const line of state.lines){
+  for(const line of visibleLines){
    const row=mk("tr");
    const moneyColumns=[
     ["Employee",line.employeeName],["Regular",money(line.regularCents)],
