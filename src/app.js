@@ -126,7 +126,7 @@ function go(page){
  for(const node of document.querySelectorAll("[data-page]"))node.classList.toggle("active",node.dataset.page===page);
  $("pageName").textContent=titles[page][0];$("pageTitle").textContent=titles[page][0];$("pageDescription").textContent=titles[page][1];
  $("pageEyebrow").textContent=page==="clients"?"STERLING PAYROLL / HEADQUARTERS":"STERLING PAYROLL / "+(state.tenantId?state.tenants.find(t=>t.id===state.tenantId)?.name||"CLIENT WORKSPACE":"COMMAND CENTER").toUpperCase();
- document.querySelector(".sidebar")?.classList.remove("open");
+ closeMobileNavigation();
  syncTimekeepingView(page);
  document.getElementById("phase3Payroll")?.classList.toggle("hidden",page!=="payroll"||!state.tenantId);
  if(page==="staff")void staffUI?.refresh();
@@ -147,7 +147,21 @@ function go(page){
  window.scrollTo({top:0});
 }
 for(const nav of document.querySelectorAll("[data-page]"))nav.addEventListener("click",()=>go(nav.dataset.page));
-$("mobileMenu").addEventListener("click",()=>document.querySelector(".sidebar").classList.toggle("open"));
+function closeMobileNavigation(){
+ document.querySelector(".sidebar")?.classList.remove("open");
+ $("navScrim")?.classList.add("hidden");
+ $("mobileMenu")?.setAttribute("aria-expanded","false");
+}
+function toggleMobileNavigation(){
+ const menu=document.querySelector(".sidebar"),expanded=menu?.classList.toggle("open");
+ $("navScrim")?.classList.toggle("hidden",!expanded);
+ $("mobileMenu")?.setAttribute("aria-expanded",String(Boolean(expanded)));
+}
+$("mobileMenu").setAttribute("aria-expanded","false");
+$("mobileMenu").addEventListener("click",toggleMobileNavigation);
+$("navScrim")?.addEventListener("click",closeMobileNavigation);
+document.addEventListener("keydown",event=>{if(event.key==="Escape")closeMobileNavigation()});
+window.matchMedia("(min-width:761px)").addEventListener("change",event=>{if(event.matches)closeMobileNavigation()});
 document.body.dataset.density=localStorage.getItem("sterling-payroll-density")==="comfortable"?"comfortable":"compact";
 function updateDensityLabel(){$("densityToggle").textContent=document.body.dataset.density==="compact"?"Comfortable view":"Compact view"}
 updateDensityLabel();
