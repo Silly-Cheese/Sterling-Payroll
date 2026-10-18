@@ -30,7 +30,7 @@ jobs:
           done
           # Check all shipped JavaScript modules, not just older entry points.
           for file in _site/src/*.js; do
-            node --check "$file" || exit 1
+            node --input-type=module --check < "$file" || exit 1
           done
           # Validate local static imports, including newly added feature modules.
           node --input-type=module <<'NODE'
