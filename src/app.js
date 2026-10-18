@@ -6,7 +6,7 @@ import {mountStaffAccounts} from "./staff.js";
 import {mountPhase3} from "./phase3.js?v=sterling-timekeeping-20261018";
 // Phase 4 loads lazily, so a pending Pages deployment cannot break the sign-in screen.
 import {buildPayrollPreview,DEFAULT_POLICY} from "./phase3-core.js";
-import {mountPhase2} from "./phase2.js";
+import {mountPhase2} from "./phase2.js?v=sterling-governance-20261018";
 import {createOwnerRecordActions} from "./record-actions.js";
 import {createSterlingModals} from "./modals.js";
 import {compactForm} from "./workspace-ui.js";
@@ -1018,7 +1018,7 @@ onAuthStateChanged(auth,async user=>{
    catch(error){console.error("Employee portal module unavailable",error);toast("Employee portal assets are still deploying. Please refresh after GitHub Pages finishes.",true)}
   }
   if(!phase5){
-   try{const {mountPhase5}=await import("./phase5.js?v=sterling-commissions-20261015");phase5=await mountPhase5({db,getState:()=>state,notify:toast,confirmAction,ownerDelete:(kind,record)=>ownerActions.remove(kind,record)})}
+   try{const {mountPhase5}=await import("./phase5.js?v=sterling-governance-20261018");phase5=await mountPhase5({db,getState:()=>state,notify:toast,confirmAction,ownerDelete:(kind,record)=>ownerActions.remove(kind,record)})}
    catch(error){console.error("Client services module unavailable",error);toast("Client services are not yet available; check the deployment.",true)}
   }
   if(!commissionsUI){
