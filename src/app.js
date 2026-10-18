@@ -12,7 +12,7 @@ import {createSterlingModals} from "./modals.js";
 import {compactForm} from "./workspace-ui.js";
 import {mountTimecardImport} from "./timecard-import.js";
 import {readCompletePages} from "./payroll-paging.js?v=sterling-timekeeping-20261018";
-import {filterTimecards,sumTimecardHours,payPeriodForSelection,formatHours} from "./timekeeping-core.js?v=sterling-timekeeping-20261018";
+import {filterTimecards,sumTimecardHours,payPeriodForSelection,formatHours,applyApprovedTimeCorrections} from "./timekeeping-core.js?v=sterling-timekeeping-20261018";
 import {prepareRunCommissions} from "./commission-payroll.js?v=sterling-payroll-security-20261017";
 import {planPayrollDraftWrites} from "./payroll-write-plan.js?v=sterling-payroll-security-20261017";
 
@@ -27,7 +27,7 @@ const app=initializeApp({
 const auth=getAuth(app),db=getFirestore(app),$=id=>document.getElementById(id);
 const state={user:null,platform:false,platformOwner:false,platformWrite:false,platformRole:"client",tenants:[],tenantId:"",role:"",employees:[],time:[],runs:[],selectedRun:null,lines:[],page:"dashboard",register:false,moreEmployees:false,moreTime:false,moreRuns:false,employeeCursor:null,timeCursor:null,runCursor:null,clientCursor:null,moreClients:false};
 let timekeepingView="register",timekeepingComplete=false,timekeepingCompleteTenant="",timekeepingEpoch=0;
-let timekeepingLoading=null,timekeepingLoadError="",timekeepingVisibleRows=40;
+let timekeepingLoading=null,timekeepingLoadError="",timekeepingVisibleRows=40,timekeepingCorrections=[];
 const TIME_PAGE_SIZE=200,TIME_VISIBLE_INCREMENT=40;
 const titles={
  service:["Client Services","Subscription terms, fictional invoicing, service history and support."],
@@ -492,6 +492,7 @@ function invalidateTimekeeping(){
  timekeepingCompleteTenant="";
  timekeepingLoadError="";
  timekeepingLoading=null;
+ timekeepingCorrections=[];
  timekeepingVisibleRows=TIME_VISIBLE_INCREMENT;
 }
 function syncTimekeepingView(page=state.page){
@@ -542,14 +543,16 @@ async function loadCompleteTimekeeping(){
    }});
  }
  const promise=(async()=>{
-  const [employees,entries,runs]=await Promise.all([
+  const [employees,entries,runs,corrections]=await Promise.all([
    collect("employees","employees"),
    collect("timeEntries","timecards"),
-   collect("payrollRuns","periods")
+   collect("payrollRuns","periods"),
+   collect("timeCorrections","corrections")
   ]);
   guard();
   state.employees=employees.sort((a,b)=>String(a.displayName||"").localeCompare(String(b.displayName||"")));
   state.time=entries.sort((a,b)=>String(b.workDate).localeCompare(String(a.workDate)));
+  timekeepingCorrections=corrections;
   state.runs=runs.sort((a,b)=>String(b.periodEnd).localeCompare(String(a.periodEnd)));
   state.moreEmployees=false;state.moreTime=false;state.moreRuns=false;
   $("loadMoreEmployees").classList.add("hidden");
@@ -612,7 +615,14 @@ function renderTime(){
   count.textContent="Choose a valid start and end date for this custom pay period.";
   return;
  }
- const periodEntries=filterTimecards(state.time,{employeeId,start,end},names);
+ let effective;
+ try{effective=applyApprovedTimeCorrections(state.time,timekeepingCorrections)}
+ catch(error){
+  count.textContent=error?.message||"Timecard corrections conflict. Review corrections before using this period total.";
+  stateLabel.textContent="Review corrections";
+  return;
+ }
+ const periodEntries=filterTimecards(effective,{employeeId,start,end},names);
  const rows=filterTimecards(periodEntries,{
   day:$("timeDayFilter").value,status:$("timeStatus").value,
   search:$("timeSearch").value,sort:$("timeSort").value
@@ -641,7 +651,7 @@ function renderTime(){
   summary.append(metrics);
   summary.append(mk("p","fine-print",
    "Recorded totals include approved and pending entries, not rejected entries ("+
-   totals.rejectedCount+" rejected). Pending hours are not payroll-ready. Day, search and status filters do not change these period totals."));
+   totals.rejectedCount+" rejected). Approved corrections are included; paid leave is not counted as worked time. Pending hours are not payroll-ready. Day, search and status filters do not change these totals."));
   summary.classList.remove("hidden");
  }
  if(!rows.length)return empty(list,"No timecards match the selected filters.");
@@ -652,7 +662,7 @@ function renderTime(){
   const actions=state.platformOwner?[button("Delete",()=>ownerActions.remove("timeEntries",entry),"small danger")]:[];
   const label=entry.workDate+" · "+formatHours(total)+" hours ("+
    formatHours(entry.regularHours)+" regular, "+formatHours(entry.overtimeHours)+" OT)"+
-   (entry.note?" · "+entry.note:"");
+   (entry.corrected?" · Corrected":"")+(entry.note?" · "+entry.note:"");
   fragment.append(item(employeeName,label,actions,entry.status||"pending",entry.status==="approved"?"success":""));
  }
  list.append(fragment);
