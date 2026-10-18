@@ -22,11 +22,12 @@ export async function mountPhase2({db,getState,refreshCompany,loadTenantDirector
  };
  const canWrite=()=>S().platformWrite||S().platformRole==="payroll_operator"||["client_admin","payroll_specialist"].includes(S().role);
  const canAdmin=()=>S().platformWrite||S().role==="client_admin";
+ const canGrantAccess=()=>Boolean(S().platformWrite);
  const employees=()=>S().employees,active=()=>employees().find(e=>e.id===$("p2Person").value);
  let preview=[],possible=[],checked=new Set();
  const notifyError=(prefix,e)=>notify(prefix+": "+(e.code||e.message||e),true);
  const ensure=()=>{if(!S().tenantId||!canWrite())throw Error("No employee editing permission")};
- const controls=()=>{if(!S().tenantId||!canAdmin())throw Error("Administrator permission required")};
+ const controls=()=>{if(!S().tenantId||!canGrantAccess())throw Error("Only Sterling administration may change company access")};
  function fillEmployee(){
   const e=active();if(!e)return;
   for(const [id,value] of [["p2Name",e.displayName],["p2Title",e.jobTitle],["p2Department",e.department],
@@ -163,7 +164,7 @@ export async function mountPhase2({db,getState,refreshCompany,loadTenantDirector
    for(const role of ACCESS_ROLES)roleSelect.append(option(role,role.replace(/_/g," ")));
    for(const status of ["active","suspended"])statusSelect.append(option(status,status));
    roleSelect.value=member.role;statusSelect.value=member.status;
-   if(d.id!==S().user.uid){
+   if(canGrantAccess()&&d.id!==S().user.uid){
     edit.append(roleSelect,statusSelect,button("Save",async()=>{
      controls();const changes={role:roleSelect.value,status:statusSelect.value};
      if(!await confirmAction("Team access","Update access for "+member.email+"?"))return;
@@ -172,7 +173,7 @@ export async function mountPhase2({db,getState,refreshCompany,loadTenantDirector
      await batch.commit();notify("Membership updated.");await renderMembers();
     }));
    }
-   if(member.role==="employee"&&member.status==="active"){
+   if(canGrantAccess()&&member.role==="employee"&&member.status==="active"){
     const employeeSelect=document.createElement("select");
     employeeSelect.setAttribute("aria-label","Linked employee for "+member.email);
     employeeSelect.append(option("","Choose HR employee"));
@@ -190,6 +191,7 @@ export async function mountPhase2({db,getState,refreshCompany,loadTenantDirector
    }
    target.append(makeCard(member.email||"Team member",d.id===S().user.uid?"Your own membership":member.role,edit));
   }
+  if(!canGrantAccess())target.prepend(el("p","Membership and employee account linking are managed by Sterling. Open a support case to request access changes.","muted"));
   if(snap.empty)target.append(el("p","No accepted members yet.","muted"));
   if(snap.size===200||links.size===200)target.append(el("p","Large membership list reached the page limit. Some accounts may not be shown.","muted"));
  }
