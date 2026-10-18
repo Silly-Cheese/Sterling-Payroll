@@ -1,5 +1,5 @@
 import {collection,doc,getDoc,getDocs,query,where,limit,runTransaction,serverTimestamp} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
-import {parseTimecardCsv,matchTimecards,importDocumentId,timecardCsvTemplate} from "./timecard-import-core.js";
+import {parseTimecardCsv,matchTimecards,importDocumentId,timecardCsvTemplate,groupTimecards} from "./timecard-import-core.js";
 
 export function mountTimecardImport({db,getState,notify,confirmAction,refreshCompany}){
  const S=()=>getState(),canImport=()=>Boolean(S().platformWrite||S().platformRole==="payroll_operator"||["client_admin","payroll_specialist"].includes(S().role));
@@ -101,29 +101,40 @@ export function mountTimecardImport({db,getState,notify,confirmAction,refreshCom
    const previous=await existingTime(valid,companyId),checked=matchTimecards(valid,valid.map(r=>r.employee),previous);
    if(checked.some(r=>r.status!=="ready"))throw Error("Timecards changed since the preview. Review the file again.");
    if(companyId!==tenant()||!canImport()||S().user.uid!==actor)throw Error("Company or permissions changed.");
-   await runTransaction(db,async tx=>{
-    const ids=valid.map(r=>doc(db,"tenants",companyId,"timeEntries",importDocumentId(r.employee.id,r.workDate)));
-    const staffIds=[...new Set(valid.map(r=>r.employee.id))];
-    const staff=staffIds.map(id=>doc(db,"tenants",companyId,"employees",id));
-    // Read first, then write. Stable IDs block duplicate imports from concurrent uploads.
-    const [targets,workers]=await Promise.all([
-     Promise.all(ids.map(ref=>tx.get(ref))),
-     Promise.all(staff.map(ref=>tx.get(ref)))
-    ]);
-    if(targets.some(s=>s.exists()))throw Error("At least one timecard has already been imported.");
-    if(workers.some(s=>!s.exists()||s.data().status!=="active"))throw Error("Employee status changed; no timecards imported.");
-    valid.forEach((r,i)=>tx.set(ids[i],{
-     employeeId:r.employee.id,workDate:r.workDate,regularHours:r.regularHours,overtimeHours:r.overtimeHours,
-     note:r.note,createdAt:serverTimestamp(),createdBy:actor,status:"pending",approvedBy:""
-    }));
-    tx.set(doc(collection(db,"tenants",companyId,"auditEvents")),{
-     category:"time",action:"timecard-csv-import",subject:companyId,detail:valid.length+" fictional timecards imported as pending",
-     actor,at:serverTimestamp()
+   // Use small atomic transactions: the Firestore Rules batch limit is 20
+   // document-access calls, and one timecard create checks its employee record.
+   let committed=0;
+   for(const group of groupTimecards(valid)){
+    if(companyId!==tenant()||!canImport()||S().user.uid!==actor)
+     throw Error("Company or permissions changed after "+committed+" successful imports.");
+    await runTransaction(db,async tx=>{
+     const refs=group.map(r=>doc(db,"tenants",companyId,"timeEntries",importDocumentId(r.employee.id,r.workDate)));
+     const workerIds=[...new Set(group.map(r=>r.employee.id))];
+     const workers=workerIds.map(id=>doc(db,"tenants",companyId,"employees",id));
+     const [existing,active]=await Promise.all([
+      Promise.all(refs.map(ref=>tx.get(ref))),
+      Promise.all(workers.map(ref=>tx.get(ref)))
+     ]);
+     if(existing.some(s=>s.exists()))throw Error("An imported timecard is already present.");
+     if(active.some(s=>!s.exists()||s.data().status!=="active"))throw Error("An employee is no longer active.");
+     for(let i=0;i<group.length;i++){
+      const r=group[i];
+      tx.set(refs[i],{employeeId:r.employee.id,workDate:r.workDate,
+       regularHours:r.regularHours,overtimeHours:r.overtimeHours,note:r.note,
+       createdAt:serverTimestamp(),createdBy:actor,status:"pending",approvedBy:""});
+     }
+     tx.set(doc(collection(db,"tenants",companyId,"auditEvents")),{
+      category:"time",action:"timecard-csv-import",subject:companyId,
+      detail:group.length+" fictional timecards imported as pending",
+      actor,at:serverTimestamp()
+     });
     });
-   });
+    committed+=group.length;
+    $("tiStatus").textContent="Imported "+committed+" of "+valid.length+" timecards…";
+   }
    notify(valid.length+" timecards imported as Pending.");
    clear();await refreshCompany();
-  }catch(error){$("tiStatus").textContent="Import stopped: "+error.message;notify("Timecard import failed: "+error.message,true)}
+  }catch(error){$("tiStatus").textContent="Import stopped: "+error.message+" If some batches succeeded, preview again to skip them.";notify("Timecard import stopped: "+error.message,true)}
   finally{busy=false;$("tiCommit").disabled=false}
  };
  $("tiClose").onclick=()=>dialog.close();
