@@ -13,6 +13,9 @@ export async function prepareRunCommissions(db,tenantId,run,lines,employees=[]){
   throw error;
  }
  const enabled=settings.exists()&&settings.data().enabled===true;
+ // Commission sales are opt-in. Never require access to the commissions ledger
+ // when a company has not enabled that feature.
+ if(!enabled)return {lines,claim:[],release:[],commissionCents:0,enabled:false};
  const ref=collection(db,"tenants",tenantId,"commissionSales");
  const [already,available]=await Promise.all([
   getDocs(query(ref,where("paidRunId","==",run.id),limit(MAX_SALES+1))),
