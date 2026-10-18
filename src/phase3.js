@@ -1,5 +1,6 @@
-import {collection,doc,getDoc,getDocs,addDoc,updateDoc,setDoc,serverTimestamp,query,limit} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
+import {collection,doc,getDoc,getDocs,addDoc,updateDoc,setDoc,serverTimestamp,query,limit,orderBy,documentId,startAfter} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 import {toCents,money} from "./payroll-core.js";
+import {readCompletePages} from "./payroll-paging.js?v=sterling-complete-payroll-20261017";
 import {mountBulkTimecardApprovals} from "./timecard-bulk.js?v=sterling-bulk-fix-20261017";
 import {DEFAULT_POLICY,validatePolicy,validReviewTransition,validateCorrection,validateLeave,buildPayrollPreview,csvStatement} from "./phase3-core.js";
 const el=(tag,cls,text)=>{const a=document.createElement(tag);if(cls)a.className=cls;if(text!==undefined)a.textContent=String(text);return a};
@@ -22,18 +23,35 @@ export async function mountPhase3({db,getState,refreshCompany,notify,confirmActi
  const adminAllowed=()=>S().platformWrite||S().role==="client_admin";
  const describeError=(msg,e)=>notify(msg+": "+(e.code||e.message||e),true);
  const bulkTime=mountBulkTimecardApprovals({db,getState,refreshCompany,refreshApprovals:()=>refresh(),notify,confirmAction});
+ // Payroll uses independent, exhaustive server reads. Directory pages are only a UI
+ // convenience and must never determine whether pay lines can be calculated.
+ async function loadAll(companyId, collectionName, accessCheck, onProgress=()=>{}){
+  return readCompletePages(async(cursor,pageSize)=>{
+   accessCheck();
+   const parameters=[orderBy(documentId()),limit(pageSize)];
+   if(cursor)parameters.push(startAfter(cursor));
+   const response=await getDocs(query(collection(db,"tenants",companyId,collectionName),...parameters));
+   accessCheck();
+   return {records:response.docs.map(d=>({id:d.id,...d.data()})),
+    nextCursor:response.docs.at(-1)||null};
+  },{pageSize:200,checkAccess:accessCheck,onProgress});
+ }
  async function retrieve(){
-  const tenant=S().tenantId;if(!tenant)return;
+  const tenant=S().tenantId,actor=S().user?.uid;
+  if(!tenant||!actor)return;
+  const check=()=>{
+   if(S().tenantId!==tenant||S().user?.uid!==actor)throw Error("Company or account changed; retry.");
+  };
   const [c,l,p]=await Promise.all([
-   getDocs(query(tcol("timeCorrections"),limit(300))),
-   getDocs(query(tcol("leaveRequests"),limit(300))),
-   getDoc(tdoc("payrollPolicies","current"))
+   loadAll(tenant,"timeCorrections",check),
+   loadAll(tenant,"leaveRequests",check),
+   getDoc(doc(db,"tenants",tenant,"payrollPolicies","current"))
   ]);
-  if(tenant!==S().tenantId)return;
-  if(c.size===300||l.size===300)throw Error("Correction/leave listing reached its limit; review must be paginated before running payroll");
-  corrections=c.docs.map(x=>({id:x.id,...x.data()}));
-  leaves=l.docs.map(x=>({id:x.id,...x.data()}));
-  policy=p.exists()?validatePolicy(p.data()):DEFAULT_POLICY;tenantLoaded=tenant;
+  check();
+  corrections=c;
+  leaves=l;
+  policy=p.exists()?validatePolicy(p.data()):DEFAULT_POLICY;
+  tenantLoaded=tenant;
  }
  function options(select,records,emptyTitle,title){
   const old=select.value;select.replaceChildren(opt("",emptyTitle),...records.map(x=>opt(x.id,title(x))));
@@ -164,14 +182,43 @@ export async function mountPhase3({db,getState,refreshCompany,notify,confirmActi
   }catch(e){describeError("Policy update failed",e)}
  };
  async function buildPreview(run){
-  if(!S().tenantId||S().moreEmployees||S().moreTime)throw Error("Load every employee and time-entry page before calculating payroll");
-  await retrieve(); // never reuse stale company or policy
-  const preview=buildPayrollPreview({employees:S().employees,entries:S().time,corrections,leaveRequests:leaves,
-   policy,start:run.periodStart,end:run.periodEnd});
-  $("p3RunReview").textContent=preview.issues.length?
-   preview.issues.length+" unresolved exceptions: "+preview.issues.map(x=>x.kind+" ("+x.detail+")").slice(0,12).join(", "):
-   preview.lines.length+" ready payroll lines • "+(preview.totals?money(preview.totals.grossCents):"$0.00")+" simulated gross";
-  return {preview,policy};
+  const companyId=S().tenantId,actor=S().user?.uid,selectedRun=S().selectedRun;
+  if(!companyId||!actor||!run?.id)throw Error("Choose an authorized company and payroll run.");
+  const check=()=>{
+   if(S().tenantId!==companyId||S().user?.uid!==actor||S().selectedRun!==selectedRun)
+    throw Error("Company, account, or payroll selection changed; retry.");
+  };
+  const counts={employees:0,timeEntries:0,timeCorrections:0,leaveRequests:0};
+  const status=$("p3RunReview");
+  const setProgress=()=>{
+   if(S().tenantId===companyId)
+    status.textContent="Loading complete company payroll data… "+
+     counts.employees+" employees · "+counts.timeEntries+" timecards · "+
+     counts.timeCorrections+" corrections · "+counts.leaveRequests+" leave records";
+  };
+  setProgress();
+  try{
+   const kinds=["employees","timeEntries","timeCorrections","leaveRequests"];
+   const [employees,entries,allCorrections,allLeaves,policyDoc]=await Promise.all([
+    ...kinds.map(kind=>loadAll(companyId,kind,check,({count})=>{
+     counts[kind]=count;
+     setProgress();
+    })),
+    getDoc(doc(db,"tenants",companyId,"payrollPolicies","current"))
+   ]);
+   check();
+   const currentPolicy=policyDoc.exists()?validatePolicy(policyDoc.data()):DEFAULT_POLICY;
+   const preview=buildPayrollPreview({employees,entries,corrections:allCorrections,
+    leaveRequests:allLeaves,policy:currentPolicy,start:run.periodStart,end:run.periodEnd});
+   check();
+   status.textContent=preview.issues.length?
+    preview.issues.length+" unresolved exceptions: "+preview.issues.map(x=>x.kind+" ("+x.detail+")").slice(0,12).join(", "):
+    preview.lines.length+" ready payroll lines • "+(preview.totals?money(preview.totals.grossCents):"$0.00")+" simulated gross";
+   return {preview,policy:currentPolicy,employees};
+  }catch(error){
+   if(S().tenantId===companyId)status.textContent="Could not load complete payroll inputs: "+(error.message||error);
+   throw error;
+  }
  }
  $("p3Inspect").onclick=async()=>{
   const run=S().runs.find(x=>x.id===S().selectedRun);
