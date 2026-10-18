@@ -41,6 +41,8 @@ jobs:
           node --check src/commissions.js
           node --check src/commission-core.js
           node --check src/commission-payroll.js
+          node --check src/timecard-import-core.js
+          node --check src/timecard-import.js
       - name: Payroll engine tests
         run: node --test tests/*.test.mjs
 
