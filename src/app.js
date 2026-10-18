@@ -468,7 +468,7 @@ $("timeForm").addEventListener("submit",async event=>{
   });
   auditClient(batch,"time","time-entry-create",entry.id,$("timeDate").value);await batch.commit();
   $("timeRegular").value="8";$("timeOvertime").value="0";$("timeNote").value="";event.target.dispatchEvent(new Event("sterling:complete"));
-  await refreshCompany();toast("Simulated time entry recorded.");
+  await refreshCompany();await phase3?.refresh();toast("Simulated time entry recorded.");
  }catch(e){fail(e,"Time entry failed")}
 });
 function renderTime(){
@@ -705,7 +705,8 @@ const creationDialogs=[
  ["timeForm","Record time","TIMEKEEPING REGISTER"],
  ["runForm","Create payroll","PAYROLL REGISTER"]
 ].map(([formId,label,summary])=>compactForm({formId,label,summary}));
-const timecardUI=mountTimecardImport({db,getState:()=>state,notify:toast,confirmAction,refreshCompany});
+const timecardUI=mountTimecardImport({db,getState:()=>state,notify:toast,confirmAction,
+ refreshCompany:async()=>{await refreshCompany();await phase3?.refresh();}});
 
 async function confirmAction(title,message,options={}){
  return sterlingModals.confirm({title,message,...options});
