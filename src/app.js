@@ -1,6 +1,6 @@
 import {initializeApp} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
 import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,signOut} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js";
-import {getFirestore,collection,doc,getDoc,getDocs,addDoc,setDoc,updateDoc,query,limit,writeBatch,serverTimestamp,orderBy,documentId,startAfter,startAt,endAt} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
+import {getFirestore,collection,doc,getDoc,getDocs,addDoc,setDoc,updateDoc,query,limit,writeBatch,runTransaction,serverTimestamp,orderBy,documentId,startAfter,startAt,endAt} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 import {calculateLine,summarizeLines,toCents,money,hoursValue,canTransition,validPeriod,cleanEmail} from "./payroll-core.js";
 import {mountStaffAccounts} from "./staff.js";
 import {mountPhase3} from "./phase3.js?v=sterling-timekeeping-20261018";
@@ -15,6 +15,9 @@ import {readCompletePages} from "./payroll-paging.js?v=sterling-timekeeping-2026
 import {filterTimecards,sumTimecardHours,payPeriodForSelection,formatHours,applyApprovedTimeCorrections} from "./timekeeping-core.js?v=sterling-timekeeping-20261018";
 import {prepareRunCommissions} from "./commission-payroll.js?v=sterling-payroll-security-20261017";
 import {planPayrollDraftWrites} from "./payroll-write-plan.js?v=sterling-payroll-security-20261017";
+import {payrollNextSteps} from "./payroll-workflow.js?v=sterling-payroll-overhaul-20261018";
+import {mountPaylineEditor} from "./payroll-line-editor.js?v=sterling-payroll-overhaul-20261018";
+import {mountPayrollExperience} from "./payroll-experience.js?v=sterling-payroll-overhaul-20261018";
 
 const app=initializeApp({
  apiKey:"AIzaSyBAAAUc0nDiiD7zfURjohVj1UBA-1yQmV0",
@@ -27,6 +30,7 @@ const app=initializeApp({
 const auth=getAuth(app),db=getFirestore(app),$=id=>document.getElementById(id);
 const state={user:null,platform:false,platformOwner:false,platformWrite:false,platformRole:"client",tenants:[],tenantId:"",role:"",employees:[],time:[],runs:[],selectedRun:null,lines:[],page:"dashboard",register:false,moreEmployees:false,moreTime:false,moreRuns:false,employeeCursor:null,timeCursor:null,runCursor:null,clientCursor:null,moreClients:false};
 let timekeepingView="register",timekeepingComplete=false,timekeepingCompleteTenant="",timekeepingEpoch=0;
+let payrollExperience=null;
 let timekeepingLoading=null,timekeepingLoadError="",timekeepingVisibleRows=40,timekeepingCorrections=[];
 const TIME_PAGE_SIZE=200,TIME_VISIBLE_INCREMENT=40;
 const titles={
@@ -144,6 +148,7 @@ function go(page){
  }
  if(page==="payroll"){renderRuns();void phase3?.refresh();}
  if(page==="access")void renderAccess();
+ payrollExperience?.sync();
  window.scrollTo({top:0});
 }
 for(const nav of document.querySelectorAll("[data-page]"))nav.addEventListener("click",()=>go(nav.dataset.page));
@@ -344,14 +349,13 @@ function renderDashboard(){
  const attention=$("attentionQueue");attention.replaceChildren();
  const pendingTime=state.time.filter(t=>(t.status||"pending")==="pending").length;
  const pendingRuns=state.runs.filter(r=>r.status==="submitted").length;
- const flagged=[
-  ["Pending time approvals",pendingTime,"time"],
-  ["Payroll awaiting approval",pendingRuns,"payroll"],
-  ["Active fictional employees",state.employees.filter(e=>e.status==="active").length,"employees"]
- ];
- if(!state.tenantId)attention.append(mk("p","muted","Select a company to display its operational queue."));
- else for(const [label,num,page] of flagged)attention.append(item(label,num+" currently loaded",[
-  button("Review",()=>go(page),"small")]));
+ const steps=payrollNextSteps(state);
+ for(const task of steps){
+  const action=task.id==="choose-company"?[]:[button(
+   task.priority===1?"Resolve":"Open",()=>go(task.page),"small"+(task.priority===1?" primary":""))];
+  attention.append(item(task.label,task.detail,action,
+    task.priority===1?"Action needed":"",task.priority===1?"danger":""));
+ }
  const recent=$("recentPayroll");recent.replaceChildren();
  if(!state.runs.length)recent.append(mk("p","muted","No payroll runs loaded for this company."));
  else for(const run of state.runs.slice(0,5))recent.append(item(run.periodStart+" — "+run.periodEnd,
@@ -771,6 +775,7 @@ async function selectRun(id){
 }
 function renderRunDetails(){
  const run=state.runs.find(r=>r.id===state.selectedRun);if(!run)return;
+ payrollExperience?.sync();
  $("runDetails").classList.remove("hidden");
  $("runHeading").textContent=run.periodStart+" — "+run.periodEnd;
  $("runStatusChip").textContent=run.status.toUpperCase();
@@ -792,24 +797,24 @@ function renderRunDetails(){
      money(line.deductionCents),money(line.grossCents),money(line.netCents)])row.append(mk("td","",v));
    const cell=mk("td");
    if(run.status==="draft"&&canPayroll()){
-    const bonus=mk("input","adjust-input");
-    const deduction=mk("input","adjust-input");
-    bonus.type=deduction.type="number";
-    bonus.min=deduction.min="0";
-    bonus.step=deduction.step="0.01";
-    bonus.value=(line.bonusCents/100).toFixed(2);
-    deduction.value=(line.deductionCents/100).toFixed(2);
-    bonus.setAttribute("aria-label","Bonus: "+line.employeeName);
-    deduction.setAttribute("aria-label","Deduction: "+line.employeeName);
-    cell.append(bonus,deduction,button("Save",async()=>{
-     const extra=toCents(bonus.value),less=toCents(deduction.value);
-     const gross=line.regularCents+line.overtimeCents+extra+(line.commissionCents||0);
-     if(less>gross)throw Error("Deduction exceeds gross");
-     const {id:omit,...payload}=line;
-     await setDoc(doc(db,"tenants",state.tenantId,"payrollRuns",run.id,"lines",line.employeeId),
-       {...payload,bonusCents:extra,deductionCents:less,grossCents:gross,netCents:gross-less});
-     await selectRun(run.id);toast("Draft adjustment saved.");
-    },"small"));
+    cell.append(button("Adjust",()=>paylineEditor.open({record:line,onSave:async values=>{
+     const company=state.tenantId,actor=state.user.uid,runId=run.id,employeeId=line.employeeId;
+     if(!canPayroll()||state.selectedRun!==runId)throw Error("Reopen this payroll draft before editing.");
+     const runRef=doc(db,"tenants",company,"payrollRuns",runId);
+     const lineRef=doc(db,"tenants",company,"payrollRuns",runId,"lines",employeeId);
+     await runTransaction(db,async transaction=>{
+      if(state.tenantId!==company||state.user?.uid!==actor)throw Error("The current company or account has changed.");
+      const [runSnapshot,lineSnapshot]=await Promise.all([transaction.get(runRef),transaction.get(lineRef)]);
+      if(!runSnapshot.exists()||runSnapshot.data().status!=="draft")throw Error("Payroll is no longer an editable draft.");
+      if(!lineSnapshot.exists())throw Error("This employee pay line was removed.");
+      const current=lineSnapshot.data();
+      for(const field of ["regularCents","overtimeCents","commissionCents","bonusCents","deductionCents"]){
+       if((current[field]||0)!==(line[field]||0))throw Error("Another user changed this pay line. Reopen it to see the latest amounts.");
+      }
+      transaction.update(lineRef,values);
+     });
+     await selectRun(runId);toast("Draft earnings updated.");
+    }}),"small"));
     if(state.platformOwner)cell.append(button("Delete line",async()=>{
      if(!await confirmAction("Delete draft pay line","Remove the fictional pay line for "+line.employeeName+" from this draft?"))return;
      const currentTenant=state.tenantId;
@@ -974,12 +979,27 @@ const now=new Date(),before=new Date();before.setDate(now.getDate()-13);
 $("periodStart").value=localDate(before);$("periodEnd").value=localDate(now);
 const payday=new Date();payday.setDate(now.getDate()+3);$("payDate").value=localDate(payday);
 const sterlingModals=createSterlingModals();
+const paylineEditor=mountPaylineEditor();
 const creationDialogs=[
  ["clientForm","Add a client","CLIENT DIRECTORY"],
  ["employeeForm","Add employee","EMPLOYEE DIRECTORY"],
  ["timeForm","Record time","TIMEKEEPING REGISTER"],
  ["runForm","Create payroll","PAYROLL REGISTER"]
 ].map(([formId,label,summary])=>compactForm({formId,label,summary}));
+const creatorByForm=new Map(creationDialogs.map((handler,index)=>[["clientForm","employeeForm","timeForm","runForm"][index],handler]));
+payrollExperience=mountPayrollExperience({
+ getState:()=>state,
+ onNavigate:go,
+ onCreate:formId=>creatorByForm.get(formId)?.open(),
+ onRefresh:async()=>{
+  if(state.tenantId&&state.role!=="employee")await refreshCompany();
+  else await loadTenantDirectory();
+  if(state.page==="commissions")await commissionsUI?.refresh();
+  if(state.page==="service")await phase5?.refresh();
+  if(state.page==="assurance")await phase6?.refresh();
+  if(state.page==="payroll"||state.page==="time")await phase3?.refresh();
+ }
+});
 const timecardUI=mountTimecardImport({db,getState:()=>state,notify:toast,confirmAction,
  refreshCompany:async()=>{await refreshCompany();await phase3?.refresh();}});
 
