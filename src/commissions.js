@@ -1,6 +1,6 @@
 import {
  collection,doc,getDoc,getDocs,query,orderBy,documentId,startAfter,limit,
- setDoc,addDoc,updateDoc,writeBatch,serverTimestamp
+ setDoc,addDoc,updateDoc,writeBatch,runTransaction,serverTimestamp
 } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 import {toCents,money} from "./payroll-core.js";
 import {commissionAmount,percentBasisPoints} from "./commission-core.js";
@@ -21,6 +21,7 @@ export async function mountCommissions({db,getState,notify,confirmAction,ownerDe
  let tenantId="",enabled=false,plans=new Map(),employees=[],sales=[],sequence=0;
  let view="plans",visible=VISIBLE_SIZE,importRows=null,importCompany="",importBusy=false;
  let planEmployeeIds=new Set(),editingPlan="",loadBusy=false;
+ let selectedSalesIds=new Set(),approvalBusy=false;
 
  const admin=()=>Boolean(S().platformWrite||S().role==="client_admin");
  const staff=()=>Boolean(admin()||S().platformRole==="payroll_operator"||S().role==="payroll_specialist");
@@ -142,6 +143,20 @@ export async function mountCommissions({db,getState,notify,confirmAction,ownerDe
    n.append(node("small","",title),node("strong","",value));metrics.append(n);
   }
   if(!rows.length)box.append(node("p","muted","No sales match these filters. Clear the filters or import a CSV."));
+  const approvable=row=>row.status==="pending"&&(S().platformOwner||row.createdBy!==S().user?.uid);
+  const permitted=admin()&&enabled;
+  $("commissionApprovalToolbar").classList.toggle("hidden",!permitted);
+  const allowed=rows.filter(approvable);
+  const onScreen=allowed.slice(0,visible);
+  const selected=allowed.filter(x=>selectedSalesIds.has(x.id));
+  $("commissionApproveSelected").disabled=approvalBusy||!selected.length;
+  $("commissionApproveSelected").textContent="Approve selected ("+selected.length+")";
+  $("commissionApproveFiltered").disabled=approvalBusy||!allowed.length;
+  $("commissionSelectVisible").disabled=approvalBusy||!onScreen.length;
+  $("commissionSelectVisible").checked=Boolean(onScreen.length&&onScreen.every(x=>selectedSalesIds.has(x.id)));
+  $("commissionSelectionStatus").textContent=allowed.length+" eligible pending sales match these filters"+
+   (selected.length?" · "+selected.length+" selected":"")+
+   (rows.length-allowed.length?" · Other sales cannot be approved by this account":"");
   for(const sale of rows.slice(0,visible)){
    const detail=sale.saleDate+" · Sold "+money(sale.saleAmountCents)+" · Commission "+money(sale.commissionCents)+
     " · "+sale.description+(sale.paidRunId?" · In payroll":"");
@@ -151,7 +166,18 @@ export async function mountCommissions({db,getState,notify,confirmAction,ownerDe
    if(S().platformOwner&&ownerDelete)actions.push(button("Delete",async()=>{
     await ownerDelete("commissionSales",sale);await refresh();
    },"danger"));
-   box.append(row(employeeName(sale.employeeId),detail,sale.status,actions));
+   const card=row(employeeName(sale.employeeId),detail,sale.status,actions);
+   if(permitted&&approvable(sale)){
+    const check=node("input","commission-sale-checkbox");
+    check.type="checkbox";check.checked=selectedSalesIds.has(sale.id);
+    check.setAttribute("aria-label","Select "+employeeName(sale.employeeId)+" sale on "+sale.saleDate);
+    check.onchange=()=>{
+     if(check.checked)selectedSalesIds.add(sale.id);else selectedSalesIds.delete(sale.id);
+     renderSales();
+    };
+    card.prepend(check);
+   }
+   box.append(card);
   }
   const more=$("commissionMore");more.classList.toggle("hidden",rows.length<=visible);
   more.textContent="Show "+Math.min(VISIBLE_SIZE,rows.length-visible)+" more sales";
@@ -161,7 +187,7 @@ export async function mountCommissions({db,getState,notify,confirmAction,ownerDe
   if(!id||!staff()){++sequence;tenantId="";root.classList.add("hidden");return;}
   const changed=tenantId!==id;
   tenantId=id;root.classList.remove("hidden");
-  if(changed){view="plans";plans.clear();sales=[];employees=[];visible=VISIBLE_SIZE;importRows=null;importCompany="";}
+  if(changed){view="plans";plans.clear();sales=[];employees=[];visible=VISIBLE_SIZE;importRows=null;importCompany="";selectedSalesIds.clear();}
   const version=++sequence;
   const status=$("commissionCount");
   loadBusy=true;status.textContent="Loading company commission records…";
@@ -183,7 +209,7 @@ export async function mountCommissions({db,getState,notify,confirmAction,ownerDe
     guard(id,actor,version);
     sales.sort((a,b)=>String(b.saleDate).localeCompare(String(a.saleDate)));
    }else sales=[];
-   loadBusy=false;renderMetrics();renderSales();
+   loadBusy=false;selectedSalesIds.clear();renderMetrics();renderSales();
   }catch(error){
    loadBusy=false;
    if(id===tenantId&&version===sequence){
@@ -359,6 +385,7 @@ export async function mountCommissions({db,getState,notify,confirmAction,ownerDe
   }catch(error){warn(error,"Sale recording")}finally{submit.disabled=false}
  };
  async function review(sale,status){
+  if(approvalBusy)throw Error("Bulk approval is already in progress.");
   if(!admin()||!(S().platformOwner||sale.createdBy!==S().user.uid))
    throw Error("Independent approval or Sterling owner override required.");
   if(!await confirmAction("Commission review",
@@ -369,6 +396,82 @@ export async function mountCommissions({db,getState,notify,confirmAction,ownerDe
   await updateDoc(doc(coll("commissionSales"),sale.id),{status,approvedBy:actor,reviewedAt:serverTimestamp()});
   notify("Sale commission "+status+".");await refresh();activateView("sales");
  }
+
+
+ // Bulk commission approvals are always scoped to the active company and
+ // validated against live Firestore records before changing any status.
+ async function approveChunk(rows,company,actor){
+  const refs=rows.map(x=>doc(db,"tenants",company,"commissionSales",x.id));
+  return runTransaction(db,async transaction=>{
+   guard(company,actor);
+   const documents=await Promise.all(refs.map(ref=>transaction.get(ref)));
+   const updated=[];
+   for(let i=0;i<documents.length;i++){
+    const snap=documents[i];
+    if(!snap.exists())continue;
+    const row=snap.data();
+    if(row.status!=="pending"||(!S().platformOwner&&row.createdBy===actor))continue;
+    transaction.update(refs[i],{status:"approved",approvedBy:actor,reviewedAt:serverTimestamp()});
+    updated.push(rows[i].id);
+   }
+   return updated;
+  });
+ }
+ async function massApprove(rows,label){
+  if(approvalBusy||!admin()||!enabled)return;
+  const company=tenantId,actor=S().user?.uid;
+  const unique=new Map(rows.filter(row=>row.status==="pending"&&
+   (S().platformOwner||row.createdBy!==actor)).map(row=>[row.id,row]));
+  const eligible=[...unique.values()];
+  if(!eligible.length){notify("No eligible pending sales match this selection.",true);return;}
+  if(!await confirmAction("Approve commissions",
+   "Approve "+eligible.length+" pending sales ("+label+") for "+company+"? "+
+   "Your own sales require Sterling owner authorization. Only currently pending records will be changed."))return;
+  approvalBusy=true;renderSales();let approved=0,skipped=0,failed=0,firstError="";
+  try{
+   for(let i=0;i<eligible.length;i+=BATCH_SIZE){
+    guard(company,actor);
+    const group=eligible.slice(i,i+BATCH_SIZE);
+    try{
+     const ids=await approveChunk(group,company,actor);
+     approved+=ids.length;skipped+=group.length-ids.length;
+    }catch(error){
+     // A conflicting record cannot block all remaining valid sales.
+     for(const item of group){
+      guard(company,actor);
+      try{
+       const ids=await approveChunk([item],company,actor);
+       approved+=ids.length;skipped+=1-ids.length;
+      }catch(single){
+       failed++;if(!firstError)firstError=single.code||single.message||String(single);
+      }
+     }
+    }
+    $("commissionSelectionStatus").textContent="Reviewing "+Math.min(i+BATCH_SIZE,eligible.length)+
+     " / "+eligible.length+" · "+approved+" approved · "+skipped+" skipped"+(failed?" · "+failed+" failed":"");
+   }
+   notify(approved+" commission sales approved"+
+    (skipped?" · "+skipped+" skipped":"")+(failed?" · "+failed+" failed":"")+".",Boolean(failed));
+   if(firstError)notify("First approval error: "+firstError,true);
+  }catch(error){
+   warn(error,approved+" sales approved before approval stopped");
+  }finally{
+   approvalBusy=false;selectedSalesIds.clear();
+   try{if(company===tenantId)await refresh()}catch(error){warn(error,"Refreshing commission approvals")}
+   activateView("sales");
+  }
+ }
+ $("commissionSelectVisible").onchange=()=>{
+  const viewRows=selectedSales().slice(0,visible).filter(row=>
+   row.status==="pending"&&(S().platformOwner||row.createdBy!==S().user?.uid));
+  if($("commissionSelectVisible").checked)for(const row of viewRows)selectedSalesIds.add(row.id);
+  else for(const row of viewRows)selectedSalesIds.delete(row.id);
+  renderSales();
+ };
+ $("commissionApproveSelected").onclick=()=>void massApprove(
+  sales.filter(row=>selectedSalesIds.has(row.id)),"selected");
+ $("commissionApproveFiltered").onclick=()=>void massApprove(
+  selectedSales(),"matching current sales filters");
 
  function clearSalesFilters(){
   $("commissionEmployeeFilter").value="";$("commissionFilter").value="all";
@@ -507,6 +610,7 @@ export async function mountCommissions({db,getState,notify,confirmAction,ownerDe
  $("commissionImportDialog").addEventListener("cancel",event=>{if(importBusy)event.preventDefault()});
  return {refresh,clear(){
   ++sequence;tenantId="";enabled=false;plans.clear();sales=[];employees=[];importRows=null;importCompany="";
+  selectedSalesIds.clear();approvalBusy=false;
   root.classList.add("hidden");
  }};
 }
