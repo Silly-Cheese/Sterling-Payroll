@@ -2,7 +2,7 @@ import {
  collection, doc, getDocs, query, orderBy, documentId, limit, startAfter,
  runTransaction, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
-import {canApproveTimecard, eligibleTimecards, timecardChunks} from "./timecard-bulk-core.js";
+import {canApproveTimecard, eligibleTimecards, timecardChunks} from "./timecard-bulk-core.js?v=sterling-bulk-fix-20261017";
 
 // Manage a single, company-scoped time approval surface without another page or form.
 export function mountBulkTimecardApprovals({db, getState, refreshCompany, refreshApprovals, notify, confirmAction}) {
