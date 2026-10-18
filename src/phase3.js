@@ -1,5 +1,6 @@
 import {collection,doc,getDoc,getDocs,addDoc,updateDoc,setDoc,serverTimestamp,query,limit} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 import {toCents,money} from "./payroll-core.js";
+import {mountBulkTimecardApprovals} from "./timecard-bulk.js";
 import {DEFAULT_POLICY,validatePolicy,validReviewTransition,validateCorrection,validateLeave,buildPayrollPreview,csvStatement} from "./phase3-core.js";
 const el=(tag,cls,text)=>{const a=document.createElement(tag);if(cls)a.className=cls;if(text!==undefined)a.textContent=String(text);return a};
 const opt=(v,text)=>{const a=el("option","",text);a.value=v;return a};
@@ -20,6 +21,7 @@ export async function mountPhase3({db,getState,refreshCompany,notify,confirmActi
  const writeAllowed=()=>S().platformWrite||S().platformRole==="payroll_operator"||["client_admin","payroll_specialist"].includes(S().role);
  const adminAllowed=()=>S().platformWrite||S().role==="client_admin";
  const describeError=(msg,e)=>notify(msg+": "+(e.code||e.message||e),true);
+ const bulkTime=mountBulkTimecardApprovals({db,getState,refreshCompany,refreshApprovals:()=>refresh(),notify,confirmAction});
  async function retrieve(){
   const tenant=S().tenantId;if(!tenant)return;
   const [c,l,p]=await Promise.all([
@@ -53,15 +55,16 @@ export async function mountPhase3({db,getState,refreshCompany,notify,confirmActi
   const pending=S().time.filter(x=>(x.status||"pending")==="pending");
   display($("p3TimeQueue"),pending,entry=>{
    const worker=S().employees.find(e=>e.id===entry.employeeId);
-   const can=adminAllowed()&&entry.createdBy!==S().user.uid;
+   const can=adminAllowed()&&(S().platformOwner||entry.createdBy!==S().user.uid);
    const actions=can?[
     action("Approve",()=>reviewTime(entry,"approved")),
     action("Reject",()=>reviewTime(entry,"rejected"))
    ]:[];
    if(S().platformOwner&&openOwnerReview)actions.push(action("Owner override",()=>openOwnerReview("timeEntries",entry.id)));
-   return row((worker?.displayName||"Employee")+" · "+entry.workDate,
-    entry.regularHours+" regular / "+entry.overtimeHours+" overtime",actions);
+   return bulkTime.decorateRow(row((worker?.displayName||"Employee")+" · "+entry.workDate,
+    entry.regularHours+" regular / "+entry.overtimeHours+" overtime",actions),entry,worker?.displayName||"Employee");
   },"No pending time entries in the currently loaded page.");
+  bulkTime.sync(pending);
   display($("p3Corrections"),corrections.filter(x=>x.status==="pending"),x=>{
    const entry=S().time.find(t=>t.id===x.timeEntryId),can=adminAllowed()&&x.createdBy!==S().user.uid;
    const actions=can?[
@@ -104,7 +107,7 @@ export async function mountPhase3({db,getState,refreshCompany,notify,confirmActi
  }
  async function reviewTime(entry,status){
   try{
-   if(!adminAllowed()||entry.createdBy===S().user.uid)throw Error("Independent client approval required");
+   if(!adminAllowed()||(!S().platformOwner&&entry.createdBy===S().user.uid))throw Error("Independent client approval required");
    if(!await confirmAction("Review time entry",status+" time for "+entry.workDate+"?"))return;
    await updateDoc(tdoc("timeEntries",entry.id),{status,approvedBy:S().user.uid});
    await refreshCompany();await refresh();notify("Time entry "+status+".");
