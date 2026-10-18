@@ -29,12 +29,14 @@ export function mountBulkTimecardApprovals({db, getState, refreshCompany, refres
  const quickLink = make("button", "btn small timecard-approval-shortcut", "Review & bulk approve");
  quickLink.type = "button";
  quickLink.onclick = () => {
+  document.getElementById("timeViewApprovals")?.click();
   toolbar.scrollIntoView({behavior: "smooth", block: "start"});
   selectAll.focus({preventScroll: true});
  };
  const registerPanel = document.getElementById("timeList")?.closest(".panel");
- const filterBar = registerPanel?.querySelector(".list-toolbar");
- if (filterBar) filterBar.append(quickLink);
+ const toolbarArea = registerPanel?.querySelector(".timekeeping-register-head") ||
+  registerPanel?.querySelector(".list-toolbar");
+ if (toolbarArea) toolbarArea.append(quickLink);
  else registerPanel?.querySelector("h2")?.after(quickLink);
 
  let selected = new Set(), loaded = [], currentTenant = "", busy = false, lastOutcome = "";
