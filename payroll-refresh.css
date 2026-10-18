@@ -1,0 +1,225 @@
+/* Sterling Payroll — 2026 complete experience refresh
+   One final visual layer shared by every workspace. No business rules live here. */
+:root{
+ --xp-bg:#0c1112;--xp-panel:#171f20;--xp-panel-alt:#1d2726;
+ --xp-line:#35433f;--xp-line-soft:#293632;--xp-gold:#ead2a1;
+ --xp-gold-bright:#f1debd;--xp-muted:#afbfbb;--xp-ink:#f4f4ed;
+ --xp-green:#79cba1;--xp-red:#f1a6a0;--xp-ring:#d6bb83;
+ color-scheme:dark;
+}
+html{scroll-padding-top:115px}
+body{background:#0c1112;color:var(--xp-ink);font-size:14px;line-height:1.65;letter-spacing:.002em}
+button,input,textarea,select{font-family:inherit}
+h1,h2,h3,strong{line-height:1.25}
+h1,h2{letter-spacing:-.025em}
+.muted,.fine-print{color:var(--xp-muted)}
+.fine-print{font-size:12px}
+.eyebrow{font-size:10px;letter-spacing:.13em;color:#dec391}
+#shell.app-shell{grid-template-columns:248px minmax(0,1fr);background:var(--xp-bg)}
+#shell .sidebar{padding:22px 13px 14px;background:#0c1212;border-right:1px solid var(--xp-line-soft)}
+.sidebar .brand-logo{padding:0 10px 14px;margin:0 0 13px;border-bottom:1px solid #2a3533}
+.sidebar-group-label{font-size:10px;letter-spacing:.13em;margin:8px 12px 12px;color:#a2b1a8}
+.sidebar .nav{overflow:auto;scrollbar-width:thin;flex:1 1 auto;padding:0 4px 11px}
+.sidebar .nav-section-heading{margin:21px 8px 6px;font-size:10px;letter-spacing:.1em;color:#b7a37e}
+.sidebar .nav-section-heading:first-child{margin-top:2px}
+.sidebar .nav-item{position:relative;gap:12px;padding:10px 12px;font-size:12px;font-weight:650;min-height:41px;border:1px solid transparent;line-height:1.4;border-radius:10px;color:#bccac4;transition:background .14s ease,color .14s ease,border-color .14s ease}
+.sidebar .nav-item .nav-icon{font-size:15px;display:grid;place-items:center;flex:0 0 21px;color:#97aca1}
+.sidebar .nav-item:hover{background:#1d2927;color:var(--xp-ink);border-color:#324541}
+.sidebar .nav-item.active{background:#302d24!important;color:#f2ddb5!important;border-color:#63563c!important}
+.sidebar .nav-item.active::before{content:"";position:absolute;left:-5px;top:8px;bottom:8px;width:3px;border-radius:4px;background:#e1bd81}
+.sidebar-bottom{padding-top:12px;border-top:1px solid #2d3a34}
+.sidebar-account{border-radius:11px;background:#171f20;border:1px solid #36433d;padding:11px 12px}
+.sidebar .profile{border-radius:11px}
+.stage{width:100%;min-width:0}
+#shell .topbar{min-height:65px;height:auto;padding:10px clamp(16px,2.2vw,31px);background:rgba(12,18,18,.96);border-bottom:1px solid #2b3734;backdrop-filter:blur(20px)}
+.topbar-title small{font-size:10px;color:#b1beaf}
+.topbar-title strong{font-size:15px;line-height:1.3}
+.topbar-actions{gap:8px}
+.topbar-actions .quick-nav-button,.topbar-actions select{min-height:39px;border-radius:9px;background:#1a2422;border-color:#3b4942}
+.topbar-actions .quick-nav-button{padding:7px 13px;font-size:12px;color:#d4ded7}
+#companySelect{color:#efdcba;font-weight:700}
+#shell .content{width:100%;max-width:1600px;margin-inline:auto;padding:clamp(17px,2.2vw,32px)}
+#shell .page-heading{margin:0 0 11px;padding:0}
+#shell .page-heading h1{font-size:clamp(26px,2.6vw,38px);margin:7px 0 6px}
+#shell .page-heading p{font-size:13px;line-height:1.6;max-width:720px}
+.sterling-context-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;border:1px solid #394c43;background:#17221f;border-radius:12px;padding:10px 14px;margin:0 0 20px}
+.sterling-context-copy{display:flex;align-items:center;flex-wrap:wrap;gap:9px 13px;min-width:0}
+.sterling-context-badge{padding:5px 9px;border-radius:7px;background:#403726;border:1px solid #766044;color:#f0d6a7;font-size:10px;font-weight:800;letter-spacing:.02em;max-width:100%;overflow-wrap:anywhere}
+.sterling-context-info{font-size:12px;color:#b8c9c1;line-height:1.5}
+.sterling-context-actions{display:flex;flex-wrap:wrap;gap:8px}
+.sterling-context-actions .btn{font-size:11px;min-height:35px}
+.page>.two-col,.page>.ops-grid,.phase3-section>.ops-grid,.page .two-col.asymmetric{gap:15px}
+#shell .panel,.phase3-section .panel,#staffAccounts .panel,.service-panel .panel{
+ background:#171f1f;border:1px solid #34403e;border-radius:13px;
+ box-shadow:none;min-width:0
+}
+#shell .page .panel{padding:clamp(16px,1.8vw,23px)}
+#shell .page .panel h2{font-size:clamp(19px,1.7vw,25px);line-height:1.24}
+#shell .panel>.muted,#shell .panel>p.muted{font-size:12px;line-height:1.7}
+#shell .panel:hover{border-color:#43554d}
+#shell .metric-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:11px;margin-bottom:18px}
+#shell .metric-grid.compact{grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));gap:10px}
+#shell .metric{background:#1c2724;border:1px solid #3a4d44;border-radius:11px;min-height:92px;padding:14px 15px;box-shadow:none}
+#shell .metric-label{font-size:11px;letter-spacing:.01em;color:#b6c6bb}
+#shell .metric strong{font-size:clamp(20px,2vw,27px);color:#f3e3c2;line-height:1.3;margin-top:5px;overflow-wrap:anywhere}
+#shell .metric small{font-size:11px;color:#a8b7ae;line-height:1.45}
+#shell .quick-actions.panel{margin-bottom:18px;background:#19231f;border-color:#3d4e44}
+#shell .quick-action-grid{grid-template-columns:repeat(auto-fit,minmax(min(170px,100%),1fr));gap:8px}
+#shell .btn{min-height:39px;padding:9px 14px;border:1px solid #495951;border-radius:9px;background:#25312e;color:#eeeae0;font-weight:700;font-size:12px;line-height:1.4}
+#shell .btn:hover{background:#30413b;border-color:#897450}
+#shell .btn.small{min-height:32px;padding:6px 10px;font-size:11px}
+#shell .btn.primary{background:#ecd4a4!important;border-color:#d8bb86!important;color:#26231a!important}
+#shell .btn.primary:hover{background:#f7e2be!important}
+#shell .btn.danger{border-color:#80504d;background:#352626;color:#ffbeb7}
+#shell .btn:disabled{opacity:.45}
+#shell .list-item,#shell .service-entry{background:#1b2724;border:1px solid #364941;border-radius:10px;padding:12px 14px;gap:8px;margin:0 0 7px}
+#shell .list-item>div:first-child{flex:1 1 200px;min-width:0}
+#shell .list-item strong{font-size:13px;font-weight:700}
+#shell .list-item small{font-size:12px;color:#afc1b5;line-height:1.5}
+#shell .list-item .item-actions{gap:7px}
+#shell .list-item .status-chip{white-space:nowrap}
+#shell .list-toolbar{display:flex;flex-wrap:wrap;gap:9px;margin:0 0 12px}
+#shell .list-toolbar input{flex:1 1 210px;min-width:0}
+#shell .list-toolbar select{flex:0 1 190px}
+#shell input:not([type="checkbox"]):not([type="radio"]),#shell select,
+#shell textarea{background:#101918;color:#f3f4ee;border:1px solid #46574f;border-radius:9px;font-size:13px;padding:9px 11px;min-height:41px}
+#shell textarea{min-height:90px}
+#shell label{font-size:12px;color:#d2ddd1;line-height:1.5;gap:6px;font-weight:650}
+#shell input:focus-visible,#shell select:focus-visible,#shell textarea:focus-visible,
+#shell button:focus-visible,.sterling-payline-dialog input:focus-visible{
+ outline:2px solid #ebcc92!important;outline-offset:2px!important
+}
+#shell .status-chip{padding:5px 9px;font-size:10px;font-weight:800;letter-spacing:.02em;border-radius:7px}
+#shell .notice,#shell .data-note{font-size:12px;line-height:1.7;overflow-wrap:anywhere}
+#shell .data-table-wrap{width:100%;overflow:auto;scrollbar-width:thin;border:1px solid #3b4a42;border-radius:11px}
+#shell .data-table-wrap table{width:100%;border-collapse:collapse;white-space:nowrap;font-size:12px;background:#131e1b}
+#shell .data-table-wrap th{background:#202c27;color:#d5d6c6;position:sticky;top:0;z-index:1;text-transform:none;letter-spacing:.025em;font-size:11px;padding:11px 10px}
+#shell .data-table-wrap td{padding:12px 10px;border-bottom:1px solid #2c3d35;font-variant-numeric:tabular-nums}
+#shell .data-table-wrap tr:hover td{background:#1e2c25}
+#shell .run-details{margin-top:16px}
+#shell .run-details .metric-grid{margin:14px 0}
+#shell #runActions{display:flex;flex-wrap:wrap;gap:9px;margin-top:16px;align-items:center}
+#shell #runActions .fine-print{flex-basis:100%;line-height:1.6}
+#shell .timekeeping-view-tabs{border-color:#425047;background:#19211f}
+#shell .timekeeping-view-tab.active{background:#403529!important;color:#f8e1bd!important}
+#shell .timekeeping-summary{background:#22251f;border-color:#62583f}
+#shell .timekeeping-summary-metrics{grid-template-columns:repeat(5,minmax(0,1fr))}
+#shell .timekeeping-summary-metric{background:#182420;border-color:#485543}
+#shell .timekeeping-summary-metric strong{font-size:17px}
+#shell .timekeeping-operations-details{border-color:#44534a;background:#1a2621}
+.sterling-payroll-workflow{display:grid;gap:12px;background:linear-gradient(120deg,#1b2a23,#19221f);border:1px solid #435b4b;border-radius:14px;padding:19px;margin:0 0 19px}
+.sterling-workflow-intro h2{font:500 clamp(21px,2vw,28px)/1.22 Georgia,serif;margin:5px 0;color:#f0e5d1}
+.sterling-workflow-intro p{color:#b6c6b9;font-size:12px;margin:3px 0 0}
+.sterling-workflow-steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+#shell .sterling-workflow-step{display:flex;align-items:center;text-align:left;gap:10px;padding:13px 12px;border:1px solid #415249;background:#17211e;color:#d4dfd7;border-radius:10px;min-width:0;min-height:74px;cursor:pointer}
+#shell .sterling-workflow-step:hover{border-color:#a38c63;background:#253128}
+.sterling-workflow-step>span:last-child{min-width:0;display:grid;gap:3px}
+.sterling-workflow-step strong{font-size:13px;line-height:1.3}
+.sterling-workflow-step small{font-size:11px;color:#acbcb3;line-height:1.4}
+.sterling-workflow-number{width:27px;height:27px;flex:0 0 27px;display:grid;place-items:center;background:#263b30;color:#dceada;border:1px solid #55715d;border-radius:50%;font-size:12px;font-weight:800}
+.sterling-workflow-step.current{border-color:#b4986b!important;background:#362f23!important}
+.sterling-workflow-step.current .sterling-workflow-number{background:#ecd5a7;color:#29251b;border-color:#d5b781}
+.sterling-workflow-step.complete .sterling-workflow-number{background:#315744;color:#b9edd0}
+.sterling-workflow-message{margin:0;padding:10px 12px;font-size:12px;line-height:1.6;color:#e4d8bf;background:#2a3028;border-radius:8px}
+.payroll-operations-suite{display:grid;grid-template-columns:minmax(0,1fr);gap:13px;margin-top:17px}
+.payroll-review-panel{padding:20px!important}
+.payroll-review-panel .section-heading p{margin:7px 0 0;font-size:12px}
+.payroll-review-actions{display:flex;gap:9px;flex-wrap:wrap;margin:13px 0 15px}
+.payroll-advanced-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}
+.payroll-advanced-details,.payroll-settings-panel{background:#1b2722;border:1px solid #435647;border-radius:10px;overflow:hidden}
+.payroll-advanced-details>summary,.payroll-settings-panel>summary{display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;padding:13px 15px;list-style:none}
+.payroll-advanced-details>summary::-webkit-details-marker,.payroll-settings-panel>summary::-webkit-details-marker{display:none}
+.payroll-advanced-details>summary>span:first-child,.payroll-settings-panel>summary>span:first-child{display:grid;gap:4px}
+.payroll-advanced-details>summary strong,.payroll-settings-panel>summary strong{font-size:13px;color:#f2e4ca}
+.payroll-advanced-details>summary small,.payroll-settings-panel>summary small{font-size:11px;color:#adbbb0;line-height:1.5}
+.payroll-advanced-details .detail-arrow,.payroll-settings-panel .detail-arrow{font-size:22px;color:#e1c697;flex:0 0 auto}
+.payroll-advanced-details[open] .detail-arrow,.payroll-settings-panel[open] .detail-arrow{transform:rotate(180deg)}
+.payroll-advanced-body{border-top:1px solid #3b4e41;padding:16px;display:grid;gap:11px}
+.payroll-settings-panel{padding:0!important}
+.payroll-settings-panel>summary{padding:17px 20px}
+.payroll-settings-panel .form-stack{margin:2px 0}
+.payroll-settings-panel .fine-print{margin:0}
+.sterling-payline-dialog{width:min(520px,calc(100vw - 24px));max-height:90dvh;overflow:auto;padding:0;background:#182220;border:1px solid #706047;border-radius:16px;color:#f4ecdd;box-shadow:0 24px 70px #0009}
+.sterling-payline-dialog::backdrop{background:rgba(4,9,8,.78)}
+.sterling-payline-shell{padding:clamp(19px,2.4vw,28px)}
+.sterling-payline-shell h2{font:500 26px/1.15 Georgia,serif;margin:8px 0}
+.sterling-payline-shell p.muted{font-size:12px;line-height:1.6}
+.payline-editor-form{display:grid;gap:16px;margin-top:20px}
+.payline-editor-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:0}
+.payline-editor-summary>div{border:1px solid #3e4e44;background:#202c26;border-radius:9px;padding:10px;min-width:0}
+.payline-editor-summary dt{color:#bbc7b9;font-size:10px}
+.payline-editor-summary dd{margin:6px 0 0;font-weight:750;font-size:16px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.payline-editor-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.payline-editor-fields label{display:grid;gap:6px;font-weight:700;font-size:12px}
+.payline-editor-fields input{width:100%;min-width:0;padding:11px;background:#111c19;border:1px solid #4a5a4e;border-radius:9px;color:#f5f1e8;min-height:42px}
+.payline-editor-preview{padding:14px;background:#273329;border-radius:9px;border:1px solid #607358;color:#f2e1bd;font-size:14px;font-weight:750;font-variant-numeric:tabular-nums}
+.payline-editor-preview.invalid{background:#3b2627;border-color:#9f5454;color:#ffc3b9}
+.payline-editor-error{margin:0;background:#3a2526;border:1px solid #985b59;border-radius:8px;color:#ffd0c9;padding:10px;font-size:12px}
+.payline-editor-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.payline-editor-actions .btn{min-height:40px}
+#page-access .two-col.asymmetric{grid-template-columns:minmax(0,1fr)}
+#page-access #inviteShare{margin:0}
+#page-access .panel:has(>#inviteShare){padding:18px!important}
+#page-access .panel:has(>#inviteShare)>h2{font-size:20px}
+#page-access .panel:has(>#inviteShare)>p.muted{max-width:700px}
+#page-service .service-tabs{border-color:#445248;background:#1a2520}
+#page-service .service-hero{border:1px solid #3b5245;background:#1d2a24;border-radius:13px}
+#page-commissions .commission-top{background:#1a2721}
+#page-commissions .commission-view{background:#151f1c}
+#page-commissions .commission-tabs{background:#19241e}
+#page-employeePortal .phase4-hero{background:linear-gradient(115deg,#20372a,#19231f)}
+#page-assurance .panel{background:#17201e}
+#shell .workspace-action-bar{background:#1b2a22;border-color:#526049;display:flex;align-items:center;flex-wrap:wrap;gap:12px;padding:13px 16px}
+#shell .workspace-action-bar strong{font-size:13px;color:#f4e6c7}
+#shell .workspace-action-bar small{font-size:11px;color:#b8c8b7}
+.workspace-form-dialog,.sterling-action-dialog{background:#192320!important;color:#f5eedf;border:1px solid #5d634d!important;box-shadow:0 20px 60px #0009}
+.workspace-form-dialog::backdrop,.sterling-action-dialog::backdrop{background:rgba(4,8,7,.75)}
+#shell .quick-action{font-size:12px;min-height:42px;justify-content:flex-start}
+#shell .quick-action:hover{color:#f2dfbb}
+#shell .footer{color:#a0ada3;border-color:#36453d}
+@media(max-width:1180px){
+ #shell.app-shell{grid-template-columns:224px minmax(0,1fr)}
+ #shell .metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #shell .timekeeping-summary-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .sterling-workflow-steps{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:760px){
+ #shell.app-shell{display:block}
+ #shell .sidebar{position:fixed;width:min(290px,85vw);height:100dvh;transform:translateX(-105%);z-index:50;box-shadow:14px 0 40px #0008}
+ #shell .sidebar.open{transform:translateX(0)}
+ #shell .topbar{padding:10px 12px;gap:8px}
+ #shell .content{padding:15px 12px}
+ #shell .page-heading h1{font-size:28px}
+ .sterling-context-bar{align-items:stretch;padding:11px}
+ .sterling-context-copy{flex:1 1 100%}
+ .sterling-context-actions{justify-content:stretch;width:100%}
+ .sterling-context-actions .btn{flex:1 1 40%}
+ .sterling-payroll-workflow{padding:13px}
+ .payroll-advanced-grid{grid-template-columns:1fr}
+ .payline-editor-summary{grid-template-columns:1fr 1fr}
+ #shell .metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #shell .timekeeping-summary-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #shell .data-table-wrap thead{display:none}
+ #shell .data-table-wrap tbody,#shell .data-table-wrap tr{display:block}
+ #shell .data-table-wrap tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px;padding:13px 11px;border-bottom:1px solid #415144}
+ #shell .data-table-wrap td{display:flex;align-items:baseline;justify-content:space-between;gap:5px;white-space:normal;padding:7px 0;border:0;font-size:12px;min-width:0;overflow-wrap:anywhere}
+ #shell .data-table-wrap td::before{content:attr(data-label);color:#acbaa9;font-size:10px;font-weight:750;flex:0 1 auto}
+ #shell .data-table-wrap td:last-child{grid-column:1/-1;justify-content:flex-end;gap:8px;border-top:1px solid #34463d;padding-top:10px}
+ #shell .data-table-wrap td:first-child{grid-column:1/-1;font-size:15px;font-weight:750;color:#ecd8b0}
+}
+@media(max-width:490px){
+ #shell .metric-grid,#shell .metric-grid.compact{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .sterling-workflow-steps{grid-template-columns:1fr 1fr;gap:7px}
+ #shell .sterling-workflow-step{padding:9px;gap:7px;min-height:72px}
+ .sterling-workflow-number{flex-basis:22px;width:22px;height:22px;font-size:10px}
+ .sterling-workflow-step strong{font-size:11px}
+ .sterling-workflow-step small{font-size:10px}
+ .payline-editor-fields{grid-template-columns:1fr}
+ .payline-editor-summary{grid-template-columns:1fr 1fr}
+ .payline-editor-actions .btn{flex:1 1 auto}
+ #shell .data-table-wrap tr{grid-template-columns:1fr}
+ #shell .data-table-wrap td{grid-column:1/-1}
+}
+@media(prefers-reduced-motion:reduce){
+ #shell .nav-item,#shell .btn{transition:none!important}
+}
