@@ -136,6 +136,7 @@ export async function mountPhase3({db,getState,refreshCompany,notify,confirmActi
    if(!adminAllowed()||!validReviewTransition(record,S().user.uid,next))throw Error("Independent approval required");
    if(!await confirmAction("Review request","Mark this fictional "+kind+" request "+next+"?"))return;
    await updateDoc(tdoc(kind,record.id),{status:next,reviewedBy:S().user.uid});
+   if(kind==="timeCorrections")await refreshCompany();
    await refresh();notify("Request "+next+".");
   }catch(e){describeError("Request review failed",e)}
  }
