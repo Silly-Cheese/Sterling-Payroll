@@ -11,7 +11,8 @@ import {createOwnerRecordActions} from "./record-actions.js";
 import {createSterlingModals} from "./modals.js";
 import {compactForm} from "./workspace-ui.js";
 import {mountTimecardImport} from "./timecard-import.js";
-import {prepareRunCommissions,commitRunCommissions} from "./commission-payroll.js";
+import {prepareRunCommissions} from "./commission-payroll.js?v=sterling-payroll-security-20261017";
+import {planPayrollDraftWrites} from "./payroll-write-plan.js?v=sterling-payroll-security-20261017";
 
 const app=initializeApp({
  apiKey:"AIzaSyBAAAUc0nDiiD7zfURjohVj1UBA-1yQmV0",
@@ -618,20 +619,25 @@ function renderRunDetails(){
 }
 async function generateLines(run){
  if(!canPayroll()||!phase3)throw Error("Payroll permissions or Phase 3 module unavailable");
- const tenantId=state.tenantId;
+ const tenantId=state.tenantId,actor=state.user?.uid;
  const {preview,policy,employees}=await phase3.buildPreview(run);
  if(preview.issues.length)throw Error("Resolve "+preview.issues.length+" time and payroll exceptions before generating");
- const commission=await prepareRunCommissions(db,tenantId,run,preview.lines,employees);
+ let commission;
+ try{
+  commission=await prepareRunCommissions(db,tenantId,run,preview.lines,employees);
+ }catch(error){
+  throw Error("Commission preparation failed ("+(error?.code||error?.message||error)+"). Check the company commission permissions; payroll lines were not changed.");
+ }
  const lines=commission.lines;
  preview.lines=lines;
  preview.totals=summarizeLines(lines);
  if(!lines.length)throw Error("No approved simulated earnings for this period");
  if(lines.length>250)throw Error("Draft exceeds 250-employee safety limit");
- if(lines.length+commission.claim.length+commission.release.length>440)throw Error("Too many commission and pay-line writes for one atomic batch. Split the pay period.");
  if(!await confirmAction("Generate payroll preview","Generate "+lines.length+" reviewed pay lines with "+money(preview.totals.grossCents)+" fictional gross pay (including "+money(commission.commissionCents)+" commissions)? Existing draft lines will be replaced."))return;
  if(commission.notice)toast(commission.notice,true);
- if(tenantId!==state.tenantId||run.id!==state.selectedRun)
-  throw Error("Company or payroll selection changed during preparation. Reopen the run and retry.");
+ const stillAuthorized=()=>tenantId===state.tenantId&&run.id===state.selectedRun&&
+  state.user?.uid===actor&&canPayroll();
+ if(!stillAuthorized())throw Error("Company, account or payroll selection changed during preparation. Reopen the run and retry.");
  const runSnapshot=await getDoc(doc(db,"tenants",tenantId,"payrollRuns",run.id));
  if(!runSnapshot.exists()||runSnapshot.data().status!=="draft"||
   runSnapshot.data().periodStart!==run.periodStart||runSnapshot.data().periodEnd!==run.periodEnd)
@@ -639,14 +645,50 @@ async function generateLines(run){
  const base=collection(db,"tenants",tenantId,"payrollRuns",run.id,"lines");
  const oldSnapshot=await getDocs(query(base,limit(251)));
  if(oldSnapshot.size>250)throw Error("Existing lines exceed safe batch limit");
- const batch=writeBatch(db);
- const keys=new Set(lines.map(x=>x.employeeId));
- for(const prior of oldSnapshot.docs)if(!keys.has(prior.id))batch.delete(doc(base,prior.id));
- for(const line of lines)batch.set(doc(base,line.employeeId),line);
- commitRunCommissions(batch,run.id,commission);
- auditClient(batch,"payroll","payroll-generate",run.id,lines.length+" reviewed fictional lines");
- await batch.commit();
- await phase3.saveSnapshot(run,{preview,policy});
+ const groups=planPayrollDraftWrites({
+  lines,existingIds:oldSnapshot.docs.map(d=>d.id),
+  claims:commission.claim,releases:commission.release
+ });
+ const writeCount=groups.reduce((n,group)=>n+group.length,0);
+ if(writeCount>440)throw Error("This period needs more than 440 draft changes. Split the period before calculating.");
+ const sales=new Map([...commission.claim,...commission.release].map(s=>[s.id,s]));
+ const statusNode=$("p3RunReview");
+ let saved=0;
+ // Firestore evaluates a shared 20 document-access budget for every atomic
+ // write batch. Each new pay line checks its own employee document. Never
+ // submit an entire 22+ employee company in a single batch.
+ for(let i=0;i<groups.length;i++){
+  if(!stillAuthorized())throw Error(saved+" changes saved, but the company, account or selected run changed. Reopen this draft before continuing.");
+  const batch=writeBatch(db);
+  for(const entry of groups[i]){
+   if(entry.type==="line")batch.set(doc(base,entry.employeeId),entry.line);
+   else if(entry.type==="delete")batch.delete(doc(base,entry.employeeId));
+   else{
+    const sale=sales.get(entry.saleId);
+    if(!sale?.ref)throw Error("An expected commission sale is unavailable; no further changes have been made.");
+    batch.update(sale.ref,{paidRunId:entry.type==="claim"?run.id:""});
+   }
+  }
+  try{await batch.commit()}
+  catch(error){
+   const reason=error?.code||error?.message||error;
+   statusNode.textContent="Generation stopped after "+saved+" of "+writeCount+" draft changes. The run remains a draft; retry generation to reconcile it.";
+   throw Error("Saving payroll records (batch "+(i+1)+"/"+groups.length+") failed: "+reason+". "+
+    (saved?"Earlier batches were saved; retry generation to finish this draft.":"No pay lines were saved by this attempt."));
+  }
+  saved+=groups[i].length;
+  if(stillAuthorized())statusNode.textContent="Saving verified payroll lines… "+saved+" / "+writeCount+" changes";
+ }
+ try{
+  if(!stillAuthorized())throw Error("Company or account changed after saving.");
+  const audit=writeBatch(db);
+  auditClient(audit,"payroll","payroll-generate",run.id,lines.length+" reviewed fictional lines");
+  await audit.commit();
+  await phase3.saveSnapshot(run,{preview,policy});
+ }catch(error){
+  statusNode.textContent="Pay lines were saved, but the generation record could not be completed. Retry the draft generation.";
+  throw Error("Payroll lines saved, but audit/snapshot could not complete ("+(error?.code||error?.message||error)+"). Retry generation before submitting.");
+ }
  await selectRun(run.id);
  toast("Reviewed fictional payroll lines generated with a versioned snapshot.");
 }
