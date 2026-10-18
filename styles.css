@@ -512,3 +512,76 @@ body:has(.sterling-record-dialog[open]) .topbar{filter:brightness(.75)}
  .timecard-bulk-actions{display:grid;grid-template-columns:1fr}
  .timecard-bulk-actions .btn{width:100%}
 }
+
+
+/* Sterling Timekeeping: one compact register and one focused approval view. */
+.timekeeping-view-tabs{
+ display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:0 0 18px;
+ padding:5px;border:1px solid #35413e;background:#161e1e;border-radius:12px;width:max-content;max-width:100%;
+}
+.timekeeping-view-tab{font-size:12px;letter-spacing:.01em;min-height:38px;padding:9px 17px;
+ background:transparent!important;border:1px solid transparent!important;color:#adbcb8!important}
+.timekeeping-view-tab.active{background:#3b352a!important;border-color:#786344!important;color:#f9ddae!important}
+.timekeeping-register-panel .section-heading{margin-bottom:15px}
+.timekeeping-register-panel .section-heading h2{margin:0}
+.timekeeping-register-panel .subtle-pill{font-size:10px;white-space:normal;text-align:center}
+.timekeeping-filter-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 12px}
+.timekeeping-filter-grid label{min-width:0;display:flex;flex-direction:column;gap:6px;font-size:11px;color:#c9d4cc;font-weight:650}
+.timekeeping-filter-grid select,.timekeeping-filter-grid input{
+ display:block;width:100%;min-width:0;max-width:100%;margin:0!important;min-height:41px;
+ font-size:12px;border-radius:9px;padding:9px 11px;
+}
+.timekeeping-custom-dates{grid-template-columns:repeat(2,minmax(0,1fr));max-width:600px}
+.timekeeping-advanced{margin:0 0 10px;border:1px solid #39443e;border-radius:10px;background:#171e1d;padding:0 12px}
+.timekeeping-advanced>summary{cursor:pointer;font-size:12px;color:#e4d7c5;font-weight:700;padding:12px 0;user-select:none}
+.timekeeping-advanced>summary span{font-size:11px;font-weight:400;color:#aeb8af;margin-left:9px}
+.timekeeping-advanced[open]{padding-bottom:12px}
+.timekeeping-advanced>.btn{margin-top:1px}
+.timekeeping-advanced .timekeeping-filter-grid{padding-top:5px}
+.timekeeping-register-head{
+ display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:8px;
+ border-bottom:1px solid #35423e;padding:11px 0 13px;margin:0 0 10px;
+}
+.timekeeping-register-head #timeCount{margin:0 auto 0 0;flex:1 1 220px;line-height:1.4}
+.timekeeping-register-head .btn{min-height:35px;float:none!important;margin:0!important;position:static!important;font-size:11px;white-space:normal}
+#timeShowMoreRows{margin-top:11px;width:100%;min-height:38px}
+.timekeeping-summary{margin:12px 0 14px;padding:15px 16px;border:1px solid #6a5940;border-radius:13px;background:#201f1b}
+.timekeeping-summary-heading{display:flex;justify-content:space-between;gap:8px;align-items:baseline;flex-wrap:wrap;margin:0 0 12px}
+.timekeeping-summary-heading strong{font-size:14px;color:#f0e3cd}
+.timekeeping-summary-heading small{font-size:11px;color:#c7b7a0}
+.timekeeping-summary-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.timekeeping-summary-metric{min-width:0;border:1px solid #514b3f;background:#171d1c;border-radius:9px;padding:10px 11px;display:flex;flex-direction:column;gap:5px}
+.timekeeping-summary-metric small{font-size:10px;letter-spacing:.04em;color:#b6beb5}
+.timekeeping-summary-metric strong{font-size:16px;color:#f0dfbc;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.timekeeping-summary>.fine-print{margin:12px 0 0;color:#b4bdb1}
+#timeList.timekeeping-items .list-item{padding:11px 13px;margin-bottom:7px;gap:8px}
+#timeList.timekeeping-items .list-item strong{font-size:12px}
+#timeList.timekeeping-items .list-item small{font-size:11px;line-height:1.6}
+#timeList.timekeeping-items .item-actions .btn{min-height:31px;padding:6px 10px}
+#phase3Time .timekeeping-approvals-panel{margin-bottom:13px}
+#phase3Time .timekeeping-approvals-panel .list{max-height:62vh;overflow-y:auto}
+#phase3Time .timekeeping-extra-tools{display:grid;gap:10px;margin:13px 0}
+.timekeeping-operations-details{border:1px solid #39453e;border-radius:12px;overflow:hidden;background:#17201e}
+.timekeeping-operations-details>summary{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;cursor:pointer;padding:15px 18px;list-style:none}
+.timekeeping-operations-details>summary::-webkit-details-marker{display:none}
+.timekeeping-operations-details>summary::after{content:"+";font-size:18px;font-weight:400;line-height:1;color:#e6cd9e}
+.timekeeping-operations-details[open]>summary::after{content:"−"}
+.timekeeping-operations-details>summary strong{font-size:13px;color:#e9d7b5}
+.timekeeping-operations-details>summary small{font-size:11px;color:#aebeb3}
+.timekeeping-operations-details>.panel{margin:0;border:0!important;border-top:1px solid #38463f!important;border-radius:0;background:#161c1c;box-shadow:none}
+#phase3Time .timecard-bulk-toolbar{padding:11px 12px;border-radius:10px}
+@media(max-width:1020px){
+ .timekeeping-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .timekeeping-summary-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:620px){
+ .timekeeping-view-tabs{width:100%}
+ .timekeeping-view-tab{flex:1 1 auto;padding:9px}
+ .timekeeping-filter-grid{grid-template-columns:1fr}
+ .timekeeping-custom-dates{grid-template-columns:1fr;max-width:none}
+ .timekeeping-advanced>summary span{display:block;margin:4px 0 0}
+ .timekeeping-summary-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .timekeeping-register-head #timeCount{flex-basis:100%}
+ .timekeeping-register-head .btn{flex:1 1 auto}
+ .timekeeping-operations-details>summary small{flex-basis:100%}
+}
