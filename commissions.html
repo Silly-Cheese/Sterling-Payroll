@@ -50,6 +50,14 @@
     <button id="commissionClearFilters" class="btn small" type="button">Clear filters</button></div>
   </details>
   <div id="commissionSalesSummary" class="commission-sales-summary"></div>
+  <div id="commissionApprovalToolbar" class="commission-approval-toolbar hidden">
+   <label class="checkline"><input type="checkbox" id="commissionSelectVisible"> Select visible eligible sales</label>
+   <div class="commission-toolbar-buttons">
+    <button id="commissionApproveSelected" class="btn small" type="button" disabled>Approve selected (0)</button>
+    <button id="commissionApproveFiltered" class="btn primary small" type="button">Approve all matching pending</button>
+   </div>
+   <p id="commissionSelectionStatus" role="status" class="fine-print"></p>
+  </div>
   <div class="commission-register-head"><p id="commissionCount" class="fine-print" role="status"></p><button id="commissionSalesReload" class="btn small" type="button">Refresh sales</button></div>
   <div id="commissionSales" class="commission-records commission-sales-list"></div>
   <button id="commissionMore" type="button" class="btn hidden">Show more sales</button>
