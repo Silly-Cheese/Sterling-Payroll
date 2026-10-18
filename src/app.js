@@ -391,7 +391,7 @@ $("clientForm").addEventListener("submit",async event=>{
  try{
   const ref=await addDoc(collection(db,"tenants"),{name,status:"active",createdBy:state.user.uid,createdAt:serverTimestamp(),contactEmail:"",industry:"",servicePlan:"starter",notes:""});
   $("clientForm").reset();event.target.dispatchEvent(new Event("sterling:complete"));await loadTenantDirectory();await chooseTenant(ref.id);go("access");
-  toast("Client created. Invite its administrators from Team Access.");
+  toast("Client company created. Assign its administrators through Staff & Accounts.");
  }catch(e){fail(e,"Client creation failed")}
 });
 $("empType").addEventListener("change",()=>{
@@ -915,7 +915,7 @@ async function moveRun(run,next){
  toast("Payroll run marked "+next+".");
 }
 $("inviteForm").addEventListener("submit",async event=>{
- event.preventDefault();if(!canAdmin()||!state.tenantId)return;
+ event.preventDefault();if(!state.platformWrite||!state.tenantId)return;
  const email=cleanEmail($("inviteEmail").value),role=$("inviteRole").value;
  if(!email||!["client_admin","payroll_specialist","viewer"].includes(role))return;
  try{
@@ -932,6 +932,12 @@ $("inviteForm").addEventListener("submit",async event=>{
 async function renderAccess(){
  if(!state.tenantId||!canAdmin())return;
  const team=$("teamList"),invites=$("inviteList");team.replaceChildren();invites.replaceChildren();
+ $("inviteForm").classList.add("hidden");
+ $("inviteShare").classList.toggle("hidden",!state.tenantId);
+ $("inviteShare").replaceChildren(mk("strong","","Sterling-managed access"),
+  mk("small","",state.platformWrite?
+   "Grant or suspend company membership from Staff & Accounts. Client roles do not grant access.":
+   "Your team list is read-only. Open a Client Services support case to request new accounts, role changes, or employee identity linking."));
  try{
   const [members,invitationDocs]=await Promise.all([
    getDocs(query(sub("members"),limit(100))),
