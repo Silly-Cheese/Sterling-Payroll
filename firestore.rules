@@ -9,6 +9,11 @@ service cloud.firestore {
   function platform(){return owner() || staffRole() == 'administrator';}
   function platformOps(){return platform() || staffRole() == 'payroll_operator';}
   function platformView(){return platformOps() || staffRole() == 'support';}
+  // Only Sterling's central team may administer agreements, invoices and support cases.
+  function sterlingSupport(){return platform() || staffRole() == 'support';}
+  function clientHelpDesk(t){return member(t) && role(t) != 'employee';}
+  function canSeeTicket(t,createdBy){return sterlingSupport() ||
+    (clientHelpDesk(t) && (role(t) == 'client_admin' || createdBy == request.auth.uid));}
   function memberPath(t){return /databases/$(database)/documents/tenants/$(t)/members/$(request.auth.uid);}
   function member(t){return signedIn() && exists(memberPath(t)) && get(memberPath(t)).data.status == 'active' &&
     get(/databases/$(database)/documents/tenants/$(t)).data.status == 'active';}
@@ -156,13 +161,13 @@ service cloud.firestore {
     allow get: if platform() || (signedIn() && request.auth.uid == uid) || clientAdmin(t);
     allow list: if clientAdmin(t);
     // Users only accept invitations addressed to their verified email.
-    allow create: if clientAdmin(t) &&
+    allow create: if platform() &&
       exists(/databases/$(database)/documents/accounts/$(uid)) &&
       request.resource.data.keys().hasOnly(['email','role','status','joinedAt']) &&
       request.resource.data.email == get(/databases/$(database)/documents/accounts/$(uid)).data.email &&
       request.resource.data.role in ['client_admin','payroll_specialist','viewer','employee'] &&
       request.resource.data.status == 'active';
-    allow update: if clientAdmin(t) && uid != request.auth.uid &&
+    allow update: if platform() && uid != request.auth.uid &&
       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role','status']) &&
       request.resource.data.role in ['client_admin','payroll_specialist','viewer','employee'] &&
       request.resource.data.status in ['active','suspended'] &&
@@ -174,7 +179,7 @@ service cloud.firestore {
    match /employeeLinks/{uid} {
     allow get: if clientAdmin(t) || (signedIn() && request.auth.uid == uid && member(t));
     allow list: if clientAdmin(t);
-    allow create, update: if clientAdmin(t) &&
+    allow create, update: if platform() &&
       exists(/databases/$(database)/documents/accounts/$(uid)) &&
       exists(/databases/$(database)/documents/tenants/$(t)/members/$(uid)) &&
       get(/databases/$(database)/documents/tenants/$(t)/members/$(uid)).data.status == 'active' &&
@@ -182,7 +187,7 @@ service cloud.firestore {
       text(request.resource.data.employeeId,128) &&
       exists(employeePath(t,request.resource.data.employeeId)) &&
       request.resource.data.linkedBy == request.auth.uid;
-    allow delete: if clientAdmin(t);
+    allow delete: if platform();
    }
    // Self-service preferences never change HR payroll source fields.
    match /employeePreferences/{uid} {
@@ -375,7 +380,7 @@ service cloud.firestore {
    }
    match /serviceAgreements/current {
     allow read: if clientView(t);
-    allow create,update: if clientAdmin(t) &&
+    allow create,update: if platform() &&
      request.resource.data.keys().hasOnly(['tier','billingCycle','status','renewalDate','seatLimit','rateCents','updatedBy','updatedAt']) &&
      request.resource.data.tier in ['starter','standard','enterprise'] &&
      request.resource.data.billingCycle in ['monthly','annual'] &&
@@ -392,7 +397,7 @@ service cloud.firestore {
    // are enforced here. Ledger balance reconciliation is currently client-side only.
    match /billingInvoices/{invoiceId} {
     allow read: if clientView(t);
-    allow create: if clientAdmin(t) &&
+    allow create: if platform() &&
      request.resource.data.keys().hasOnly(['description','amountCents','dueDate','status','createdAt','updatedAt','createdBy']) &&
      text(request.resource.data.description,160) && cent(request.resource.data.amountCents) &&
      request.resource.data.amountCents > 0 &&
@@ -401,7 +406,7 @@ service cloud.firestore {
      request.resource.data.createdBy == request.auth.uid &&
      request.resource.data.createdAt == request.time &&
      request.resource.data.updatedAt == request.time;
-    allow update: if clientAdmin(t) &&
+    allow update: if platform() &&
      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt']) &&
      (
        (resource.data.status == 'draft' && request.resource.data.status in ['issued','void']) ||
@@ -411,7 +416,7 @@ service cloud.firestore {
     allow delete: if owner();
     match /events/{eventId} {
      allow read: if clientView(t);
-     allow create: if clientAdmin(t) &&
+     allow create: if platform() &&
       exists(/databases/$(database)/documents/tenants/$(t)/billingInvoices/$(invoiceId)) &&
       get(/databases/$(database)/documents/tenants/$(t)/billingInvoices/$(invoiceId)).data.status in ['draft','issued'] &&
       request.resource.data.keys().hasOnly(['type','amountCents','note','createdBy','createdAt']) &&
@@ -425,29 +430,34 @@ service cloud.firestore {
    }
    // Client ticket queue, scoped public updates and separately private internal notes.
    match /supportTickets/{ticketId} {
-    allow read: if clientView(t);
-    allow create: if clientView(t) &&
+    allow get,list: if canSeeTicket(t,resource.data.createdBy);
+    allow create: if (sterlingSupport() || clientHelpDesk(t)) &&
      request.resource.data.keys().hasOnly(['subject','details','priority','category','status','assignedUid','createdBy','createdAt','updatedAt']) &&
      text(request.resource.data.subject,120) && text(request.resource.data.details,1500) &&
+     (sterlingSupport() || request.resource.data.priority in ['low','normal','high']) &&
      request.resource.data.priority in ['low','normal','high','urgent'] &&
      request.resource.data.category in ['payroll','employee','billing','technical','general'] &&
      request.resource.data.status == 'open' && request.resource.data.assignedUid == '' &&
      request.resource.data.createdBy == request.auth.uid &&
      request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time;
-    allow update: if clientAdmin(t) &&
+    allow update: if sterlingSupport() &&
      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','assignedUid','updatedAt']) &&
      request.resource.data.status in ['open','in_progress','waiting_on_client','resolved','closed'] &&
      resource.data.status != 'closed' &&
      request.resource.data.assignedUid is string &&
      (request.resource.data.assignedUid == '' ||
-       (exists(/databases/$(database)/documents/tenants/$(t)/members/$(request.resource.data.assignedUid)) &&
-        get(/databases/$(database)/documents/tenants/$(t)/members/$(request.resource.data.assignedUid)).data.status == 'active')) &&
+       (exists(/databases/$(database)/documents/platformStaff/$(request.resource.data.assignedUid)) &&
+        get(/databases/$(database)/documents/platformStaff/$(request.resource.data.assignedUid)).data.active == true &&
+        get(/databases/$(database)/documents/platformStaff/$(request.resource.data.assignedUid)).data.role in ['administrator','support'])) &&
+
      request.resource.data.updatedAt == request.time;
     allow delete: if owner();
     match /updates/{messageId} {
-     allow read: if clientView(t);
-     allow create: if clientView(t) &&
+     allow get,list: if canSeeTicket(t,get(/databases/$(database)/documents/tenants/$(t)/supportTickets/$(ticketId)).data.createdBy);
+     allow create: if (sterlingSupport() || (clientHelpDesk(t) &&
+      canSeeTicket(t,get(/databases/$(database)/documents/tenants/$(t)/supportTickets/$(ticketId)).data.createdBy))) &&
       exists(/databases/$(database)/documents/tenants/$(t)/supportTickets/$(ticketId)) &&
+      get(/databases/$(database)/documents/tenants/$(t)/supportTickets/$(ticketId)).data.status != 'closed' &&
       request.resource.data.keys().hasOnly(['body','createdBy','createdAt']) &&
       text(request.resource.data.body,1600) &&
       request.resource.data.createdBy == request.auth.uid &&
@@ -456,8 +466,8 @@ service cloud.firestore {
      allow delete: if owner();
     }
     match /internalNotes/{noteId} {
-     allow read: if clientAdmin(t);
-     allow create: if clientAdmin(t) &&
+     allow read: if sterlingSupport();
+     allow create: if sterlingSupport() &&
       exists(/databases/$(database)/documents/tenants/$(t)/supportTickets/$(ticketId)) &&
       request.resource.data.keys().hasOnly(['body','createdBy','createdAt']) &&
       text(request.resource.data.body,1600) &&
