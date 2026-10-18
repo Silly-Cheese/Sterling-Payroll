@@ -585,3 +585,7 @@ body:has(.sterling-record-dialog[open]) .topbar{filter:brightness(.75)}
  .timekeeping-register-head .btn{flex:1 1 auto}
  .timekeeping-operations-details>summary small{flex-basis:100%}
 }
+
+.timekeeping-group-label{position:sticky;top:0;z-index:1;padding:9px 6px 5px;margin:7px 0 6px;
+ font-size:11px;font-weight:800;letter-spacing:.04em;color:#e3ca9a;
+ border-bottom:1px solid #39433e;background:#161d1c}
