@@ -793,9 +793,16 @@ function renderRunDetails(){
   const tbody=mk("tbody");
   for(const line of state.lines){
    const row=mk("tr");
-   for(const v of [line.employeeName,money(line.regularCents),money(line.overtimeCents),money(line.bonusCents),money(line.commissionCents||0),
-     money(line.deductionCents),money(line.grossCents),money(line.netCents)])row.append(mk("td","",v));
-   const cell=mk("td");
+   const moneyColumns=[
+    ["Employee",line.employeeName],["Regular",money(line.regularCents)],
+    ["Overtime",money(line.overtimeCents)],["Bonus",money(line.bonusCents)],
+    ["Commission",money(line.commissionCents||0)],["Deductions",money(line.deductionCents)],
+    ["Gross",money(line.grossCents)],["Net",money(line.netCents)]
+   ];
+   for(const [label,value] of moneyColumns){
+    const td=mk("td","",value);td.dataset.label=label;row.append(td);
+   }
+   const cell=mk("td");cell.dataset.label="Actions";
    if(run.status==="draft"&&canPayroll()){
     cell.append(button("Adjust",()=>paylineEditor.open({record:line,onSave:async values=>{
      const company=state.tenantId,actor=state.user.uid,runId=run.id,employeeId=line.employeeId;
