@@ -3,7 +3,7 @@ import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmai
 import {getFirestore,collection,doc,getDoc,getDocs,addDoc,setDoc,updateDoc,query,limit,writeBatch,serverTimestamp,orderBy,documentId,startAfter,startAt,endAt} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 import {calculateLine,summarizeLines,toCents,money,hoursValue,canTransition,validPeriod,cleanEmail} from "./payroll-core.js";
 import {mountStaffAccounts} from "./staff.js";
-import {mountPhase3} from "./phase3.js";
+import {mountPhase3} from "./phase3.js?v=sterling-bulk-timecards-20261017";
 // Phase 4 loads lazily, so a pending Pages deployment cannot break the sign-in screen.
 import {buildPayrollPreview,DEFAULT_POLICY} from "./phase3-core.js";
 import {mountPhase2} from "./phase2.js";
@@ -451,6 +451,7 @@ for(const [buttonId,kind,count,sort] of [
    state[cursorField]=snapshot.docs.at(-1)||null;state[moreField]=snapshot.size===count;
    $(buttonId).classList.toggle("hidden",!state[moreField]);
    renderDashboard();renderEmployees();renderTime();renderRuns();phase2?.refresh();
+   if(kind==="timeEntries")await phase3?.refresh();
   }catch(error){fail(error,"Unable to load additional records")}
   finally{$(buttonId).disabled=false}
  });
