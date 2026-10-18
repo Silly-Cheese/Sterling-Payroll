@@ -4,8 +4,7 @@ export function serviceCapabilities(state = {}) {
  const sterlingManager = Boolean(state.platformOwner || state.platformWrite);
  const supportAgent = sterlingManager || state.platformRole === "support";
  const companyMember = Boolean(state.user && state.tenantId &&
-  (supportAgent || state.platformRole === "payroll_operator" ||
-   ["client_admin","payroll_specialist","viewer"].includes(state.role)));
+  (supportAgent || ["client_admin","payroll_specialist","viewer"].includes(state.role)));
  return Object.freeze({
   billingWrite: sterlingManager,
   supportManage: supportAgent,
