@@ -10,10 +10,10 @@ export function mountTimecardImport({db,getState,notify,confirmAction,refreshCom
  const dialog=document.createElement("dialog");dialog.className="workspace-form-dialog timecard-import-dialog";
  dialog.innerHTML=[
  '<header><h2>Import employee timecards</h2><button type="button" id="tiClose" class="workspace-form-close" aria-label="Close import">✕</button></header>',
- '<div class="timecard-import-body"><p class="muted">Import CSV timecards for this fictional client company. Match by employee ID or exact name; all imported entries start as <strong>Pending</strong> and must be reviewed.</p>',
+ '<div class="timecard-import-body"><p class="muted">Import CSV timecards for this fictional client company. Match automatically by employee name and optional department; all imported entries start as <strong>Pending</strong> and must be reviewed.</p>',
  '<div class="timecard-import-fields"><label>Choose CSV<input id="tiFile" type="file" accept=".csv,text/csv"></label>',
  '<button type="button" class="btn" id="tiTemplate">Download CSV template</button></div>',
- '<p class="fine-print">Required: employeeId or employeeName, workDate, regularHours, overtimeHours. Optional: note. Dates: YYYY-MM-DD or MM/DD/YYYY. Maximum 100 rows per import. Existing employee/date entries are skipped.</p>',
+ '<p class="fine-print">Required: employeeName, workDate, regularHours, overtimeHours. Optional: department and note. No employee IDs needed. Dates: YYYY-MM-DD or MM/DD/YYYY. Maximum 100 rows per import. Existing employee/date entries are skipped.</p>',
  '<div class="actions"><button type="button" class="btn" id="tiPreview">Review CSV</button><button type="button" class="btn primary" id="tiCommit" disabled>Import valid timecards</button></div>',
  '<p role="status" id="tiStatus" class="notice">Choose a CSV file to begin.</p><div id="tiRows" class="timecard-import-preview"></div></div>'
  ].join("");
@@ -43,11 +43,19 @@ export function mountTimecardImport({db,getState,notify,confirmAction,refreshCom
  }
  async function resolveEmployees(items,companyId){
   const people=new Map(S().employees.map(e=>[e.id,e]));
-  const names=[...new Set(items.filter(r=>!r.error&&!r.employeeId&&r.employeeName).map(r=>r.employeeName))];
+  const names=[...new Set(items.filter(r=>!r.error&&r.employeeName).map(r=>r.employeeName))];
   const ids=[...new Set(items.filter(r=>!r.error&&r.employeeId).map(r=>r.employeeId))];
   for(const name of names){
-   const result=await getDocs(query(collection(db,"tenants",companyId,"employees"),where("displayName","==",name),limit(6)));
-   for(const person of result.docs)people.set(person.id,{id:person.id,...person.data()});
+   // Legacy employee documents have no normalized name field. Check likely casing
+   // plus loaded records, then compare case-insensitively in matchTimecards().
+   const trimmed=name.trim().replace(/\s+/g," ");
+   const titled=trimmed.toLocaleLowerCase("en-US").replace(/\b\p{L}/gu,ch=>ch.toLocaleUpperCase("en-US"));
+   const variants=[...new Set([trimmed,titled,trimmed.toLocaleUpperCase("en-US")])];
+   for(const searchName of variants){
+    const result=await getDocs(query(collection(db,"tenants",companyId,"employees"),where("displayName","==",searchName),limit(50)));
+    for(const person of result.docs)people.set(person.id,{id:person.id,...person.data()});
+    if(result.size===50)throw Error("More than 49 employees have the same name. Contact the company administrator to use a distinct department.");
+   }
   }
   for(const id of ids){
    if(people.has(id)||id.includes("/"))continue;
@@ -98,7 +106,7 @@ export function mountTimecardImport({db,getState,notify,confirmAction,refreshCom
   const companyId=tenant(),actor=S().user.uid;
   busy=true;$("tiCommit").disabled=true;$("tiStatus").textContent="Rechecking and importing timecards…";
   try{
-   const previous=await existingTime(valid,companyId),checked=matchTimecards(valid,valid.map(r=>r.employee),previous);
+   const previous=await existingTime(valid,companyId),uniqueEmployees=[...new Map(valid.map(r=>[r.employee.id,r.employee])).values()],checked=matchTimecards(valid,uniqueEmployees,previous);
    if(checked.some(r=>r.status!=="ready"))throw Error("Timecards changed since the preview. Review the file again.");
    if(companyId!==tenant()||!canImport()||S().user.uid!==actor)throw Error("Company or permissions changed.");
    // Use small atomic transactions: the Firestore Rules batch limit is 20
