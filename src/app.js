@@ -3,14 +3,14 @@ import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmai
 import {getFirestore,collection,doc,getDoc,getDocs,addDoc,setDoc,updateDoc,query,limit,writeBatch,serverTimestamp,orderBy,documentId,startAfter,startAt,endAt} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 import {calculateLine,summarizeLines,toCents,money,hoursValue,canTransition,validPeriod,cleanEmail} from "./payroll-core.js";
 import {mountStaffAccounts} from "./staff.js";
-import {mountPhase3} from "./phase3.js?v=sterling-complete-payroll-20261017";
+import {mountPhase3} from "./phase3.js?v=sterling-timekeeping-20261018";
 // Phase 4 loads lazily, so a pending Pages deployment cannot break the sign-in screen.
 import {buildPayrollPreview,DEFAULT_POLICY} from "./phase3-core.js";
 import {mountPhase2} from "./phase2.js";
 import {createOwnerRecordActions} from "./record-actions.js";
 import {createSterlingModals} from "./modals.js";
 import {compactForm} from "./workspace-ui.js";
-import {mountTimecardImport} from "./timecard-import.js";
+import {mountTimecardImport} from "./timecard-import.js?v=sterling-timekeeping-20261018";
 import {readCompletePages} from "./payroll-paging.js?v=sterling-timekeeping-20261018";
 import {filterTimecards,sumTimecardHours,payPeriodForSelection,formatHours,applyApprovedTimeCorrections} from "./timekeeping-core.js?v=sterling-timekeeping-20261018";
 import {prepareRunCommissions} from "./commission-payroll.js?v=sterling-payroll-security-20261017";
@@ -234,7 +234,7 @@ async function loadTenantDirectory(){
  await chooseTenant(state.tenantId,false);
 }
 async function chooseTenant(id,writeStorage=true){
- invalidateTimekeeping();
+ invalidateTimekeeping();timekeepingView="register";
  phase4?.clear();
  state.tenantId=id;state.role="";state.selectedRun=null;state.lines=[];
  clearTimeout(remoteSearchTimer);remoteSearchId++;
@@ -656,8 +656,15 @@ function renderTime(){
  }
  if(!rows.length)return empty(list,"No timecards match the selected filters.");
  const fragment=document.createDocumentFragment();
+ let lastGroup="";
  for(const entry of rows.slice(0,timekeepingVisibleRows)){
   const employeeName=names.get(entry.employeeId)||"Former employee";
+  const groupByEmployee=$("timeSort").value.startsWith("employee");
+  const groupValue=groupByEmployee?employeeName:entry.workDate;
+  if(groupValue!==lastGroup){
+   fragment.append(mk("div","timekeeping-group-label",groupValue));
+   lastGroup=groupValue;
+  }
   const total=Number(entry.regularHours||0)+Number(entry.overtimeHours||0);
   const actions=state.platformOwner?[button("Delete",()=>ownerActions.remove("timeEntries",entry),"small danger")]:[];
   const label=entry.workDate+" · "+formatHours(total)+" hours ("+
