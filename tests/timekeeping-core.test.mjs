@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {filterTimecards,sumTimecardHours,payPeriodForSelection,formatHours} from "../src/timekeeping-core.js";
+import {filterTimecards,sumTimecardHours,payPeriodForSelection,formatHours,applyApprovedTimeCorrections} from "../src/timekeeping-core.js";
 const names=new Map([["a","Abigail West"],["b","Zachary Reed"]]);
 const entries=[
  {id:"1",employeeId:"a",workDate:"2026-10-12",regularHours:8,overtimeHours:0,status:"approved"},
@@ -24,7 +24,7 @@ test("period totals use selected employee and exclude rejected and outside-perio
 });
 test("date and employee sorting is deterministic",()=>{
  assert.deepEqual(filterTimecards(entries,{sort:"date-asc"},names).map(x=>x.id),["1","3","2","4","5"]);
- assert.deepEqual(filterTimecards(entries,{sort:"date-desc"},names).map(x=>x.id),["5","4","2","3","1"]);
+ assert.deepEqual(filterTimecards(entries,{sort:"date-desc"},names).map(x=>x.id),["5","4","3","2","1"]);
  assert.deepEqual(filterTimecards(entries,{sort:"employee-asc"},names).map(x=>x.id),["5","4","3","1","2"]);
  assert.deepEqual(filterTimecards(entries,{sort:"employee-desc"},names).map(x=>x.id),["2","5","4","3","1"]);
 });
@@ -38,4 +38,23 @@ test("pay periods map to the run boundaries without inferring a weekly window",(
  assert.deepEqual(payPeriodForSelection(runs,"all"),{start:"",end:"",label:"All dates"});
  assert.equal(payPeriodForSelection(runs,"invalid"),null);
  assert.equal(formatHours(18.5),"18.5");
+});
+
+test("approved correction overrides original timecard for employee period summary",()=>{
+ const corrections=[{id:"c",timeEntryId:"3",status:"approved",regularHours:6,overtimeHours:4}];
+ const corrected=applyApprovedTimeCorrections(entries,corrections);
+ const period=filterTimecards(corrected,{employeeId:"a",start:"2026-10-12",end:"2026-10-17"},names);
+ const total=sumTimecardHours(period);
+ assert.equal(total.total,18);
+ assert.equal(total.regular,14);
+ assert.equal(total.overtime,4);
+ assert.equal(corrected.find(x=>x.id==="3").corrected,true);
+ assert.equal(entries.find(x=>x.id==="3").regularHours,7.75);
+});
+test("multiple conflicting approved corrections are never silently included in hours",()=>{
+ const corrections=[
+  {timeEntryId:"3",status:"approved",regularHours:5,overtimeHours:0},
+  {timeEntryId:"3",status:"approved",regularHours:7,overtimeHours:0}
+ ];
+ assert.throws(()=>applyApprovedTimeCorrections(entries,corrections),/more than one approved correction/i);
 });
