@@ -52,3 +52,26 @@ export function payPeriodForSelection(runs,value) {
  if(!period)return null;
  return {start:period.periodStart,end:period.periodEnd,label:period.periodStart+" – "+period.periodEnd};
 }
+
+
+// Match the payroll preview's correction precedence. Never silently count
+// original hours once an approved correction supersedes them.
+export function applyApprovedTimeCorrections(entries, corrections = []) {
+ const approved = new Map();
+ for (const correction of corrections) {
+  if (correction.status !== "approved") continue;
+  const list = approved.get(correction.timeEntryId) || [];
+  list.push(correction);
+  approved.set(correction.timeEntryId,list);
+ }
+ return entries.map(entry=>{
+  const matches = approved.get(entry.id) || [];
+  if(matches.length > 1)
+   throw Error("More than one approved correction exists for timecard "+entry.id+". Resolve the conflict before calculating period totals.");
+  if(!matches.length)return entry;
+  return {...entry,originalRegularHours:entry.regularHours,
+   originalOvertimeHours:entry.overtimeHours,
+   regularHours:matches[0].regularHours,overtimeHours:matches[0].overtimeHours,
+   corrected:true};
+ });
+}
