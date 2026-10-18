@@ -77,3 +77,19 @@ Before activating client access on the new release, publish those rules and conf
 Security rules, not hiding interface controls, provide the enforcement for writes and protected support records.
 
 **New interface:** record-first views, on-demand creation forms, simplified personnel tools, five employee-portal tabs and separate staff/client access tabs. No standalone Owner Controls page.
+
+## Commission studio (October 2026)
+The **Commissions** workspace separates employee plans from the sales register. Administrators can choose 5%, 10%, 15%, 20%, or 25% presets, use custom percentages or fixed payouts, and assign the same plan to several active employees. Plans can be searched and edited; existing approved sale amounts remain unchanged.
+
+In **Sales register**, choose **Import sales CSV** and download the template. Example:
+
+```csv
+employeeName,saleDate,saleAmount,description,reference
+Jim Joe,2026-10-12,1250.00,Sample fictional sale,ORDER-101
+```
+
+The reference column is optional. Imports are limited to 500 rows / 512 KB per file, accept YYYY-MM-DD or MM/DD/YYYY dates, match full employee names uniquely, require active commission plans, and preview valid/invalid records and calculated payouts. Imported sales are **pending**. Re-uploading the same file skips matching previously imported records. Ambiguous employee names are rejected instead of guessed.
+
+The sales register reads complete company sales in Firestore document-ID pages (up to 10,000 records), then supports employee, status, date and text filters plus date/name/sale-value/commission sorting without composite indexes. The UI renders 35 rows at once with a Show More control.
+
+Authorized independent reviewers can approve selected or all matching eligible pending sales in small Firestore transactions. The Sterling owner retains the existing override. Approved/rejected sales cannot be approved again; prior payroll links remain protected by rules. No new Firestore indexes or rules are required for this CSV feature, but existing security rules must be deployed for the existing permissions to be enforceable.
