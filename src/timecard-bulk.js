@@ -26,8 +26,18 @@ export function mountBulkTimecardApprovals({db, getState, refreshCompany, refres
  message.setAttribute("aria-live", "polite");
  toolbar.append(buttons, message);
  queue.before(toolbar);
+ const quickLink = make("button", "btn small timecard-approval-shortcut", "Review & bulk approve");
+ quickLink.type = "button";
+ quickLink.onclick = () => {
+  toolbar.scrollIntoView({behavior: "smooth", block: "start"});
+  selectAll.focus({preventScroll: true});
+ };
+ const registerPanel = document.getElementById("timeList")?.closest(".panel");
+ const importButton = registerPanel?.querySelector(".timecard-import-launch");
+ if (importButton) importButton.after(quickLink);
+ else registerPanel?.querySelector("h2")?.after(quickLink);
 
- let selected = new Set(), loaded = [], currentTenant = "", busy = false;
+ let selected = new Set(), loaded = [], currentTenant = "", busy = false, lastOutcome = "";
  const admin = () => Boolean(S().user && S().tenantId && S().role !== "employee" &&
   (S().platformWrite || S().role === "client_admin"));
  const permission = () => ({admin: admin(), owner: Boolean(S().platformOwner)});
@@ -41,6 +51,7 @@ export function mountBulkTimecardApprovals({db, getState, refreshCompany, refres
   const allowed = admin(), candidates = eligible(loaded);
   const allSelected = candidates.length > 0 && candidates.every(row => selected.has(row.id));
   toolbar.classList.toggle("hidden", !allowed);
+  quickLink.classList.toggle("hidden", !allowed);
   selectAll.disabled = busy || !candidates.length;
   approveSelected.disabled = busy || !candidates.some(row => selected.has(row.id));
   approveAll.disabled = busy;
@@ -48,9 +59,9 @@ export function mountBulkTimecardApprovals({db, getState, refreshCompany, refres
   approveSelected.textContent = "Approve selected (" + candidates.filter(row => selected.has(row.id)).length + ")";
   if (!busy) {
    const blocked = loaded.filter(row => !candidates.some(c => c.id === row.id)).length;
-   message.textContent = candidates.length + " eligible pending timecards loaded" +
+   message.textContent = lastOutcome || (candidates.length + " eligible pending timecards loaded" +
     (blocked ? " · " + blocked + " require an independent approver" : "") +
-    ". Use Approve all company pending to include entries on other pages.";
+    ". Use Approve all company pending to include entries on other pages.");
   }
   queue.querySelectorAll("[data-timecard-select]").forEach(input => {
    input.checked = selected.has(input.value);
@@ -63,6 +74,7 @@ export function mountBulkTimecardApprovals({db, getState, refreshCompany, refres
   if (tenantId !== currentTenant) {
    currentTenant = tenantId;
    selected.clear();
+   lastOutcome = "";
   }
   loaded = pending;
   const live = new Set(eligible(pending).map(row => row.id));
@@ -166,6 +178,7 @@ export function mountBulkTimecardApprovals({db, getState, refreshCompany, refres
    return;
   }
   busy = true;
+  lastOutcome = "";
   updateButtons();
   let completed = 0, skipped = 0, failed = 0, firstError = "";
   try {
@@ -196,10 +209,12 @@ export function mountBulkTimecardApprovals({db, getState, refreshCompany, refres
    const report = completed + " timecards approved" +
     (totalSkipped ? " · " + totalSkipped + " skipped or failed" : "") + ".";
    notify(report + (firstError ? " First error: " + firstError : ""), failed > 0);
-   message.textContent = report + (firstError ? " " + firstError : "");
+   lastOutcome = report + (firstError ? " " + firstError : "");
+   message.textContent = lastOutcome;
   } catch (error) {
    notify(completed + " approved before stopping: " + error.message, true);
-   message.textContent = completed + " approved; stopped: " + error.message;
+   lastOutcome = completed + " approved; stopped: " + error.message;
+   message.textContent = lastOutcome;
   } finally {
    busy = false;
    selected.clear();
@@ -228,7 +243,8 @@ export function mountBulkTimecardApprovals({db, getState, refreshCompany, refres
    busy = false; updateButtons();
    await approveRecords(pending, "company");
   } catch (error) {
-   notify("Unable to review all company timecards: " + error.message, true);
+   lastOutcome = "Unable to review all company timecards: " + error.message;
+   notify(lastOutcome, true);
   } finally {
    busy = false;
    updateButtons();
