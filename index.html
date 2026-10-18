@@ -139,7 +139,7 @@
               </form>
             </article>
             <article class="panel"><div class="section-heading"><h2>Employee directory</h2><span id="empCount" class="subtle-pill">0 EMPLOYEES</span></div>
-              <div class="list-toolbar"><input id="empSearch" class="search-input" type="search" placeholder="Find name, role or department"><select id="empStatus" aria-label="Filter employment status"><option value="all">All statuses</option><option value="active">Active</option><option value="leave">On leave</option><option value="inactive">Inactive</option></select></div>
+              <div class="list-toolbar"><input id="empSearch" class="search-input" type="search" placeholder="Find name, role or department"><select id="empStatus" aria-label="Filter employment status"><option value="all">All statuses</option><option value="active">Active</option><option value="leave">On leave</option><option value="inactive">Inactive</option></select><select id="empSort" aria-label="Sort employee directory"><option value="name">Name · A–Z</option><option value="name-desc">Name · Z–A</option><option value="department">Department · A–Z</option><option value="pay-desc">Compensation · highest</option></select></div>
               <p id="empSearchHint" class="fine-print" role="status">Search loaded records; typing 2+ letters also looks up employee-name prefixes.</p><div id="employeeList" class="list"></div><button id="loadMoreEmployees" class="btn hidden" type="button">Load more employees</button></article>
           </div>
         </section>
@@ -210,11 +210,12 @@
               </form>
               <div class="data-note"><strong>Approval separation enforced</strong><small>The approver must differ from the submitter; the finalizer must differ from the approver.</small></div>
             </article>
-            <article class="panel"><h2>Payroll run register</h2><div class="list-toolbar"><input id="runSearch" class="search-input" type="search" placeholder="Find period or date"><select id="runStatus" aria-label="Filter payroll runs"><option value="all">All</option><option value="draft">Draft</option><option value="submitted">Submitted</option><option value="approved">Approved</option><option value="finalized">Finalized</option><option value="rejected">Rejected</option><option value="voided">Voided</option></select></div><p class="fine-print" id="runCount"></p><div id="runList" class="list"></div><button id="loadMoreRuns" class="btn hidden" type="button">Load more payroll runs</button></article>
+            <article class="panel"><h2>Payroll run register</h2><div class="list-toolbar"><input id="runSearch" class="search-input" type="search" placeholder="Find period or date"><select id="runStatus" aria-label="Filter payroll runs"><option value="all">All</option><option value="draft">Draft</option><option value="submitted">Submitted</option><option value="approved">Approved</option><option value="finalized">Finalized</option><option value="rejected">Rejected</option><option value="voided">Voided</option></select><select id="runSort" aria-label="Sort payroll periods"><option value="newest">Period · newest</option><option value="oldest">Period · oldest</option><option value="payday">Payday · newest</option><option value="status">Status · A–Z</option></select></div><p class="fine-print" id="runCount"></p><div id="runList" class="list"></div><button id="loadMoreRuns" class="btn hidden" type="button">Load more payroll runs</button></article>
           </div>
           <article id="runDetails" class="panel run-details hidden">
             <div class="section-heading"><div><div class="eyebrow">SELECTED PAYROLL PERIOD</div><h2 id="runHeading">Payroll period</h2><p class="muted">Inspect pay lines, make authorized draft corrections, then move through approvals.</p></div><span id="runStatusChip" class="status-chip">DRAFT</span></div>
             <div id="runTotals" class="metric-grid compact"></div>
+            <div class="list-toolbar payroll-line-filters"><input id="lineSearch" type="search" placeholder="Find an employee in this run" aria-label="Search pay lines"><select id="lineSort" aria-label="Sort pay lines"><option value="employee">Employee · A–Z</option><option value="gross">Gross · highest</option><option value="net">Net · highest</option></select><span id="lineCount" class="data-count" role="status"></span></div>
             <div id="runLines" class="data-table-wrap" aria-label="Employee pay line register"></div>
             <div id="runActions" class="actions"></div>
           </article>
