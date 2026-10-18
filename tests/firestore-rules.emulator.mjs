@@ -49,16 +49,20 @@ test("employee can read own finalized fictional pay line but not other employee 
  await assertFails(getDocs(collection(db,"tenants","north","employees")));
  await assertFails(getDocs(collection(db,"tenants","north","payrollRuns","p1","lines")));
 });
-test("staff-only support notes do not leak to read-only clients",async()=>{
- await assertFails(getDoc(doc(as("viewer"),"tenants","north","supportTickets","s1","internalNotes","n1")));
- await assertSucceeds(getDoc(doc(as("admin"),"tenants","north","supportTickets","s1","internalNotes","n1")));
+test("internal Sterling support notes are hidden even from client administrators",async()=>{
+ for(const uid of ["viewer","admin"]){
+  await assertFails(getDoc(doc(as(uid),"tenants","north","supportTickets","s1","internalNotes","n1")));
+ }
+ await assertSucceeds(getDoc(doc(as("owner"),"tenants","north","supportTickets","s1","internalNotes","n1")));
 });
-test("invoice cannot skip issued step and client cannot forge ledger",async()=>{
- const a=as("admin"),v=as("viewer");
- await assertFails(updateDoc(doc(a,"tenants","north","billingInvoices","i1"),{status:"settled",updatedAt:serverTimestamp()}));
- await assertSucceeds(updateDoc(doc(a,"tenants","north","billingInvoices","i1"),{status:"issued",updatedAt:serverTimestamp()}));
+test("company administrators cannot alter Sterling invoice status or ledger",async()=>{
+ const a=as("admin"),v=as("viewer"),o=as("owner");
+ await assertFails(updateDoc(doc(a,"tenants","north","billingInvoices","i1"),{status:"issued",updatedAt:serverTimestamp()}));
+ await assertFails(setDoc(doc(a,"tenants","north","billingInvoices","i1","events","ev"),{type:"payment",amountCents:100,note:"fake payment",createdBy:"admin",createdAt:serverTimestamp()}));
  await assertFails(setDoc(doc(v,"tenants","north","billingInvoices","i1","events","ev"),{type:"payment",amountCents:100,note:"fake entry",createdBy:"viewer",createdAt:serverTimestamp()}));
- await assertSucceeds(setDoc(doc(a,"tenants","north","billingInvoices","i1","events","ev"),{type:"payment",amountCents:100,note:"Simulated payment",createdBy:"admin",createdAt:serverTimestamp()}));
+ await assertFails(updateDoc(doc(o,"tenants","north","billingInvoices","i1"),{status:"settled",updatedAt:serverTimestamp()}));
+ await assertSucceeds(updateDoc(doc(o,"tenants","north","billingInvoices","i1"),{status:"issued",updatedAt:serverTimestamp()}));
+ await assertSucceeds(setDoc(doc(o,"tenants","north","billingInvoices","i1","events","ev"),{type:"payment",amountCents:100,note:"Simulated payment",createdBy:"owner",createdAt:serverTimestamp()}));
  await assertFails(deleteDoc(doc(a,"tenants","north","billingInvoices","i1","events","ev")));
 });
 test("trusted owner can grant staff but viewer cannot create platform role",async()=>{
@@ -361,4 +365,52 @@ test("a 22-worker draft must be saved in security-budgeted chunks, not one large
  }
  const snap=await getDocs(collection(db,"tenants","north","payrollRuns","bulk22","lines"));
  assert.equal(snap.size,22);
+});
+
+
+test("clients may not alter Sterling agreements, support assignment, or employee identity links",async()=>{
+ const admin=as("admin"),owner=as("owner");
+ await assertFails(setDoc(doc(admin,"tenants","north","serviceAgreements","current"),{
+  tier:"starter",billingCycle:"monthly",status:"active",renewalDate:"",seatLimit:2,rateCents:4900,
+  updatedBy:"admin",updatedAt:serverTimestamp()
+ }));
+ await assertSucceeds(setDoc(doc(owner,"tenants","north","serviceAgreements","current"),{
+  tier:"starter",billingCycle:"monthly",status:"active",renewalDate:"",seatLimit:2,rateCents:4900,
+  updatedBy:"owner",updatedAt:serverTimestamp()
+ }));
+ await assertFails(updateDoc(doc(admin,"tenants","north","supportTickets","s1"),{
+  status:"closed",updatedAt:serverTimestamp()
+ }));
+ await assertSucceeds(updateDoc(doc(owner,"tenants","north","supportTickets","s1"),{
+  status:"in_progress",updatedAt:serverTimestamp()
+ }));
+ await assertFails(setDoc(doc(admin,"tenants","north","employeeLinks","viewer"),{
+  employeeId:"e1",linkedBy:"admin",linkedAt:serverTimestamp()
+ }));
+ await assertSucceeds(setDoc(doc(owner,"tenants","north","employeeLinks","viewer"),{
+  employeeId:"e1",linkedBy:"owner",linkedAt:serverTimestamp()
+ }));
+});
+
+test("client can only read their own case while company admin can review all company cases",async()=>{
+ const v=as("viewer"),a=as("admin"),o=as("owner");
+ await env.withSecurityRulesDisabled(async context=>{
+  const d=context.firestore();
+  await setDoc(doc(d,"tenants","north","supportTickets","another-case"),{
+   subject:"Another employee",details:"Private support note",status:"open",priority:"normal",category:"technical",
+   createdBy:"admin",assignedUid:"",createdAt:serverTimestamp(),updatedAt:serverTimestamp()
+  });
+ });
+ await assertFails(getDoc(doc(v,"tenants","north","supportTickets","another-case")));
+ await assertSucceeds(getDoc(doc(a,"tenants","north","supportTickets","another-case")));
+ await assertSucceeds(getDoc(doc(o,"tenants","north","supportTickets","another-case")));
+ const reply=doc(v,"tenants","north","supportTickets","another-case","updates","bad");
+ await assertFails(setDoc(reply,{body:"I should not see or reply to this case",createdBy:"viewer",createdAt:serverTimestamp()}));
+});
+
+test("only Sterling can grant company membership",async()=>{
+ const admin=as("admin"),owner=as("owner");
+ const fields={email:"stranger@demo.invalid",role:"viewer",status:"active",joinedAt:serverTimestamp()};
+ await assertFails(setDoc(doc(admin,"tenants","north","members","stranger"),fields));
+ await assertSucceeds(setDoc(doc(owner,"tenants","north","members","stranger"),fields));
 });
