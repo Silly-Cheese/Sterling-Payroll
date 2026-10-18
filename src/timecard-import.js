@@ -5,8 +5,12 @@ export function mountTimecardImport({db,getState,notify,confirmAction,refreshCom
  const S=()=>getState(),canImport=()=>Boolean(S().platformWrite||S().platformRole==="payroll_operator"||["client_admin","payroll_specialist"].includes(S().role));
  const register=document.getElementById("timeList");if(!register)throw Error("Timekeeping register not found.");
  const launch=document.createElement("button");launch.type="button";launch.className="btn primary timecard-import-launch";launch.textContent="Import timecards";
- const heading=register.closest(".panel")?.querySelector("h2");
- if(heading)heading.after(launch);else register.before(launch);
+ const panel=register.closest(".panel"),actions=panel?.querySelector(".timekeeping-register-head");
+ if(actions)actions.append(launch);
+ else {
+  const heading=panel?.querySelector("h2");
+  if(heading)heading.after(launch);else register.before(launch);
+ }
  const dialog=document.createElement("dialog");dialog.className="workspace-form-dialog timecard-import-dialog";
  dialog.innerHTML=[
  '<header><h2>Import employee timecards</h2><button type="button" id="tiClose" class="workspace-form-close" aria-label="Close import">✕</button></header>',
