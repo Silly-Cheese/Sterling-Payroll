@@ -10,6 +10,7 @@ import {mountPhase2} from "./phase2.js";
 import {createOwnerRecordActions} from "./record-actions.js";
 import {createSterlingModals} from "./modals.js";
 import {compactForm} from "./workspace-ui.js";
+import {mountTimecardImport} from "./timecard-import.js";
 import {prepareRunCommissions,commitRunCommissions} from "./commission-payroll.js";
 
 const app=initializeApp({
@@ -258,6 +259,7 @@ async function chooseTenant(id,writeStorage=true){
  $("sidebarRole").textContent=state.platformOwner?"Sterling owner":state.platformRole!=="client"?state.platformRole.replaceAll("_"," "):state.role==="employee"?"Employee portal":state.role?state.role.replaceAll("_"," "):"Client account";
  const editOnly=document.querySelectorAll("#employeeForm,#timeForm,#runForm");
  editOnly.forEach(form=>form.classList.toggle("hidden",!canPayroll()));
+ timecardUI.sync();
  if(!id){state.employees=[];state.time=[];state.runs=[];state.selectedRun=null;go("dashboard");return}
  if(employeeOnly){await phase4?.refresh();go("employeePortal");return}
  await refreshCompany();
@@ -702,6 +704,7 @@ const creationDialogs=[
  ["timeForm","Record time","TIMEKEEPING REGISTER"],
  ["runForm","Create payroll","PAYROLL REGISTER"]
 ].map(([formId,label,summary])=>compactForm({formId,label,summary}));
+const timecardUI=mountTimecardImport({db,getState:()=>state,notify:toast,confirmAction,refreshCompany});
 
 async function confirmAction(title,message,options={}){
  return sterlingModals.confirm({title,message,...options});
@@ -730,7 +733,7 @@ async function initializePhase2(){
  return phase2Pending;
 }
 onAuthStateChanged(auth,async user=>{
- phase4?.clear();commissionsUI?.clear();
+ phase4?.clear();commissionsUI?.clear();timecardUI?.clear();
  state.user=user;state.tenantId="";state.platform=false;state.tenants=[];state.role="";state.platformOwner=false;state.platformWrite=false;state.platformRole="client";
  $("authScreen").classList.toggle("hidden",!!user);$("shell").classList.toggle("hidden",!user);
  if(!user)return;
