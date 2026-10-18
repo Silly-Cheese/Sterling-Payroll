@@ -1,17 +1,33 @@
-<article class="panel phase3-panel"><div class="eyebrow">PHASE 3 / TIME OPERATIONS</div><div class="section-heading"><h2>Time approvals & corrections</h2><button class="btn" type="button" id="p3ReloadTime">Refresh</button></div><p class="muted">A second authorized reviewer must approve time before it enters payroll. Original entries remain unchanged; corrections are separate requests.</p>
-<div id="p3TimeQueue" class="list"></div></article>
-<div class="ops-grid phase3-spaced">
-<article class="panel"><h2>Correct time entry</h2>
-<form id="p3CorrectionForm" class="form-stack">
-<label>Original entry<select id="p3CorrectionEntry" required></select></label>
-<div class="two-fields"><label>Correct regular hours<input id="p3Regular" type="number" min="0" max="744" step=".01" required></label><label>Correct overtime hours<input id="p3Overtime" type="number" min="0" max="744" step=".01" required></label></div>
-<label>Correction reason<textarea id="p3CorrectionReason" minlength="6" maxlength="300" required></textarea></label>
-<button class="btn primary" type="submit">Request correction</button>
-</form><h3>Corrections pending review</h3><div id="p3Corrections" class="list"></div></article>
-<article class="panel"><h2>Simulated paid leave</h2><form class="form-stack" id="p3LeaveForm">
-<label>Employee<select id="p3LeaveEmployee" required></select></label>
-<label>Date<input id="p3LeaveDate" type="date" required></label>
-<label>Hours<input id="p3LeaveHours" type="number" min=".01" max="24" step=".01" required></label>
-<label>Reason<textarea id="p3LeaveReason" maxlength="250" minlength="5" required></textarea></label>
-<button class="btn primary" type="submit">Request leave</button></form>
-<h3>Leave approval queue</h3><div id="p3Leaves" class="list"></div></article></div>
+<article class="panel phase3-panel timekeeping-approvals-panel">
+ <div class="eyebrow">TIME OPERATIONS</div>
+ <div class="section-heading"><h2>Timecard approvals</h2><button class="btn" type="button" id="p3ReloadTime">Refresh</button></div>
+ <p class="muted">Review pending timecards for the selected company. An independent reviewer is required unless the Sterling owner explicitly overrides.</p>
+ <div id="p3TimeQueue" class="list"></div>
+</article>
+<div class="timekeeping-extra-tools">
+ <details class="timekeeping-operations-details">
+  <summary><strong>Time corrections</strong><small>Request edits and review pending corrections</small></summary>
+  <article class="panel">
+   <form id="p3CorrectionForm" class="form-stack">
+    <label>Original entry<select id="p3CorrectionEntry" required></select></label>
+    <div class="two-fields"><label>Correct regular hours<input id="p3Regular" type="number" min="0" max="744" step=".01" required></label><label>Correct overtime hours<input id="p3Overtime" type="number" min="0" max="744" step=".01" required></label></div>
+    <label>Correction reason<textarea id="p3CorrectionReason" minlength="6" maxlength="300" required></textarea></label>
+    <button class="btn primary" type="submit">Request correction</button>
+   </form>
+   <h3>Pending correction requests</h3><div id="p3Corrections" class="list"></div>
+  </article>
+ </details>
+ <details class="timekeeping-operations-details">
+  <summary><strong>Simulated paid leave</strong><small>Request leave and handle approvals</small></summary>
+  <article class="panel">
+   <form class="form-stack" id="p3LeaveForm">
+    <label>Employee<select id="p3LeaveEmployee" required></select></label>
+    <label>Date<input id="p3LeaveDate" type="date" required></label>
+    <label>Hours<input id="p3LeaveHours" type="number" min=".01" max="24" step=".01" required></label>
+    <label>Reason<textarea id="p3LeaveReason" maxlength="250" minlength="5" required></textarea></label>
+    <button class="btn primary" type="submit">Request leave</button>
+   </form>
+   <h3>Pending leave requests</h3><div id="p3Leaves" class="list"></div>
+  </article>
+ </details>
+</div>
