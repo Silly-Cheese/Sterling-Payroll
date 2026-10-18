@@ -392,7 +392,7 @@ test("clients may not alter Sterling agreements, support assignment, or employee
  }));
 });
 
-test("client can only read their own case while company admin can review all company cases",async()=>{
+test("each client account can read only its own case, including administrators",async()=>{
  const v=as("viewer"),a=as("admin"),o=as("owner");
  await env.withSecurityRulesDisabled(async context=>{
   const d=context.firestore();
@@ -403,6 +403,7 @@ test("client can only read their own case while company admin can review all com
  });
  await assertFails(getDoc(doc(v,"tenants","north","supportTickets","another-case")));
  await assertSucceeds(getDoc(doc(a,"tenants","north","supportTickets","another-case")));
+ await assertFails(getDoc(doc(a,"tenants","north","supportTickets","s1")));
  await assertSucceeds(getDoc(doc(o,"tenants","north","supportTickets","another-case")));
  const reply=doc(v,"tenants","north","supportTickets","another-case","updates","bad");
  await assertFails(setDoc(reply,{body:"I should not see or reply to this case",createdBy:"viewer",createdAt:serverTimestamp()}));
