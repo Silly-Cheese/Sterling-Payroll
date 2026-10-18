@@ -71,7 +71,8 @@ export async function mountPhase3({db,getState,refreshCompany,notify,confirmActi
   $("p3CorrectionForm").classList.toggle("hidden",!writeAllowed());
   $("p3LeaveForm").classList.toggle("hidden",!writeAllowed());
   const pending=S().time.filter(x=>(x.status||"pending")==="pending");
-  display($("p3TimeQueue"),pending,entry=>{
+  const visiblePending=pending.slice(0,50);
+  display($("p3TimeQueue"),visiblePending,entry=>{
    const worker=S().employees.find(e=>e.id===entry.employeeId);
    const can=adminAllowed()&&(S().platformOwner||entry.createdBy!==S().user.uid);
    const actions=can?[
@@ -81,8 +82,10 @@ export async function mountPhase3({db,getState,refreshCompany,notify,confirmActi
    if(S().platformOwner&&openOwnerReview)actions.push(action("Owner override",()=>openOwnerReview("timeEntries",entry.id)));
    return bulkTime.decorateRow(row((worker?.displayName||"Employee")+" · "+entry.workDate,
     entry.regularHours+" regular / "+entry.overtimeHours+" overtime",actions),entry,worker?.displayName||"Employee");
-  },"No pending time entries in the currently loaded page.");
-  bulkTime.sync(pending);
+  },"No pending timecards to review.");
+  if(pending.length>visiblePending.length)
+   $("p3TimeQueue").append(el("p","fine-print","Showing the first 50 pending timecards. Approve all company pending includes entries beyond this list."));
+  bulkTime.sync(visiblePending);
   display($("p3Corrections"),corrections.filter(x=>x.status==="pending"),x=>{
    const entry=S().time.find(t=>t.id===x.timeEntryId),can=adminAllowed()&&x.createdBy!==S().user.uid;
    const actions=can?[
