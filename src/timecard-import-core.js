@@ -53,8 +53,8 @@ export function parseTimecardCsv(text){
    if(!employeeId&&!employeeName)throw Error("Employee ID or name is missing.");
    if(employeeId.length>128||employeeName.length>120)throw Error("Employee identifier is too long.");
    item.workDate=validWorkDate(val(row,positions.workDate));
-   item.regularHours=timecardHours(val(row,positions.regularHours));
-   item.overtimeHours=timecardHours(val(row,positions.overtimeHours));
+   item.regularHours=timecardHours(val(row,positions.regularHours)||"0");
+   item.overtimeHours=timecardHours(val(row,positions.overtimeHours)||"0");
    if(Math.round((item.regularHours+item.overtimeHours)*100)>2400)throw Error("Total hours cannot exceed 24 for a single workday.");
    if(item.regularHours+item.overtimeHours===0)throw Error("A timecard must contain working hours.");
    if(note.length>250)throw Error("Note exceeds 250 characters.");
@@ -97,4 +97,18 @@ export function importDocumentId(employeeId,workDate){
  if(!/^[A-Za-z0-9_-]{1,128}$/.test(employeeId)||!/^\d{4}-\d{2}-\d{2}$/.test(workDate))
   throw Error("Invalid employee ID or date for timecard import.");
  return "timecard_"+employeeId+"_"+workDate;
+}
+
+export function groupTimecards(rows){
+ const groups=[];let group=[],employees=new Set();
+ for(const item of rows){
+  if(!item.employee?.id)throw Error("Import row is missing a matched employee.");
+  const uid=item.employee.id;
+  if(group.length>=60||(!employees.has(uid)&&employees.size>=12)){
+   groups.push(group);group=[];employees=new Set();
+  }
+  group.push(item);employees.add(uid);
+ }
+ if(group.length)groups.push(group);
+ return groups;
 }
