@@ -11,6 +11,8 @@ import {createOwnerRecordActions} from "./record-actions.js";
 import {createSterlingModals} from "./modals.js";
 import {compactForm} from "./workspace-ui.js";
 import {mountTimecardImport} from "./timecard-import.js";
+import {readCompletePages} from "./payroll-paging.js?v=sterling-timekeeping-20261018";
+import {filterTimecards,sumTimecardHours,payPeriodForSelection,formatHours} from "./timekeeping-core.js?v=sterling-timekeeping-20261018";
 import {prepareRunCommissions} from "./commission-payroll.js?v=sterling-payroll-security-20261017";
 import {planPayrollDraftWrites} from "./payroll-write-plan.js?v=sterling-payroll-security-20261017";
 
@@ -24,6 +26,9 @@ const app=initializeApp({
 });
 const auth=getAuth(app),db=getFirestore(app),$=id=>document.getElementById(id);
 const state={user:null,platform:false,platformOwner:false,platformWrite:false,platformRole:"client",tenants:[],tenantId:"",role:"",employees:[],time:[],runs:[],selectedRun:null,lines:[],page:"dashboard",register:false,moreEmployees:false,moreTime:false,moreRuns:false,employeeCursor:null,timeCursor:null,runCursor:null,clientCursor:null,moreClients:false};
+let timekeepingView="register",timekeepingComplete=false,timekeepingCompleteTenant="",timekeepingEpoch=0;
+let timekeepingLoading=null,timekeepingLoadError="",timekeepingVisibleRows=40;
+const TIME_PAGE_SIZE=200,TIME_VISIBLE_INCREMENT=40;
 const titles={
  service:["Client Services","Subscription terms, fictional invoicing, service history and support."],
  commissions:["Commissions","Optional employee commission plans, fictional sales and approval queue."],
@@ -122,7 +127,7 @@ function go(page){
  $("pageName").textContent=titles[page][0];$("pageTitle").textContent=titles[page][0];$("pageDescription").textContent=titles[page][1];
  $("pageEyebrow").textContent=page==="clients"?"STERLING PAYROLL / HEADQUARTERS":"STERLING PAYROLL / "+(state.tenantId?state.tenants.find(t=>t.id===state.tenantId)?.name||"CLIENT WORKSPACE":"COMMAND CENTER").toUpperCase();
  document.querySelector(".sidebar")?.classList.remove("open");
- document.getElementById("phase3Time")?.classList.toggle("hidden",page!=="time"||!state.tenantId);
+ syncTimekeepingView(page);
  document.getElementById("phase3Payroll")?.classList.toggle("hidden",page!=="payroll"||!state.tenantId);
  if(page==="staff")void staffUI?.refresh();
  if(page==="service")void phase5?.refresh();
@@ -133,7 +138,10 @@ function go(page){
  if(page==="clients")renderClients();
  if(page==="employees")renderEmployees();
  if(page==="operations")phase2?.refresh();
- if(page==="time"){renderTime();void phase3?.refresh();}
+ if(page==="time"){
+  renderTime();
+  void loadCompleteTimekeeping().then(()=>phase3?.refresh()).catch(error=>fail(error,"Complete timekeeping data could not load"));
+ }
  if(page==="payroll"){renderRuns();void phase3?.refresh();}
  if(page==="access")void renderAccess();
  window.scrollTo({top:0});
@@ -226,6 +234,7 @@ async function loadTenantDirectory(){
  await chooseTenant(state.tenantId,false);
 }
 async function chooseTenant(id,writeStorage=true){
+ invalidateTimekeeping();
  phase4?.clear();
  state.tenantId=id;state.role="";state.selectedRun=null;state.lines=[];
  clearTimeout(remoteSearchTimer);remoteSearchId++;
@@ -283,6 +292,7 @@ async function refreshCompany(){
   state.runs=runs.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.periodEnd.localeCompare(a.periodEnd));
   state.employeeCursor=employees.docs.at(-1)||null;state.timeCursor=time.docs.at(-1)||null;state.runCursor=runs.docs.at(-1)||null;
   state.moreEmployees=employees.size===100;state.moreTime=time.size===200;state.moreRuns=runs.size===100;
+  invalidateTimekeeping();
   $("loadMoreEmployees").classList.toggle("hidden",!state.moreEmployees);
   $("loadMoreTime").classList.toggle("hidden",!state.moreTime);
   $("loadMoreRuns").classList.toggle("hidden",!state.moreRuns);
@@ -293,6 +303,10 @@ async function refreshCompany(){
   fail(e,"Company data could not load");
  }
  renderDashboard();renderEmployees();renderTime();renderRuns();phase2?.refresh();
+ if(state.page==="time"){
+  try{await loadCompleteTimekeeping();await phase3?.refresh()}
+  catch(error){fail(error,"Timekeeping could not refresh")}
+ }
 }
 function renderDashboard(){
  const el=$("metrics");el.replaceChildren();
@@ -472,27 +486,202 @@ $("timeForm").addEventListener("submit",async event=>{
   await refreshCompany();await phase3?.refresh();toast("Simulated time entry recorded.");
  }catch(e){fail(e,"Time entry failed")}
 });
-function renderTime(){
- const el=$("timeList");el.replaceChildren();
- const q=$("timeSearch").value.trim().toLowerCase(),status=$("timeStatus").value;
- const filtered=state.time.filter(entry=>{
-  const employee=state.employees.find(e=>e.id===entry.employeeId);
-  return (status==="all"||(entry.status||"pending")===status)&&
-   [employee?.displayName,entry.workDate,entry.note].join(" ").toLowerCase().includes(q);
- });
- $("timeCount").textContent=filtered.length+" matching / "+state.time.length+" loaded"+(state.moreTime?"+":"");
- if(!filtered.length)return empty(el,"No time entries match these filters.");
- const frag=document.createDocumentFragment();
- for(const entry of filtered.slice(0,250)){
-  const employee=state.employees.find(e=>e.id===entry.employeeId);
-  const actions=state.platformOwner?[button("Delete",()=>ownerActions.remove("timeEntries",entry),"small danger")]:[];
-  frag.append(item(employee?.displayName||"Former employee",entry.workDate+" • "+entry.regularHours+" regular • "+entry.overtimeHours+" overtime"+(entry.note?" • "+entry.note:""),actions,entry.status||"pending"));
- }
- el.append(frag);
- if(filtered.length>250)el.append(mk("p","fine-print","Displaying the first 250 matches. Refine the filter."));
+function invalidateTimekeeping(){
+ timekeepingEpoch++;
+ timekeepingComplete=false;
+ timekeepingCompleteTenant="";
+ timekeepingLoadError="";
+ timekeepingLoading=null;
+ timekeepingVisibleRows=TIME_VISIBLE_INCREMENT;
 }
-$("timeSearch").addEventListener("input",renderTime);
-$("timeStatus").addEventListener("change",renderTime);
+function syncTimekeepingView(page=state.page){
+ const register=page==="time"&&timekeepingView==="register";
+ $("timeRegisterView")?.classList.toggle("hidden",!register);
+ $("phase3Time")?.classList.toggle("hidden",page!=="time"||!state.tenantId||register);
+ for(const [id,active] of [["timeViewRegister",register],["timeViewApprovals",page==="time"&&!register]]){
+  const btn=$(id);if(!btn)continue;
+  btn.classList.toggle("active",active);
+  btn.setAttribute("aria-pressed",String(active));
+ }
+}
+function selectTimekeepingView(view){
+ if(!["register","approvals"].includes(view))return;
+ timekeepingView=view;
+ syncTimekeepingView();
+ if(view==="approvals")void phase3?.refresh();
+}
+$("timeViewRegister").onclick=()=>selectTimekeepingView("register");
+$("timeViewApprovals").onclick=()=>selectTimekeepingView("approvals");
+
+async function loadCompleteTimekeeping(){
+ const company=state.tenantId,actor=state.user?.uid;
+ if(!company||!actor||state.role==="employee")return;
+ if(timekeepingComplete&&timekeepingCompleteTenant===company)return;
+ if(timekeepingLoading)return timekeepingLoading;
+ const epoch=++timekeepingEpoch;
+ timekeepingLoadError="";
+ timekeepingComplete=false;
+ renderTime();
+ const guard=()=>{
+  if(epoch!==timekeepingEpoch||state.tenantId!==company||state.user?.uid!==actor)
+   throw Error("Workspace changed while loading timekeeping. Reopen the company.");
+ };
+ async function collect(name,progress){
+  return readCompletePages(async(cursor,pageSize)=>{
+   guard();
+   const opts=[orderBy(documentId()),limit(pageSize)];
+   if(cursor)opts.push(startAfter(cursor));
+   const snapshot=await getDocs(query(collection(db,"tenants",company,name),...opts));
+   guard();
+   return {records:snapshot.docs.map(d=>({id:d.id,...d.data()})),nextCursor:snapshot.docs.at(-1)||null};
+  },{pageSize:TIME_PAGE_SIZE,checkAccess:guard,
+   onProgress:({count})=>{
+    if(epoch===timekeepingEpoch){
+     $("timeDataState").textContent="Loading "+progress+" · "+count;
+    }
+   }});
+ }
+ const promise=(async()=>{
+  const [employees,entries,runs]=await Promise.all([
+   collect("employees","employees"),
+   collect("timeEntries","timecards"),
+   collect("payrollRuns","periods")
+  ]);
+  guard();
+  state.employees=employees.sort((a,b)=>String(a.displayName||"").localeCompare(String(b.displayName||"")));
+  state.time=entries.sort((a,b)=>String(b.workDate).localeCompare(String(a.workDate)));
+  state.runs=runs.sort((a,b)=>String(b.periodEnd).localeCompare(String(a.periodEnd)));
+  state.moreEmployees=false;state.moreTime=false;state.moreRuns=false;
+  $("loadMoreEmployees").classList.add("hidden");
+  $("loadMoreTime").classList.add("hidden");
+  $("loadMoreRuns").classList.add("hidden");
+  timekeepingComplete=true;timekeepingCompleteTenant=company;timekeepingLoadError="";
+  renderEmployees();renderTime();renderRuns();renderDashboard();phase2?.refresh();
+ })();
+ timekeepingLoading=promise;
+ try{await promise}
+ catch(error){
+  if(epoch===timekeepingEpoch){
+   timekeepingLoadError=error?.message||String(error);
+   timekeepingComplete=false;
+   renderTime();
+  }
+  throw error;
+ }finally{if(timekeepingLoading===promise)timekeepingLoading=null}
+}
+
+function updateTimeFilters(){
+ const employee=$("timeEmployeeFilter"),selectedEmployee=employee.value;
+ employee.replaceChildren(new Option("All employees",""));
+ for(const person of state.employees){
+  employee.append(new Option(person.displayName||"Employee",person.id));
+ }
+ employee.value=state.employees.some(e=>e.id===selectedEmployee)?selectedEmployee:"";
+ const period=$("timePeriodFilter"),previous=period.value;
+ period.replaceChildren(new Option("All dates","all"));
+ const runs=[...state.runs].sort((a,b)=>b.periodEnd.localeCompare(a.periodEnd));
+ for(const run of runs){
+  period.append(new Option(run.periodStart+" – "+run.periodEnd+
+   (run.status==="finalized"?" · Finalized":""),run.id));
+ }
+ period.append(new Option("Custom date range","custom"));
+ period.value=previous==="all"||previous==="custom"||runs.some(r=>r.id===previous)?
+  previous:(runs[0]?.id||"all");
+ $("timeCustomPeriod").classList.toggle("hidden",period.value!=="custom");
+}
+
+function renderTime(){
+ const list=$("timeList");list.replaceChildren();
+ updateTimeFilters();
+ const stateLabel=$("timeDataState"),count=$("timeCount"),more=$("timeShowMoreRows");
+ more.classList.add("hidden");
+ $("timeSummary").classList.add("hidden");
+ if(!timekeepingComplete||timekeepingCompleteTenant!==state.tenantId){
+  stateLabel.textContent=timekeepingLoadError?"Load failed":"Loading all records…";
+  count.textContent=timekeepingLoadError?"Could not verify complete timecard data. Use Refresh to retry.":"Loading all company timecards before showing totals…";
+  return;
+ }
+ stateLabel.textContent="Complete records";
+ const names=new Map(state.employees.map(e=>[e.id,e.displayName]));
+ const employeeId=$("timeEmployeeFilter").value,periodValue=$("timePeriodFilter").value;
+ const period=payPeriodForSelection(state.runs,periodValue);
+ const custom=periodValue==="custom";
+ const start=custom?$("timeCustomStart").value:period?.start||"";
+ const end=custom?$("timeCustomEnd").value:period?.end||"";
+ if(custom&&(!start||!end||end<start)){
+  count.textContent="Choose a valid start and end date for this custom pay period.";
+  return;
+ }
+ const periodEntries=filterTimecards(state.time,{employeeId,start,end},names);
+ const rows=filterTimecards(periodEntries,{
+  day:$("timeDayFilter").value,status:$("timeStatus").value,
+  search:$("timeSearch").value,sort:$("timeSort").value
+ },names);
+ count.textContent=rows.length+" matching timecards · "+state.time.length+" company records";
+ if(employeeId){
+  const person=names.get(employeeId)||"Employee";
+  const totals=sumTimecardHours(periodEntries);
+  const summary=$("timeSummary");
+  summary.replaceChildren();
+  const heading=mk("div","timekeeping-summary-heading");
+  heading.append(mk("strong","",person),mk("small","",period?.label||start+" – "+end));
+  summary.append(heading);
+  const metrics=mk("div","timekeeping-summary-metrics");
+  for(const [title,value] of [
+   ["Total recorded",formatHours(totals.total)+" h"],
+   ["Regular",formatHours(totals.regular)+" h"],
+   ["Overtime",formatHours(totals.overtime)+" h"],
+   ["Approved",formatHours(totals.approved)+" h"],
+   ["Pending",formatHours(totals.pending)+" h"]
+  ]){
+   const card=mk("div","timekeeping-summary-metric");
+   card.append(mk("small","",title),mk("strong","",value));
+   metrics.append(card);
+  }
+  summary.append(metrics);
+  summary.append(mk("p","fine-print",
+   "Recorded totals include approved and pending entries, not rejected entries ("+
+   totals.rejectedCount+" rejected). Pending hours are not payroll-ready. Day, search and status filters do not change these period totals."));
+  summary.classList.remove("hidden");
+ }
+ if(!rows.length)return empty(list,"No timecards match the selected filters.");
+ const fragment=document.createDocumentFragment();
+ for(const entry of rows.slice(0,timekeepingVisibleRows)){
+  const employeeName=names.get(entry.employeeId)||"Former employee";
+  const total=Number(entry.regularHours||0)+Number(entry.overtimeHours||0);
+  const actions=state.platformOwner?[button("Delete",()=>ownerActions.remove("timeEntries",entry),"small danger")]:[];
+  const label=entry.workDate+" · "+formatHours(total)+" hours ("+
+   formatHours(entry.regularHours)+" regular, "+formatHours(entry.overtimeHours)+" OT)"+
+   (entry.note?" · "+entry.note:"");
+  fragment.append(item(employeeName,label,actions,entry.status||"pending",entry.status==="approved"?"success":""));
+ }
+ list.append(fragment);
+ if(rows.length>timekeepingVisibleRows){
+  more.textContent="Show "+Math.min(TIME_VISIBLE_INCREMENT,rows.length-timekeepingVisibleRows)+" more timecards";
+  more.classList.remove("hidden");
+ }
+}
+
+for(const id of ["timeEmployeeFilter","timePeriodFilter","timeSort","timeStatus",
+ "timeDayFilter","timeCustomStart","timeCustomEnd"]){
+ $(id).addEventListener("change",()=>{timekeepingVisibleRows=TIME_VISIBLE_INCREMENT;renderTime()});
+}
+$("timeSearch").addEventListener("input",()=>{timekeepingVisibleRows=TIME_VISIBLE_INCREMENT;renderTime()});
+$("timeClearFilters").onclick=()=>{
+ $("timeSearch").value="";$("timeDayFilter").value="";$("timeStatus").value="all";
+ $("timeSort").value="date-desc";$("timeEmployeeFilter").value="";
+ $("timePeriodFilter").value=state.runs[0]?.id||"all";
+ $("timeCustomStart").value="";$("timeCustomEnd").value="";
+ timekeepingVisibleRows=TIME_VISIBLE_INCREMENT;renderTime();
+};
+$("timeShowMoreRows").onclick=()=>{
+ timekeepingVisibleRows+=TIME_VISIBLE_INCREMENT;renderTime();
+};
+$("timeRefresh").onclick=async()=>{
+ invalidateTimekeeping();
+ try{await loadCompleteTimekeeping();await phase3?.refresh()}
+ catch(error){fail(error,"Timecards could not refresh")}
+};
 $("runForm").addEventListener("submit",async event=>{
  event.preventDefault();if(!canPayroll()||!state.tenantId)return;
  const periodStart=$("periodStart").value,periodEnd=$("periodEnd").value,payDate=$("payDate").value;
