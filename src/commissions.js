@@ -429,7 +429,7 @@ export async function mountCommissions({db,getState,notify,confirmAction,ownerDe
   const eligible=[...unique.values()];
   if(!eligible.length){notify("No eligible pending sales match this selection.",true);return;}
   if(!await confirmAction("Approve commissions",
-   "Approve "+eligible.length+" pending sales ("+label+") for "+company+"? "+
+   "Approve "+eligible.length+" pending sales ("+label+") for "+(S().tenants.find(x=>x.id===company)?.name||"this company")+"? "+
    "Your own sales require Sterling owner authorization. Only currently pending records will be changed."))return;
   approvalBusy=true;renderSales();let approved=0,skipped=0,failed=0,firstError="";
   try{
@@ -568,7 +568,7 @@ export async function mountCommissions({db,getState,notify,confirmAction,ownerDe
   if(!staff()||!enabled){warn(Error("Commission access changed."),"Import");return}
   const company=tenantId,actor=S().user?.uid,ready=importRows.valid,submit=$("commissionImportSubmit");
   if(!await confirmAction("Import commission sales",
-   "Import "+ready.length+" validated fictional sales for "+company+" as PENDING? "+
+   "Import "+ready.length+" validated fictional sales for "+(S().tenants.find(x=>x.id===company)?.name||"this company")+" as PENDING? "+
    "Previously imported sales with matching record keys will be skipped. "+
    "Invalid rows will not be imported."))return;
   importBusy=true;submit.disabled=true;$("commissionImportFile").disabled=true;
