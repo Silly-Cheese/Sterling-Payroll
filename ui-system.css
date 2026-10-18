@@ -169,7 +169,6 @@ body[data-density="compact"] .page .panel{padding:clamp(14px,1.5vw,20px)}
  #ownerControlCenter .three-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media(max-width:900px){
- .app-shell{display:block}
  .topbar{padding:12px 15px}
  .topbar-title{flex:1 1 120px}
  .topbar-actions{flex:1 1 320px}
