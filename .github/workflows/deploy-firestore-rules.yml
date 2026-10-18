@@ -1,0 +1,41 @@
+name: Deploy Sterling Firestore Rules
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type DEPLOY to apply the reviewed security policy to production Firestore'
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  deploy:
+    if: ${{ inputs.confirm == 'DEPLOY' }}
+    runs-on: ubuntu-latest
+    environment: firestore-production
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Require project credentials
+        env:
+          ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$ACCOUNT" ]; then
+            echo "::error::Set FIREBASE_SERVICE_ACCOUNT to a restricted Firebase service-account JSON secret."
+            exit 1
+          fi
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      - name: Validate local rules path
+        run: |
+          test -s firestore.rules
+          test -s firebase.json
+          test -s .firebaserc
+      - name: Install Firebase tools
+        run: npm install --no-save --no-package-lock --no-audit --no-fund firebase-tools@14.17.0
+      - name: Publish Firestore rules (no hosting or data changes)
+        run: npx firebase deploy --only firestore:rules --project sterling-payroll-5d200 --non-interactive
