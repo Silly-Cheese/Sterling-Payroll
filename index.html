@@ -8,7 +8,7 @@
   <title>Sterling Payroll | Sterling Group</title>
   <meta name="description" content="Sterling Payroll — simulated client payroll management by Sterling Group.">
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./styles.css?v=sterling-bulk-timecards-20261017">
+  <link rel="stylesheet" href="./styles.css?v=sterling-timekeeping-20261018">
 </head>
 <body>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
@@ -162,7 +162,7 @@
                 <div class="section-heading"><h2>Timecards</h2><span id="timeDataState" class="subtle-pill">Loading records</span></div>
                 <div class="timekeeping-filter-grid">
                   <label>Employee<select id="timeEmployeeFilter" aria-label="Filter by employee"><option value="">All employees</option></select></label>
-                  <label>Pay period<select id="timePeriodFilter" aria-label="Select pay period"><option value="all">All dates</option></select></label>
+                  <label>Pay period<select id="timePeriodFilter" aria-label="Select pay period"><option value="">Choose a period</option></select></label>
                   <label>Sort by<select id="timeSort" aria-label="Sort timecards">
                     <option value="date-desc">Day · newest first</option>
                     <option value="date-asc">Day · oldest first</option>
@@ -244,6 +244,6 @@
   <div class="record-dialog-content"><div id="ownerControlCenter"></div></div>
 </dialog>
   <dialog id="quickNav" class="quick-nav-dialog"><div class="quick-nav-inner"><label for="quickNavSearch">Find a workspace</label><input id="quickNavSearch" type="search" placeholder="Search navigation or features..." autocomplete="off"><div id="quickNavResults" class="quick-nav-results"></div><p class="fine-print">Press Esc to close. Pages respect your current permissions.</p></div></dialog>
-  <script type="module" src="./src/app.js?v=sterling-payroll-security-20261017"></script>
+  <script type="module" src="./src/app.js?v=sterling-timekeeping-20261018"></script>
 </body>
 </html>
