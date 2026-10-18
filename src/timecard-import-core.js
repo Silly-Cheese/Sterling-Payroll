@@ -2,7 +2,8 @@
 import {parseCsv} from "./phase2-core.js";
 const aliases={
  employeeId:["employeeid","staffid","personnelid"],
- employeeName:["employeename","name","employee","fullname"],
+ employeeName:["employeename","name","employee","fullname","employee full name"],
+ department:["department","dept","team"],
  workDate:["workdate","date","shiftdate"],
  regularHours:["regularhours","regular","hours","regularhrs"],
  overtimeHours:["overtimehours","overtime","ot","othours"],
@@ -42,16 +43,15 @@ export function parseTimecardCsv(text){
  for(const [field,headers] of Object.entries(aliases)){
   positions[field]=header.findIndex(h=>headers.includes(h));
  }
- if(positions.workDate<0||positions.regularHours<0||positions.overtimeHours<0||
-  (positions.employeeId<0&&positions.employeeName<0))
-  throw Error("Required columns: employeeId or employeeName, workDate, regularHours, overtimeHours.");
+ if(positions.workDate<0||positions.regularHours<0||positions.overtimeHours<0||positions.employeeName<0)
+  throw Error("Required columns: employeeName, workDate, regularHours, overtimeHours. No employee ID is needed.");
  const parsed=[];
  rows.slice(1).forEach((row,index)=>{
-  const sourceLine=index+2,employeeId=val(row,positions.employeeId),employeeName=val(row,positions.employeeName),note=val(row,positions.note);
-  const item={sourceLine,employeeId,employeeName,workDate:"",regularHours:0,overtimeHours:0,note,error:""};
+  const sourceLine=index+2,employeeId=val(row,positions.employeeId),employeeName=val(row,positions.employeeName),department=val(row,positions.department),note=val(row,positions.note);
+  const item={sourceLine,employeeId,employeeName,department,workDate:"",regularHours:0,overtimeHours:0,note,error:""};
   try{
-   if(!employeeId&&!employeeName)throw Error("Employee ID or name is missing.");
-   if(employeeId.length>128||employeeName.length>120)throw Error("Employee identifier is too long.");
+   if(!employeeName)throw Error("Employee name is missing.");
+   if(employeeId.length>128||employeeName.length>120||department.length>100)throw Error("Employee name or department is too long.");
    item.workDate=validWorkDate(val(row,positions.workDate));
    item.regularHours=timecardHours(val(row,positions.regularHours)||"0");
    item.overtimeHours=timecardHours(val(row,positions.overtimeHours)||"0");
@@ -76,14 +76,15 @@ export function matchTimecards(parsed,employees,existing=[]){
  return parsed.map(item=>{
   const row={...item,status:"ready",employee:null};
   if(row.error){row.status="invalid";return row}
-  const matches=item.employeeId?[byId.get(item.employeeId)].filter(Boolean):(byName.get(normalizeEmployeeName(item.employeeName))||[]);
-  if(matches.length===0){row.status="unmatched";row.error="No employee matches this "+(item.employeeId?"ID":"name")+" in the selected client company.";return row;}
-  if(matches.length>1){row.status="ambiguous";row.error="Several employees share this name. Use employeeId instead.";return row;}
+  const allMatches=byName.get(normalizeEmployeeName(item.employeeName))||[];
+  const matches=item.department?allMatches.filter(e=>normalizeEmployeeName(e.department)===normalizeEmployeeName(item.department)):allMatches;
+  if(item.employeeId&&byId.has(item.employeeId)&&!matches.some(e=>e.id===item.employeeId)){
+   row.status="mismatch";row.error="The provided employee ID does not match this employee name/department.";return row;
+  }
+  if(matches.length===0){row.status="unmatched";row.error="No employee matches this name"+(item.department?" and department":"")+" in the selected company.";return row;}
+  if(matches.length>1){row.status="ambiguous";row.error="Several employees share this name. Add their department column to the CSV.";return row;}
   const employee=matches[0];
   if(employee.status!=="active"){row.status="inactive";row.error="This employee is not active.";return row;}
-  if(item.employeeId&&item.employeeName&&normalizeEmployeeName(employee.displayName)!==normalizeEmployeeName(item.employeeName)){
-   row.status="mismatch";row.error="Employee name does not match the supplied ID.";return row;
-  }
   row.employee=employee;
   const key=employee.id+"|"+item.workDate;
   if(seen.has(key)){row.status="duplicate";row.error="Another row in this CSV already has this employee and date.";return row}
@@ -92,7 +93,7 @@ export function matchTimecards(parsed,employees,existing=[]){
   return row;
  });
 }
-export const timecardCsvTemplate="employeeId,employeeName,workDate,regularHours,overtimeHours,note\n,Example Employee,2026-10-15,8,0,Example shift\n";
+export const timecardCsvTemplate="employeeName,department,workDate,regularHours,overtimeHours,note\nAlex Morgan,Sales,2026-10-15,8,0,Example shift\n";
 export function importDocumentId(employeeId,workDate){
  if(!/^[A-Za-z0-9_-]{1,128}$/.test(employeeId)||!/^\d{4}-\d{2}-\d{2}$/.test(workDate))
   throw Error("Invalid employee ID or date for timecard import.");
