@@ -61,7 +61,11 @@ export async function mountCommissions({db,getState,notify,confirmAction,ownerDe
    const snapshot=await getDocs(query(collection(db,"tenants",company,collectionName),...q));
    guard(company,actor,version);
    return {records:snapshot.docs.map(d=>({id:d.id,...d.data()})),nextCursor:snapshot.docs.at(-1)||null};
-  },{pageSize:200,maxPages:50,checkAccess:()=>guard(company,actor,version),onProgress});
+  },{pageSize:200,maxPages:51,checkAccess:()=>guard(company,actor,version),
+   onProgress:progress=>{
+    if(progress.count>10000)throw Error("This company exceeds the 10,000-record Commissions view limit. Contact Sterling administration.");
+    onProgress(progress);
+   }});
  }
  function activateView(next){
   view=next;
