@@ -13,7 +13,7 @@ export function serviceCapabilities(state = {}) {
   companyAccessWrite: sterlingManager,
   caseCreate: companyMember,
   caseReply: companyMember,
-  allCompanyCases: supportAgent || state.role === "client_admin",
+  allCompanyCases: supportAgent,
   invoiceRead: companyMember,
   canRequestUrgent: supportAgent
  });
