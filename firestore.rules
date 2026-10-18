@@ -110,12 +110,12 @@ service cloud.firestore {
   // Parent documents are occasionally absent while individual employee threads exist.
   // Never grant client-wide enumeration of another employee's messages.
   match /userTenants/{uid}/items/{t} {
-   allow get,list: if signedIn() && request.auth.uid == uid;
-   allow create: if clientAdmin(t) &&
+   allow get,list: if signedIn() && (request.auth.uid == uid || platform());
+   allow create: if platform() &&
     existsAfter(/databases/$(database)/documents/tenants/$(t)/members/$(uid)) &&
     request.resource.data.keys().hasOnly(['tenantId','joinedAt']) &&
     request.resource.data.tenantId == t;
-   allow delete: if clientAdmin(t);
+   allow delete: if platform();
    allow update: if false;
   }
   match /tenants/{t} {
@@ -143,18 +143,18 @@ service cloud.firestore {
    match /invites/{email} {
     allow get: if clientAdmin(t);
     allow list: if clientAdmin(t);
-    allow create: if clientAdmin(t) &&
+    allow create: if platform() &&
       request.resource.data.keys().hasOnly(['email','role','createdBy','createdAt']) &&
       request.resource.data.email == email &&
       request.resource.data.email is string &&
       request.resource.data.email.size() <= 254 &&
       request.resource.data.role in ['client_admin','payroll_specialist','viewer','employee'] &&
       request.resource.data.createdBy == request.auth.uid;
-    allow update: if clientAdmin(t) &&
+    allow update: if platform() &&
      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role']) &&
      request.resource.data.email == resource.data.email &&
      request.resource.data.role in ['client_admin','payroll_specialist','viewer','employee'];
-   allow delete: if clientAdmin(t);
+   allow delete: if platform();
    }
 
    match /members/{uid} {
@@ -445,11 +445,12 @@ service cloud.firestore {
      request.resource.data.status in ['open','in_progress','waiting_on_client','resolved','closed'] &&
      resource.data.status != 'closed' &&
      request.resource.data.assignedUid is string &&
-     (request.resource.data.assignedUid == '' ||
-       (exists(/databases/$(database)/documents/platformStaff/$(request.resource.data.assignedUid)) &&
-        get(/databases/$(database)/documents/platformStaff/$(request.resource.data.assignedUid)).data.active == true &&
-        get(/databases/$(database)/documents/platformStaff/$(request.resource.data.assignedUid)).data.role in ['administrator','support'])) &&
-
+     (request.resource.data.assignedUid == resource.data.get('assignedUid','') ||
+      request.resource.data.assignedUid == '' ||
+      (platform() && request.resource.data.assignedUid == request.auth.uid) ||
+      (exists(/databases/$(database)/documents/platformStaff/$(request.resource.data.assignedUid)) &&
+       get(/databases/$(database)/documents/platformStaff/$(request.resource.data.assignedUid)).data.active == true &&
+       get(/databases/$(database)/documents/platformStaff/$(request.resource.data.assignedUid)).data.role in ['administrator','support'])) &&
      request.resource.data.updatedAt == request.time;
     allow delete: if owner();
     match /updates/{messageId} {
