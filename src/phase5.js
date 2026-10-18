@@ -1,18 +1,21 @@
-import {collection,doc,getDoc,getDocs,query,orderBy,documentId,startAfter,limit,writeBatch,serverTimestamp} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
+import {collection,doc,getDoc,getDocs,query,orderBy,documentId,startAfter,limit,where,writeBatch,serverTimestamp} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 import {invoiceInput,ticketInput,agreementInput,ledgerEvent,invoiceBalance,canChangeInvoice,canChangeTicket,PLANS,INVOICE_STATES,CASE_STATES,serviceStats,invoicesCsv,ticketSla,ticketAgeHours} from "./phase5-core.js";
 import {money} from "./payroll-core.js";
 import {compactForm} from "./workspace-ui.js";
+import {serviceCapabilities} from "./access-policy.js?v=sterling-governance-20261018";
 const E=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=String(text);return n};
 const O=(id,label)=>{const n=E("option","",label);n.value=id;return n};
 const PAGE=50;
 export async function mountPhase5({db,getState,notify,confirmAction,ownerDelete}){
- const root=document.getElementById("phase5Suite"),response=await fetch("./phase5.html?v=6");
+ const root=document.getElementById("phase5Suite"),response=await fetch("./phase5.html?v=sterling-governance-20261018");
  if(!root||!response.ok)throw Error("Client services template was not deployed");
  root.innerHTML=await response.text();
  const $=id=>root.querySelector("#"+id),S=()=>getState();
  let invoices=[],tickets=[],invoiceCursor=null,ticketCursor=null,moreInvoices=false,moreTickets=false,agreement=null,selectedInvoice="",selectedTicket="",members=[],sequence=0;
- const tenant=()=>S().tenantId,admin=()=>S().platformWrite||S().role==="client_admin";
- const member=()=>S().platform||["client_admin","payroll_specialist","viewer"].includes(S().role);
+ const tenant=()=>S().tenantId,access=()=>serviceCapabilities(S());
+ const billingAdmin=()=>access().billingWrite,supportAdmin=()=>access().supportManage;
+ const member=()=>access().caseCreate;
+ const canSeeAllCases=()=>access().allCompanyCases;
  const ref=(name,id)=>doc(db,"tenants",tenant(),name,id);
  const coll=name=>collection(db,"tenants",tenant(),name);
  const err=(name,e)=>{console.error(name,e);notify(name+": "+(e.code||e.message||String(e)),true)};
@@ -31,7 +34,9 @@ export async function mountPhase5({db,getState,notify,confirmAction,ownerDelete}
  async function page(kind,reset){
   const pageGeneration=sequence,pageTenant=tenant();
   const field=kind==="billingInvoices"?"invoice":"ticket",cursor=field==="invoice"?invoiceCursor:ticketCursor;
-  const parts=[orderBy(documentId())];
+  const parts=[];
+  if(kind==="supportTickets"&&!canSeeAllCases())parts.push(where("createdBy","==",S().user.uid));
+  parts.push(orderBy(documentId()));
   if(!reset&&cursor)parts.push(startAfter(cursor));
   parts.push(limit(PAGE+1));
   const snapshot=await getDocs(query(coll(kind),...parts));
@@ -50,7 +55,7 @@ export async function mountPhase5({db,getState,notify,confirmAction,ownerDelete}
   try{
    const [profile,allMembers]=await Promise.all([
     getDoc(ref("serviceAgreements","current")),
-    admin()?getDocs(query(coll("members"),limit(250))):Promise.resolve(null)
+    S().platformOwner?getDocs(query(collection(db,"platformStaff"),limit(250))):Promise.resolve(null)
    ]);
    if(generation!==sequence||current!==tenant())return;
    agreement=profile.exists()?profile.data():null;
@@ -64,7 +69,7 @@ export async function mountPhase5({db,getState,notify,confirmAction,ownerDelete}
   const v=agreement||{tier:S().tenants.find(x=>x.id===tenant())?.servicePlan||"starter",billingCycle:"monthly",status:"trial",renewalDate:"",seatLimit:0};
   $("p5Tier").value=v.tier;$("p5BillingCycle").value=v.billingCycle;$("p5AgreementStatus").value=v.status;
   $("p5Renewal").value=v.renewalDate||"";$("p5Seats").value=v.seatLimit||0;
-  $("p5AgreementForm").classList.toggle("hidden",!admin());
+  $("p5AgreementForm").classList.toggle("hidden",!billingAdmin());
   $("p5AgreementSummary").replaceChildren(E("strong","",PLANS[v.tier]?.label||"Starter"),E("small","","Simulated "+money(v.rateCents??PLANS[v.tier]?.monthlyCents??0)+" / "+v.billingCycle+" • "+v.status+" • Renewal: "+dateText(v.renewalDate)));
  }
  function render(){
@@ -76,8 +81,14 @@ export async function mountPhase5({db,getState,notify,confirmAction,ownerDelete}
   $("p5Attention").replaceChildren();
   const att=[["Open client tickets",stats.openCases],["Past target response",stats.overdueCases],["Draft invoices",stats.draftCount],["Issued fictional balance",money(stats.outstandingCents)]];
   for(const [label,value] of att){const row=entry(label,String(value));$("p5Attention").append(row)}
-  $("p5InvoiceForm").classList.toggle("hidden",!admin());
+  $("p5InvoiceForm").classList.toggle("hidden",!billingAdmin());
   $("p5TicketForm").classList.toggle("hidden",!member());
+  const urgentOption=$("p5Priority").querySelector('option[value="urgent"]');
+  if(urgentOption)urgentOption.disabled=!access().canRequestUrgent;
+  if(!access().canRequestUrgent&&$("p5Priority").value==="urgent")$("p5Priority").value="normal";
+  $("p5ClientNotice").textContent=supportAdmin()?
+   "Sterling support may triage, assign and resolve cases. Internal notes are never shared with clients.":
+   "Company messages are kept within authorized support cases. Sterling handles assignment, case status and billing decisions.";
   $("p5MoreInvoices").classList.toggle("hidden",!moreInvoices);
   $("p5MoreTickets").classList.toggle("hidden",!moreTickets);
   renderInvoices();renderTickets();
@@ -89,7 +100,7 @@ export async function mountPhase5({db,getState,notify,confirmAction,ownerDelete}
    const row=entry(record.description,money(record.amountCents)+" • "+record.status+" • Due "+dateText(record.dueDate));
    if(record.status==="issued"&&record.dueDate&&record.dueDate<new Date().toISOString().slice(0,10))row.classList.add("service-past-due");
    const actions=E("div","item-actions");actions.append(control("Ledger",()=>openInvoice(record.id),selectedInvoice===record.id?"primary":""));
-   if(admin()){
+   if(billingAdmin()){
     const next=E("select");next.setAttribute("aria-label","Invoice status for "+record.description);
     setOptions(next,INVOICE_STATES.map(x=>[x,x.replaceAll("_"," ")]));next.value=record.status;
     next.onchange=async()=>{
@@ -121,7 +132,7 @@ export async function mountPhase5({db,getState,notify,confirmAction,ownerDelete}
    const row=entry(t.subject,t.category+" • "+t.priority+" • "+t.status+(overdue?" • target exceeded":""));
    if(overdue)row.classList.add("service-past-due");
    const actions=E("div","item-actions");actions.append(control("Open case",()=>openTicket(t.id),selectedTicket===t.id?"primary":""));
-   if(admin()){
+   if(supportAdmin()){
     const state=E("select");state.setAttribute("aria-label","Support case status");
     setOptions(state,CASE_STATES.map(x=>[x,x.replaceAll("_"," ")]));state.value=t.status;
     state.onchange=async()=>{const before=t.status,next=state.value;try{
@@ -146,14 +157,18 @@ export async function mountPhase5({db,getState,notify,confirmAction,ownerDelete}
   const events=snap.docs.map(x=>x.data()),totals=invoiceBalance(record,events);
   box.append(entry("Remaining fictional balance",money(totals.balanceCents)+" • paid "+money(totals.paidCents)+" • credits "+money(totals.creditCents)));
   for(const e of events.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)))box.append(entry(e.type+" · "+money(e.amountCents),e.note+" • "+readable(e.createdAt)));
-  $("p5EventForm").classList.toggle("hidden",!admin()||record.status==="void");
+  $("p5EventForm").classList.toggle("hidden",!billingAdmin()||record.status==="void");
   renderInvoices();
  }
  async function openTicket(id){
   const targetTenant=tenant();selectedTicket=id;const ticket=tickets.find(x=>x.id===id);if(!ticket)return;
   const box=$("p5SelectedTicket");box.replaceChildren(E("strong","",ticket.subject),E("small","",ticket.details));
-  if(admin()){
-   const assign=E("select");setOptions(assign,[["","Unassigned"],...members.filter(x=>x.status==="active").map(x=>[x.uid,x.email||"Team member"])]);
+  if(supportAdmin()){
+   const choices=[["","Unassigned"],[S().user.uid,"Assign to me"]];
+   if(S().platformOwner)for(const staff of members.filter(x=>x.active===true&&["support","administrator"].includes(x.role))){
+    if(staff.uid!==S().user.uid)choices.push([staff.uid,"Sterling "+staff.role+" · "+staff.uid.slice(0,8)]);
+   }
+   const assign=E("select");setOptions(assign,choices);
    assign.value=ticket.assignedUid||"";
    assign.setAttribute("aria-label","Support case assignee");
    assign.onchange=async()=>{try{
@@ -163,7 +178,7 @@ export async function mountPhase5({db,getState,notify,confirmAction,ownerDelete}
   }
   const [publicNotes,privateNotes]=await Promise.all([
    getDocs(query(collection(db,"tenants",tenant(),"supportTickets",id,"updates"),limit(101))),
-   admin()?getDocs(query(collection(db,"tenants",tenant(),"supportTickets",id,"internalNotes"),limit(101))):Promise.resolve(null)
+   supportAdmin()?getDocs(query(collection(db,"tenants",tenant(),"supportTickets",id,"internalNotes"),limit(101))):Promise.resolve(null)
   ]);
   if(targetTenant!==tenant()||id!==selectedTicket)return;
   const notes=$("p5Notes");notes.replaceChildren();
@@ -172,24 +187,27 @@ export async function mountPhase5({db,getState,notify,confirmAction,ownerDelete}
   all.sort((a,b)=>(a.createdAt?.seconds||0)-(b.createdAt?.seconds||0));
   for(const entryData of all)notes.append(entry(entryData.internal?"Internal staff note":"Client update",entryData.body+" • "+readable(entryData.createdAt)));
   if(!all.length)notes.append(E("p","muted","No updates yet."));
-  $("p5NoteForm").classList.toggle("hidden",!member());
-  $("p5Internal").disabled=!admin();$("p5Internal").checked=false;
+  $("p5NoteForm").classList.toggle("hidden",!member()||ticket.status==="closed");
+  $("p5Internal").closest("label")?.classList.toggle("hidden",!supportAdmin());
+  $("p5Internal").disabled=!supportAdmin();$("p5Internal").checked=false;
   renderTickets();
  }
  $("p5InvoiceForm").onsubmit=async event=>{event.preventDefault();try{
-  if(!admin())throw Error("Client administrator required");
+  if(!billingAdmin())throw Error("Only Sterling billing administrators may make this change");
   const input=invoiceInput($("p5Description").value,$("p5Amount").value,$("p5Due").value),newRef=doc(coll("billingInvoices"));
   await auditedWrite(batch=>batch.set(newRef,{...input,status:"draft",createdBy:S().user.uid,createdAt:serverTimestamp(),updatedAt:serverTimestamp()}),"invoice-create","billing",newRef.id,input.description);
   $("p5InvoiceForm").reset();event.target.dispatchEvent(new Event("sterling:complete"));await refresh();notify("Fictional invoice created.");
  }catch(e){err("Invoice creation failed",e)}};
  $("p5TicketForm").onsubmit=async event=>{event.preventDefault();try{
-  if(!member())throw Error("Authorized client membership required");
+  if(!member())throw Error("An authorized company or Sterling account is required");
+  if($("p5Priority").value==="urgent"&&!access().canRequestUrgent)
+   throw Error("Urgent priority is reserved for Sterling support.");
   const input=ticketInput($("p5Subject").value,$("p5Details").value,$("p5Priority").value,$("p5Category").value),newRef=doc(coll("supportTickets"));
   await auditedWrite(batch=>batch.set(newRef,{...input,status:"open",assignedUid:"",createdBy:S().user.uid,createdAt:serverTimestamp(),updatedAt:serverTimestamp()}),"ticket-create","support",newRef.id,input.subject);
   $("p5TicketForm").reset();event.target.dispatchEvent(new Event("sterling:complete"));await refresh();notify("Support case opened.");
  }catch(e){err("Case creation failed",e)}};
  $("p5AgreementForm").onsubmit=async event=>{event.preventDefault();try{
-  if(!admin())throw Error("Client administrator required");
+  if(!billingAdmin())throw Error("Only Sterling billing administrators may make this change");
   const value=agreementInput({tier:$("p5Tier").value,billingCycle:$("p5BillingCycle").value,status:$("p5AgreementStatus").value,renewalDate:$("p5Renewal").value,seats:$("p5Seats").value});
   const before=agreement?.tier||"none";
   if(!await confirmAction("Update service agreement","Save the "+value.tier+" simulated agreement?"))return;
@@ -197,7 +215,7 @@ export async function mountPhase5({db,getState,notify,confirmAction,ownerDelete}
   await refresh();notify("Client service agreement saved.");
  }catch(e){err("Agreement failed",e)}};
  $("p5EventForm").onsubmit=async event=>{event.preventDefault();try{
-  if(!admin())throw Error("Client administrator required");
+  if(!billingAdmin())throw Error("Only Sterling billing administrators may make this change");
   const invoice=invoices.find(x=>x.id===selectedInvoice);if(!invoice)throw Error("Choose an invoice");
   const value=ledgerEvent($("p5EventType").value,$("p5EventAmount").value,$("p5EventNote").value);
   const existing=await getDocs(query(collection(db,"tenants",tenant(),"billingInvoices",invoice.id,"events"),limit(101)));
@@ -212,8 +230,12 @@ export async function mountPhase5({db,getState,notify,confirmAction,ownerDelete}
  $("p5NoteForm").onsubmit=async event=>{event.preventDefault();try{
   if(!member()||!selectedTicket)throw Error("Choose a support case");
   const body=$("p5NoteText").value.trim(),internal=$("p5Internal").checked;
+  const activeTicket=tickets.find(x=>x.id===selectedTicket);
+  if(!activeTicket||activeTicket.status==="closed")throw Error("Closed cases cannot accept messages.");
+  if(!access().allCompanyCases&&activeTicket.createdBy!==S().user.uid)
+   throw Error("You can only reply to your own company support cases.");
   if(body.length<2||body.length>1600)throw Error("Message must be 2–1600 characters");
-  if(internal&&!admin())throw Error("Internal notes require client administrator permissions");
+  if(internal&&!supportAdmin())throw Error("Internal notes require Sterling support permissions");
   const newRef=doc(collection(db,"tenants",tenant(),"supportTickets",selectedTicket,internal?"internalNotes":"updates"));
   await auditedWrite(batch=>batch.set(newRef,{body,createdBy:S().user.uid,createdAt:serverTimestamp()}),internal?"internal-note":"case-update","support",selectedTicket,body.slice(0,80));
   $("p5NoteForm").reset();await openTicket(selectedTicket);notify("Case update saved.");
