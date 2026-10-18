@@ -1,21 +1,42 @@
-<div class="ops-grid phase3-spaced">
-<article class="panel"><div class="eyebrow">PAYROLL POLICY</div><h2>Simulation settings</h2>
-<p class="muted">Policy changes affect newly generated drafts only. Approved time is always required.</p>
-<form id="p3PolicyForm" class="form-stack">
-<label>Overtime multiplier<select id="p3Multiplier"><option value="100">1.00×</option><option value="125">1.25×</option><option value="150">1.50×</option><option value="175">1.75×</option><option value="200">2.00×</option></select></label>
-<div class="two-fields"><label>Default fictional bonus (USD)<input id="p3Bonus" type="number" min="0" step=".01" value="0.00"></label><label>Default fictional deduction (USD)<input id="p3Deduction" type="number" min="0" step=".01" value="0.00"></label></div>
-<button class="btn primary" type="submit">Update payroll policy</button></form>
-<p id="p3PolicyStatus" class="fine-print">Default policy applies until changed.</p></article>
-<article class="panel"><div class="eyebrow">PAYROLL EXCEPTIONS</div><h2>Run review & documents</h2>
-<p class="muted">Review input exceptions, produce simulated statements, and compare finalized runs.</p>
-<div id="p3RunReview" class="notice">Open a payroll run above for review and reports.</div>
-<div class="actions"><button class="btn" id="p3Inspect" type="button">Inspect run inputs</button>
-<button class="btn" id="p3Export" type="button">Download simulated statement</button></div>
-<h3>Correction run</h3>
-<label>Original finalized run<select id="p3Original"></select></label>
-<label>Correction reason<input id="p3CorrectionRunReason" maxlength="200" placeholder="Explain the correction"></label>
-<button class="btn" id="p3NewCorrection" type="button">Create correction draft</button>
-<h3>Compare two payroll runs</h3><label>Compare with<select id="p3CompareTarget"></select></label>
-<button class="btn" id="p3Compare" type="button">Compare simulated net pay</button>
-<div id="p3Comparison" class="list"></div>
-</article></div>
+<section class="payroll-operations-suite" aria-label="Payroll settings and run review">
+ <article class="panel payroll-review-panel">
+  <div class="section-heading">
+   <div><div class="eyebrow">PAYROLL REVIEW</div><h2>Run health & documents</h2>
+    <p class="muted">Check this pay period, resolve exceptions, and export its fictional statement.</p></div>
+  </div>
+  <div id="p3RunReview" class="notice" role="status">Open a payroll run above for review and reports.</div>
+  <div class="actions payroll-review-actions">
+   <button class="btn" id="p3Inspect" type="button">Inspect input exceptions</button>
+   <button class="btn" id="p3Export" type="button">Download simulated statement</button>
+  </div>
+  <div class="payroll-advanced-grid">
+   <details class="payroll-advanced-details">
+    <summary><span><strong>Correction period</strong><small>Make an auditable correction to a finalized pay period</small></span><span class="detail-arrow" aria-hidden="true">⌄</span></summary>
+    <div class="payroll-advanced-body">
+     <label>Original finalized run<select id="p3Original"></select></label>
+     <label>Correction reason<input id="p3CorrectionRunReason" maxlength="200" placeholder="Explain why the correction is needed"></label>
+     <button class="btn" id="p3NewCorrection" type="button">Create correction draft</button>
+    </div>
+   </details>
+   <details class="payroll-advanced-details">
+    <summary><span><strong>Compare pay periods</strong><small>Review differences between two simulated runs</small></span><span class="detail-arrow" aria-hidden="true">⌄</span></summary>
+    <div class="payroll-advanced-body">
+     <label>Compare with<select id="p3CompareTarget"></select></label>
+     <button class="btn" id="p3Compare" type="button">Compare simulated net pay</button>
+     <div id="p3Comparison" class="list"></div>
+    </div>
+   </details>
+  </div>
+ </article>
+ <details class="panel payroll-settings-panel">
+  <summary><span><span class="eyebrow">PAYROLL POLICY</span><strong>Simulation settings</strong><small>Overtime multiplier, default bonuses and deductions. Changes affect new drafts only.</small></span><span class="detail-arrow" aria-hidden="true">⌄</span></summary>
+  <div class="payroll-advanced-body">
+   <form id="p3PolicyForm" class="form-stack">
+    <label>Overtime multiplier<select id="p3Multiplier"><option value="100">1.00×</option><option value="125">1.25×</option><option value="150">1.50×</option><option value="175">1.75×</option><option value="200">2.00×</option></select></label>
+    <div class="two-fields"><label>Default fictional bonus (USD)<input id="p3Bonus" type="number" min="0" step=".01" value="0.00"></label><label>Default fictional deduction (USD)<input id="p3Deduction" type="number" min="0" step=".01" value="0.00"></label></div>
+    <button class="btn primary" type="submit">Save payroll policy</button>
+   </form>
+   <p id="p3PolicyStatus" class="fine-print">Default policy applies until changed.</p>
+  </div>
+ </details>
+</section>
