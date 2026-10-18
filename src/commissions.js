@@ -469,7 +469,7 @@ export async function mountCommissions({db,getState,notify,confirmAction,ownerDe
   renderSales();
  };
  $("commissionApproveSelected").onclick=()=>void massApprove(
-  sales.filter(row=>selectedSalesIds.has(row.id)),"selected");
+  selectedSales().filter(row=>selectedSalesIds.has(row.id)),"selected");
  $("commissionApproveFiltered").onclick=()=>void massApprove(
   selectedSales(),"matching current sales filters");
 
