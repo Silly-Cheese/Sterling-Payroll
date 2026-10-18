@@ -4,8 +4,8 @@ import {
 } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 import {toCents,money} from "./payroll-core.js";
 import {commissionAmount,percentBasisPoints} from "./commission-core.js";
-import {readCompletePages} from "./payroll-paging.js?v=sterling-commission-studio-r2-20261018";
-import {parseSalesCsv,prepareSalesImport,filterSales,saleSummary} from "./commission-sales-import.js?v=sterling-commission-studio-r2-20261018";
+import {readCompletePages} from "./payroll-paging.js?v=sterling-commission-studio-r3-20261018";
+import {parseSalesCsv,prepareSalesImport,filterSales,saleSummary} from "./commission-sales-import.js?v=sterling-commission-studio-r3-20261018";
 
 const node=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=String(text);return e};
 const option=(value,text)=>{const e=node("option","",text);e.value=value;return e};
@@ -14,7 +14,7 @@ const BATCH_SIZE=3, VISIBLE_SIZE=35;
 
 export async function mountCommissions({db,getState,notify,confirmAction,ownerDelete}){
  const root=document.getElementById("commissionsWorkspace");
- const response=await fetch("./commissions.html?v=sterling-commission-studio-r2-20261018");
+ const response=await fetch("./commissions.html?v=sterling-commission-studio-r3-20261018");
  if(!root||!response.ok)throw Error("Commission workspace template is missing from the deployment");
  root.innerHTML=await response.text();
  const $=id=>root.querySelector("#"+id),S=()=>getState();
