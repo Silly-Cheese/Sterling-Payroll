@@ -142,18 +142,57 @@
         </section>
         <section id="page-operations" class="page hidden"><div id="phase2Operations"></div></section>
         <section id="page-time" class="page hidden">
-          <div class="two-col asymmetric">
-            <article class="panel"><h2>Record working time</h2><p class="muted">Time entries can be reviewed and corrected through the approval queue below. Changes preserve the original history.</p>
-              <form id="timeForm" class="form-stack">
-                <label>Employee<select id="timeEmployee" required></select></label>
-                <label>Work date<input id="timeDate" type="date" required></label>
-                <div class="two-fields"><label>Regular hours<input id="timeRegular" type="number" min="0" max="744" step="0.01" value="8" required></label>
-                <label>Overtime hours<input id="timeOvertime" type="number" min="0" max="744" step="0.01" value="0" required></label></div>
-                <label>Notes<input id="timeNote" maxlength="250" placeholder="Optional context"></label>
-                <button class="btn primary" type="submit">Save time entry</button>
-              </form>
-            </article>
-            <article class="panel"><h2>Time entry register</h2><div class="list-toolbar"><input id="timeSearch" class="search-input" type="search" placeholder="Find employee or date"><select id="timeStatus" aria-label="Filter time entries"><option value="all">All</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select></div><p class="fine-print" id="timeCount"></p><div id="timeList" class="list"></div><button id="loadMoreTime" class="btn hidden" type="button">Load more time entries</button></article>
+          <div class="timekeeping-view-tabs" role="group" aria-label="Timekeeping view">
+            <button id="timeViewRegister" class="btn timekeeping-view-tab active" type="button" aria-pressed="true">Timecards</button>
+            <button id="timeViewApprovals" class="btn timekeeping-view-tab" type="button" aria-pressed="false">Approvals & requests</button>
+          </div>
+          <div id="timeRegisterView">
+            <div class="two-col asymmetric">
+              <article class="panel"><h2>Record working time</h2><p class="muted">New entries begin pending review.</p>
+                <form id="timeForm" class="form-stack">
+                  <label>Employee<select id="timeEmployee" required></select></label>
+                  <label>Work date<input id="timeDate" type="date" required></label>
+                  <div class="two-fields"><label>Regular hours<input id="timeRegular" type="number" min="0" max="744" step="0.01" value="8" required></label>
+                  <label>Overtime hours<input id="timeOvertime" type="number" min="0" max="744" step="0.01" value="0" required></label></div>
+                  <label>Notes<input id="timeNote" maxlength="250" placeholder="Optional context"></label>
+                  <button class="btn primary" type="submit">Save time entry</button>
+                </form>
+              </article>
+              <article class="panel timekeeping-register-panel">
+                <div class="section-heading"><h2>Timecards</h2><span id="timeDataState" class="subtle-pill">Loading records</span></div>
+                <div class="timekeeping-filter-grid">
+                  <label>Employee<select id="timeEmployeeFilter" aria-label="Filter by employee"><option value="">All employees</option></select></label>
+                  <label>Pay period<select id="timePeriodFilter" aria-label="Select pay period"><option value="all">All dates</option></select></label>
+                  <label>Sort by<select id="timeSort" aria-label="Sort timecards">
+                    <option value="date-desc">Day · newest first</option>
+                    <option value="date-asc">Day · oldest first</option>
+                    <option value="employee-asc">Employee · A to Z</option>
+                    <option value="employee-desc">Employee · Z to A</option>
+                  </select></label>
+                </div>
+                <div id="timeCustomPeriod" class="timekeeping-filter-grid timekeeping-custom-dates hidden">
+                  <label>Period start<input id="timeCustomStart" type="date"></label>
+                  <label>Period end<input id="timeCustomEnd" type="date"></label>
+                </div>
+                <details class="timekeeping-advanced">
+                  <summary>More filters <span>Search, day and status</span></summary>
+                  <div class="timekeeping-filter-grid">
+                    <label>Search<input id="timeSearch" type="search" placeholder="Employee, date or note"></label>
+                    <label>Specific day<input id="timeDayFilter" type="date" aria-label="Show only this day"></label>
+                    <label>Status<select id="timeStatus" aria-label="Filter time entries">
+                      <option value="all">All statuses</option><option value="pending">Pending</option>
+                      <option value="approved">Approved</option><option value="rejected">Rejected</option>
+                    </select></label>
+                  </div>
+                  <button id="timeClearFilters" type="button" class="btn small">Clear filters</button>
+                </details>
+                <div id="timeSummary" class="timekeeping-summary hidden" aria-live="polite"></div>
+                <div class="timekeeping-register-head"><p id="timeCount" class="fine-print" role="status"></p><button id="timeRefresh" class="btn small" type="button">Refresh</button></div>
+                <div id="timeList" class="list timekeeping-items"></div>
+                <button id="timeShowMoreRows" class="btn hidden" type="button">Show more timecards</button>
+                <button id="loadMoreTime" class="btn hidden" type="button">Load more time entries</button>
+              </article>
+            </div>
           </div>
         </section>
         <div id="phase3Time" class="phase3-section client-only hidden"></div>
