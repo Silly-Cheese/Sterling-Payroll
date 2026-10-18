@@ -493,6 +493,7 @@ export async function mountCommissions({db,getState,notify,confirmAction,ownerDe
   importRows=null;importCompany="";
   $("commissionImportSubmit").disabled=true;
   $("commissionImportPreview").replaceChildren();
+  $("commissionDownloadErrors").classList.add("hidden");
   $("commissionImportStatus").textContent="Choose a CSV file to preview records.";
  }
  $("commissionSaleImport").onclick=()=>{
@@ -520,6 +521,7 @@ export async function mountCommissions({db,getState,notify,confirmAction,ownerDe
    const result=prepareSalesImport(rows,employees,plans);
    if(!enabled||!staff())throw Error("You cannot import to this company.");
    importRows=result;importCompany=tenantId;
+   $("commissionDownloadErrors").classList.toggle("hidden",!result.errors.length);
    const preview=$("commissionImportPreview");preview.replaceChildren();
    const table=node("table","commission-preview-table");
    const head=node("thead"),tr=node("tr");
@@ -546,6 +548,16 @@ export async function mountCommissions({db,getState,notify,confirmAction,ownerDe
   }catch(error){
    $("commissionImportStatus").textContent=error.message||String(error);
   }
+ };
+ $("commissionDownloadErrors").onclick=()=>{
+  if(!importRows?.errors.length)return;
+  const quote=value=>'"'+String(value??"").replace(/"/g,'""')+'"';
+  const lines=[["csvRow","employeeName","validationError"],...importRows.errors.map(e=>[e.line,e.name,e.message])];
+  const blob=new Blob([lines.map(line=>line.map(quote).join(",")).join("\r\n")],{type:"text/csv;charset=utf-8"});
+  const url=URL.createObjectURL(blob),link=document.createElement("a");
+  link.href=url;link.download="Sterling-Commission-Import-Errors.csv";
+  document.body.append(link);link.click();link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),5000);
  };
  $("commissionImportSubmit").onclick=async()=>{
   if(importBusy||!importRows?.valid.length||importCompany!==tenantId)return;
