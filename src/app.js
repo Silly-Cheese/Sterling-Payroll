@@ -114,7 +114,7 @@ function go(page){
  if(!titles[page])page="dashboard";
  if(page==="clients"&&!state.platform)page="dashboard";
  if(page==="staff"&&!state.platformOwner)page="dashboard";
- if(page==="service"&&(!state.tenantId||state.role==="employee"))page="dashboard";
+ if(page==="service"&&(!state.tenantId||state.role==="employee"||state.platformRole==="payroll_operator"))page="dashboard";
  if(page==="commissions"&&(!state.tenantId||!canPayroll()))page="dashboard";
  if(page==="assurance"&&(!state.tenantId||!canAdmin()))page="dashboard";
  if(page==="employeePortal"&&!state.tenantId)page="dashboard";
@@ -272,6 +272,8 @@ async function chooseTenant(id,writeStorage=true){
  for(const nav of document.querySelectorAll("#nav [data-page]")){
   if(["employees","operations","time","payroll","access","service","assurance","commissions"].includes(nav.dataset.page)&&employeeOnly)nav.classList.add("hidden");
  }
+ const serviceNav=document.querySelector('#nav [data-page="service"]');
+ if(serviceNav)serviceNav.classList.toggle("hidden",!id||employeeOnly||state.platformRole==="payroll_operator");
  const commissionNav=document.querySelector('#nav [data-page="commissions"]');
  if(commissionNav)commissionNav.classList.toggle("hidden",!id||!canPayroll());
  const portalNav=document.querySelector("#nav [data-page=employeePortal]");
