@@ -17,32 +17,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Syntax checks
+      - name: All JavaScript syntax and deployment assets
         run: |
-          node --check src/app.js
-          node --check src/payroll-core.js
-          node --check src/phase2.js
-          node --check src/phase2-core.js
-          node --check src/staff.js
-          node --check src/phase3.js
-          node --check src/phase3-core.js
-          node --check src/phase4.js
-          node --check src/phase4-core.js
-          node --check src/owner.js
-          node --check src/owner-core.js
-          node --check src/phase5.js
-          node --check src/phase5-core.js
-          node --check src/phase6.js
-          node --check src/phase6-core.js
-          node --check src/record-actions.js
-          node --check src/modals.js
-          node --check src/deletion-engine.js
-          node --check src/workspace-ui.js
-          node --check src/commissions.js
-          node --check src/commission-core.js
-          node --check src/commission-payroll.js
-          node --check src/timecard-import-core.js
-          node --check src/timecard-import.js
+          for file in src/*.js tests/*.test.mjs; do
+            node --check "$file" || exit 1
+          done
+          for file in index.html styles.css ui-system.css phase2.html phase3-time.html phase3-payroll.html phase4.html phase5.html phase6.html commissions.html firestore.rules; do
+            test -s "$file" || exit 1
+          done
       - name: Payroll engine tests
         run: node --test tests/*.test.mjs
 
