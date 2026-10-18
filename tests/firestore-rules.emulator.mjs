@@ -329,3 +329,36 @@ test("owner can delete approved fictional commission records but client users ca
  await assertFails(deleteDoc(doc(as("admin"),"tenants","north","commissionSales","doomed")));
  await assertSucceeds(deleteDoc(doc(as("owner"),"tenants","north","commissionSales","doomed")));
 });
+
+
+test("a 22-worker draft must be saved in security-budgeted chunks, not one large batch",async()=>{
+ await env.withSecurityRulesDisabled(async c=>{
+  const db=c.firestore(),prepare=writeBatch(db);
+  prepare.set(doc(db,"tenants","north","payrollRuns","bulk22"),{
+   status:"draft",periodStart:"2026-10-12",periodEnd:"2026-10-17",payDate:"2026-10-18",
+   createdBy:"owner",submittedBy:"",approvedBy:"",finalizedBy:""
+  });
+  for(let i=0;i<22;i++)prepare.set(doc(db,"tenants","north","employees","bulk-e"+i),{
+   displayName:"Test worker "+i,status:"active",payType:"hourly",hourlyRateCents:2000
+  });
+  await prepare.commit();
+ });
+ const db=as("owner");
+ const line=i=>({
+  employeeId:"bulk-e"+i,employeeName:"Test worker "+i,payType:"hourly",
+  regularHours:1,overtimeHours:0,regularCents:2000,overtimeCents:0,
+  bonusCents:0,deductionCents:0,grossCents:2000,netCents:2000,
+  policyVersion:2,paidLeaveHours:0,commissionCents:0
+ });
+ const lineRef=i=>doc(db,"tenants","north","payrollRuns","bulk22","lines","bulk-e"+i);
+ const oversized=writeBatch(db);
+ for(let i=0;i<22;i++)oversized.set(lineRef(i),line(i));
+ await assertFails(oversized.commit());
+ for(let offset=0;offset<22;offset+=6){
+  const chunk=writeBatch(db);
+  for(let i=offset;i<Math.min(offset+6,22);i++)chunk.set(lineRef(i),line(i));
+  await assertSucceeds(chunk.commit());
+ }
+ const snap=await getDocs(collection(db,"tenants","north","payrollRuns","bulk22","lines"));
+ assert.equal(snap.size,22);
+});
