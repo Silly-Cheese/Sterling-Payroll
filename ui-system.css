@@ -1,0 +1,230 @@
+/* Sterling Payroll · Unified interface system
+   Loaded after legacy styles so feature pages share one consistent final layer. */
+:root{
+ --ui-canvas:#0d1314;
+ --ui-surface:#171e1f;
+ --ui-surface-raised:#1e2827;
+ --ui-border:#34413d;
+ --ui-border-active:#88704b;
+ --ui-text:#f1efe8;
+ --ui-muted:#afbbb6;
+ --ui-gold:#e9d1a4;
+ --ui-gold-dim:#a48d66;
+ --ui-danger:#e19b96;
+ --ui-radius:14px;
+ --ui-control-height:40px;
+ --ui-space:clamp(14px,1.65vw,24px);
+ color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{background:var(--ui-canvas);color:var(--ui-text);font-synthesis:none}
+#shell,.app-shell,.stage,.content,.page,.panel,.list,.metric,.service-panel,.ops-grid,.two-col,
+.workspace-list-wide,.portal-view-content,.record-dialog-content{min-width:0}
+#shell .stage{min-width:0;overflow-x:clip}
+#shell .content{width:100%;max-width:1740px;margin-inline:auto;padding:clamp(18px,2.2vw,32px)}
+body[data-density="compact"] #shell .content{padding:clamp(14px,1.65vw,25px)}
+.page{width:100%}
+.page-heading{display:flex;align-items:end;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:0 0 19px}
+.page-heading h1{font-size:clamp(27px,2.6vw,36px);line-height:1.13;margin:4px 0 6px}
+.page-heading p{margin:0;max-width:760px;line-height:1.6}
+.page .panel,.quick-actions.panel,.phase3-section>.panel,
+#commissionsWorkspace .panel,.service-panel .panel{
+ border:1px solid var(--ui-border);
+ border-radius:var(--ui-radius);
+ background:linear-gradient(155deg,#192020,#151b1b);
+ box-shadow:0 8px 25px #00000016;
+ min-width:0;
+}
+.page .panel:has(>.section-heading){overflow:visible}
+.page .panel h2,.service-panel .panel h2{
+ font-size:clamp(18px,1.65vw,24px);line-height:1.22;margin:0 0 13px;
+ overflow-wrap:break-word;
+}
+.panel h3{font-size:15px;line-height:1.3;margin:18px 0 10px}
+.section-heading{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.section-heading h2{margin:0!important}
+.eyebrow,.nav-section-heading{letter-spacing:.11em}
+.muted,.fine-print{color:var(--ui-muted);line-height:1.65}
+.subtle-pill{max-width:100%;overflow-wrap:anywhere}
+.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(210px,100%),1fr));gap:12px;margin-bottom:16px}
+.metric-grid .metric{min-width:0;min-height:110px;padding:16px 18px;border-radius:12px;border:1px solid var(--ui-border)}
+.metric .metric-label{font-size:11px;line-height:1.35}
+.metric strong{font-size:clamp(22px,2.2vw,29px);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.quick-action-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(175px,100%),1fr));gap:9px}
+.quick-action-grid .btn{min-height:43px}
+.two-col,.two-col.asymmetric,.ops-grid{gap:16px;align-items:start}
+.two-fields,.three-fields{gap:12px}
+.two-fields>*,.three-fields>*,.form-stack>*,.service-panel label,
+#commissionsWorkspace label{min-width:0}
+label{max-width:100%;overflow-wrap:break-word}
+input:not([type="checkbox"]):not([type="radio"]),textarea,select{
+ min-width:0;max-width:100%;border-radius:9px;
+ font-size:13px;line-height:1.45;
+ border-color:#46534e;background:#111819;color:var(--ui-text);
+}
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),select{min-height:var(--ui-control-height)}
+input[type="file"]{width:100%}
+textarea{min-height:86px;resize:vertical}
+input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-visible,
+a:focus-visible,summary:focus-visible,[tabindex]:focus-visible{
+ outline:2px solid var(--ui-gold)!important;outline-offset:2px!important;
+}
+input:disabled,textarea:disabled,select:disabled{cursor:not-allowed;opacity:.58}
+.btn,button{transition:background .16s ease,border-color .16s ease,color .16s ease,filter .16s ease}
+.btn{min-height:36px;border-radius:9px;white-space:normal;text-align:center;max-width:100%;
+ padding:9px 14px;line-height:1.35;vertical-align:middle}
+.btn.small{min-height:32px;padding:6px 10px;font-size:11px}
+.btn.primary{background:linear-gradient(120deg,#f0dba9,#d9b982)!important;border-color:#c9ad7d!important;color:#221c16!important}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn:disabled,button:disabled{opacity:.5;cursor:not-allowed}
+.list,.list-item,.service-entry,.employee-check{min-width:0;max-width:100%}
+.list-item,.service-entry{
+ display:flex;flex-wrap:wrap;gap:11px;align-items:center;
+ border:1px solid var(--ui-border);border-radius:11px;
+ background:#1a2222;padding:12px 14px;margin:0 0 8px
+}
+.list-item>div:first-child,.service-entry-main{flex:1 1 205px;min-width:0}
+.list-item strong,.service-entry strong{display:block;line-height:1.4;overflow-wrap:anywhere}
+.list-item small,.service-entry small{display:block;line-height:1.55;color:var(--ui-muted);overflow-wrap:anywhere}
+.list-item .item-actions,.service-entry .item-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:7px;flex:0 1 auto;min-width:0;margin-left:auto}
+.item-actions select{min-width:125px;max-width:min(210px,100%);width:auto}
+.list-toolbar{gap:10px;align-items:center}
+.list-toolbar>*{min-width:0;max-width:100%}
+.data-note,.hint,.notice,.connection-notice{line-height:1.55;overflow-wrap:anywhere;border-radius:10px}
+.service-governance-note,.service-message-policy{
+ background:#222720;border:1px solid #5a5542;border-radius:12px;
+ padding:12px 15px;line-height:1.6;font-size:12px;color:#dcd4c0;margin:12px 0 16px
+}
+.service-governance-note strong{color:#f3dfb9;margin-right:7px}
+.service-hero{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:18px;padding:21px 24px}
+.service-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:9px}
+.service-tabs,.portal-view-tabs{
+ display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;scrollbar-width:thin;max-width:100%;
+ padding:5px;background:#141b1c;border:1px solid var(--ui-border);border-radius:12px
+}
+.service-tabs button,.portal-view-tabs button{min-height:39px;flex:1 1 auto;white-space:normal;min-width:115px;line-height:1.35}
+.service-tabs button.active,.portal-view-tabs button.active{border-color:var(--ui-border-active);color:var(--ui-gold)}
+.service-panel>.panel,.service-panel>.two-col,.service-panel>.ops-grid{margin-bottom:16px}
+.service-panel .list{max-height:min(68vh,650px);overflow:auto;scrollbar-width:thin}
+.service-panel .form-stack{max-width:100%}
+.service-panel .service-entry .item-actions select{min-width:155px}
+.service-entry .item-actions .btn{min-width:0}
+.service-hero h2{margin:6px 0 10px;line-height:1.2}
+#p5Notes .service-entry{align-items:start}
+#p5Notes .service-entry-main{white-space:pre-wrap}
+#p5SelectedTicket,#p5SelectedInvoice{padding:12px 14px}
+#p5AgreementSummary{min-height:56px}
+#staffAccounts .portal-view-content>.panel,#employeePortal .portal-view-content>.panel{min-height:0}
+#phase2Operations .list-item,#commissionsWorkspace .list-item{gap:10px}
+#commissionsWorkspace .commission-top,#commissionsWorkspace .commission-actions{flex-wrap:wrap}
+#commissionsWorkspace .commission-top h2{line-height:1.16}
+#commissionsWorkspace .commission-actions>.btn{flex:0 1 auto}
+#commissionsWorkspace .commission-grid,
+#ownerControlCenter,#ownerControlCenter .ops-grid{min-width:0}
+.workspace-list-wide{width:100%;min-width:0}
+.workspace-action-bar{
+ gap:13px;min-width:0;padding:14px 18px;background:#1c2422;
+ border-radius:12px;border-color:var(--ui-border);
+}
+.workspace-action-bar>div{flex:1 1 240px;min-width:0}
+.workspace-action-bar small{line-height:1.5}
+.workspace-action-bar .btn{flex:0 0 auto}
+.workspace-form-dialog,.sterling-action-dialog,.sterling-record-dialog,.quick-nav-dialog{
+ max-width:calc(100vw - 24px);max-height:min(90dvh,980px);
+}
+.workspace-form-dialog .workspace-form-panel{padding:20px!important}
+.workspace-form-dialog form{gap:13px}
+.workspace-form-dialog>header{padding:15px 20px}
+.sterling-record-dialog .record-dialog-content{overflow:auto;max-height:calc(90dvh - 96px)}
+.record-dialog-content .panel{min-width:0}
+.record-dialog-content .list{max-width:100%;overflow:auto}
+.record-dialog-content .three-fields{grid-template-columns:repeat(3,minmax(0,1fr))}
+#toast{max-width:min(450px,calc(100vw - 28px));line-height:1.5;white-space:normal}
+.table-wrap,.timecard-import-preview,.record-dialog-content table{max-width:100%;overflow-x:auto}
+table{border-collapse:collapse}
+table th,table td{overflow-wrap:break-word}
+.sidebar{z-index:50}
+.sidebar .nav-item{line-height:1.35;text-align:left;min-height:39px;border-radius:9px}
+.sidebar .nav-section-heading{margin-top:12px}
+.sidebar-bottom{min-width:0}
+.sidebar-account,.profile,.profile-copy{min-width:0}
+.profile-copy strong{overflow-wrap:anywhere}
+.topbar{height:auto;min-height:65px;gap:12px;max-width:100%;padding:11px clamp(14px,2vw,25px)}
+.topbar-title{flex:1 1 180px;min-width:0}
+.topbar-actions{display:flex;align-items:center;justify-content:flex-end;flex:0 1 auto;gap:9px;min-width:0;flex-wrap:wrap}
+.company-switch{gap:8px;min-width:0}
+.company-switch select{width:clamp(165px,19vw,250px)}
+.environment-tag{white-space:nowrap}
+#nav .nav-item.active{background:#342c23!important;color:#f4dbae!important}
+body[data-density="comfortable"] #shell .content{padding:clamp(22px,2.6vw,38px)}
+body[data-density="comfortable"] .list-item{padding:15px 17px}
+body[data-density="comfortable"] .panel{padding:clamp(20px,2vw,28px)}
+body[data-density="compact"] .page .panel{padding:clamp(14px,1.5vw,20px)}
+[hidden],.hidden{display:none!important}
+@media(max-width:1250px){
+ .topbar-title{flex-basis:130px}
+ .topbar-actions{gap:6px}
+ .company-switch select{width:clamp(155px,18vw,230px)}
+ .two-col.asymmetric{grid-template-columns:minmax(0,1fr)}
+ #ownerControlCenter .three-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:900px){
+ .app-shell{display:block}
+ .topbar{padding:12px 15px}
+ .topbar-title{flex:1 1 120px}
+ .topbar-actions{flex:1 1 320px}
+ .company-switch{margin-left:auto}
+ .service-hero{padding:17px}
+ .service-toolbar{width:100%}
+ .service-panel .three-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .service-panel>.ops-grid{grid-template-columns:minmax(0,1fr)}
+ .metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:760px){
+ #shell .content,body[data-density="comfortable"] #shell .content,
+ body[data-density="compact"] #shell .content{padding:16px 13px}
+ .sidebar{height:100dvh;width:min(290px,84vw);overscroll-behavior:contain;overflow-y:auto}
+ .topbar{min-height:60px;height:auto;padding:9px 12px;gap:8px}
+ .mobile-menu{min-height:38px;flex:0 0 39px}
+ .topbar-title{display:block;flex:1 1 auto;min-width:98px}
+ .topbar-actions{order:3;flex:1 1 100%;justify-content:flex-start;gap:8px}
+ .company-switch{flex:1 1 170px}
+ .company-switch select{width:100%;min-width:0}
+ .density-toggle,.environment-tag{display:none!important}
+ .service-hero{gap:12px}
+ .service-toolbar .btn{flex:1 1 135px}
+ .workspace-action-bar{flex-wrap:wrap;align-items:stretch}
+ .workspace-action-bar>.btn{flex:1 1 auto}
+ .list-item,.service-entry{align-items:stretch}
+ .list-item .item-actions,.service-entry .item-actions{flex:1 1 100%;margin:0;justify-content:flex-start}
+ .item-actions select{min-width:min(210px,100%)}
+ .form-stack{gap:11px}
+ .two-fields,.three-fields,.service-panel .three-fields,#ownerControlCenter .three-fields{
+  grid-template-columns:minmax(0,1fr)!important;
+ }
+ .service-tabs button,.portal-view-tabs button{min-width:105px}
+ .sterling-record-dialog{width:calc(100vw - 18px);max-width:calc(100vw - 18px)}
+ .record-dialog-head{padding:15px}
+ .record-dialog-content .panel{padding:14px}
+ .workspace-form-dialog .workspace-form-panel{padding:15px!important}
+ .section-heading{align-items:flex-start}
+ .section-heading .btn{flex:0 1 auto}
+}
+@media(max-width:460px){
+ .metric-grid,.metric-grid.compact{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .metric-grid .metric{min-height:95px;padding:11px}
+ .metric strong{font-size:clamp(17px,5vw,24px)}
+ .quick-action-grid{grid-template-columns:minmax(0,1fr)}
+ .service-hero{padding:15px}
+ .service-toolbar{flex-direction:column;align-items:stretch}
+ .service-toolbar .btn{width:100%}
+ .service-tabs,.portal-view-tabs{overflow-x:auto;flex-wrap:nowrap}
+ .service-tabs button,.portal-view-tabs button{flex:0 0 auto}
+ .list-item .item-actions .btn,.service-entry .item-actions .btn{flex:1 1 auto}
+ .service-entry .item-actions select{width:100%;max-width:none}
+ .workspace-action-bar{padding:12px}
+ .workspace-action-bar .btn{width:100%}
+ .auth-hero h1{font-size:36px}
+ .auth-brand{min-height:280px}
+}
+@media(prefers-reduced-motion:reduce){.btn,button,.list-item{transition:none!important}}
