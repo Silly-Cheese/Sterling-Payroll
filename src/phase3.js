@@ -1,6 +1,6 @@
 import {collection,doc,getDoc,getDocs,addDoc,updateDoc,setDoc,serverTimestamp,query,limit} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 import {toCents,money} from "./payroll-core.js";
-import {mountBulkTimecardApprovals} from "./timecard-bulk.js";
+import {mountBulkTimecardApprovals} from "./timecard-bulk.js?v=sterling-bulk-fix-20261017";
 import {DEFAULT_POLICY,validatePolicy,validReviewTransition,validateCorrection,validateLeave,buildPayrollPreview,csvStatement} from "./phase3-core.js";
 const el=(tag,cls,text)=>{const a=document.createElement(tag);if(cls)a.className=cls;if(text!==undefined)a.textContent=String(text);return a};
 const opt=(v,text)=>{const a=el("option","",text);a.value=v;return a};
