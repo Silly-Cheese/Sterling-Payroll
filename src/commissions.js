@@ -492,6 +492,21 @@ export async function mountCommissions({db,getState,notify,confirmAction,ownerDe
  $("commissionClearFilters").onclick=clearSalesFilters;
  $("commissionMore").onclick=()=>{visible+=VISIBLE_SIZE;renderSales()};
  $("commissionSalesReload").onclick=()=>void refresh();
+ $("commissionExportSales").onclick=()=>{
+  const rows=selectedSales(),quote=value=>'"'+String(value??"").replace(/"/g,'""')+'"';
+  const data=[["employeeName","saleDate","saleAmount","description","commissionAmount","status","linkedToPayroll"]];
+  for(const sale of rows)data.push([
+   employeeName(sale.employeeId),sale.saleDate,(sale.saleAmountCents/100).toFixed(2),
+   sale.description,(sale.commissionCents/100).toFixed(2),sale.status,sale.paidRunId?"Yes":"No"
+  ]);
+  const blob=new Blob(["\uFEFF",data.map(row=>row.map(quote).join(",")).join("\r\n")],
+   {type:"text/csv;charset=utf-8"});
+  const link=document.createElement("a"),url=URL.createObjectURL(blob);
+  link.href=url;link.download="Sterling-Commission-Sales-"+niceDate()+".csv";
+  document.body.append(link);link.click();link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),5000);
+  notify(rows.length+" filtered, sorted sales exported.");
+ };
  
  function clearPreview(){
   importRows=null;importCompany="";
