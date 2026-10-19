@@ -528,3 +528,30 @@ test("tax details must reconcile with total deductions on draft pay lines",async
  await assertFails(updateDoc(path,{taxRateBasisPoints:10001}));
  await assertSucceeds(updateDoc(path,{taxRateBasisPoints:1500,taxCents:3000,deductionCents:4000,netCents:16000}));
 });
+
+
+test("Operations Center schedules are tenant-scoped and use constrained payroll roles",async()=>{
+ const s={name:"Biweekly payroll",cadence:"biweekly",processingMode:"combined",nextStart:"2026-10-19",
+  payDelay:3,active:true,createdBy:"admin",createdAt:serverTimestamp(),updatedAt:serverTimestamp()};
+ const path="tenants/north/payCycleSchedules/regular";
+ await assertFails(setDoc(doc(as("viewer"),path),{...s,createdBy:"viewer"}));
+ await assertFails(setDoc(doc(as("admin"),"tenants/south/payCycleSchedules/regular"),s));
+ await assertSucceeds(setDoc(doc(as("admin"),path),s));
+ await assertFails(updateDoc(doc(as("admin"),path),{payDelay:45}));
+ await assertFails(updateDoc(doc(as("admin"),path),{nextStart:"2026-09-01",updatedBy:"admin",updatedAt:serverTimestamp()}));
+ await assertSucceeds(updateDoc(doc(as("admin"),path),{nextStart:"2026-11-02",updatedBy:"admin",updatedAt:serverTimestamp()}));
+});
+test("Compensation profiles require valid rates and immutable history",async()=>{
+ const path="tenants/north/compensationProfiles/e1";
+ const profile={employeeId:"e1",effectiveFrom:"2026-10-19",taxRateBasisPoints:1250,
+  recurringDeductionCents:500,updatedAt:serverTimestamp(),updatedBy:"admin"};
+ await assertFails(setDoc(doc(as("viewer"),path),{...profile,updatedBy:"viewer"}));
+ await assertFails(setDoc(doc(as("admin"),path),{...profile,taxRateBasisPoints:15000}));
+ await assertSucceeds(setDoc(doc(as("admin"),path),profile));
+ await assertSucceeds(setDoc(doc(as("admin"),"tenants/north/compensationHistory/history-01"),{
+  employeeId:"e1",effectiveFrom:"2026-10-19",taxRateBasisPoints:1250,
+  recurringDeductionCents:500,changedAt:serverTimestamp(),changedBy:"admin"
+ }));
+ await assertFails(updateDoc(doc(as("admin"),"tenants/north/compensationHistory/history-01"),{recurringDeductionCents:2000}));
+ await assertFails(setDoc(doc(as("admin"),"tenants/south/compensationProfiles/e1"),profile));
+});
