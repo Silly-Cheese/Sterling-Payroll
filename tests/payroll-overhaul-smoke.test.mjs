@@ -13,7 +13,7 @@ test("all daily workflows and creation controls are present",()=>{
 });
 test("payroll import, policy and correction elements remain addressable",()=>{
  for(const id of ["p3Inspect","p3Export","p3Original","p3CorrectionRunReason","p3NewCorrection",
-  "p3CompareTarget","p3Compare","p3Comparison","p3PolicyForm","p3PolicyStatus","p3RunReview"]){
+  "p3CompareTarget","p3Compare","p3Comparison","p3PolicyForm","p3PolicyStatus","p3TaxRate","p3RunReview"]){
   assert.ok(workflow.includes('id="'+id+'"'),"Missing payroll action "+id);
  }
 });
@@ -24,8 +24,8 @@ test("no inline money editors remain and draft edits use a transaction",()=>{
  assert.ok(!script.includes('mk("input","adjust-input")'));
 });
 test("required styling and modules are published through Pages",()=>{
- assert.match(html,/payroll-refresh\.css\?v=sterling-payroll-overhaul/);
- assert.match(html,/app\.js\?v=sterling-payroll-overhaul/);
+ assert.match(html,/payroll-refresh\.css\?v=sterling-sim-tax/);
+ assert.match(html,/app\.js\?v=sterling-sim-tax/);
  const pages=file(".github/workflows/pages.yml");
  assert.match(pages,/\*\.css/);
  assert.match(pages,/cp src\/\*\.js _site\/src\//);
