@@ -338,6 +338,28 @@ test("only Sterling owner can delete commission assignments without removing his
  assert.equal(finalized.exists(),true);
 });
 
+
+test("commission claims cannot target timecard-only or out-of-period runs",async()=>{
+ const base="tenants/north/";
+ await env.withSecurityRulesDisabled(async c=>{
+  const db=c.firestore();
+  for(const [id,mode] of [["time-only","timecards-only"],["commission","commissions-only"]])
+   await setDoc(doc(db,base+"payrollRuns/"+id),{
+    processingMode:mode,status:"draft",periodStart:"2026-10-01",
+    periodEnd:"2026-10-31",payDate:"2026-11-01",createdBy:"admin"
+   });
+  for(const [id,date] of [["in-period","2026-10-17"],["outside","2026-09-30"]])
+   await setDoc(doc(db,base+"commissionSales/"+id),{
+    employeeId:"e1",saleDate:date,status:"approved",paidRunId:"",
+    commissionCents:10000,approvedBy:"owner",createdBy:"admin"
+   });
+ });
+ const admin=as("admin");
+ await assertFails(updateDoc(doc(admin,base+"commissionSales/in-period"),{paidRunId:"time-only"}));
+ await assertFails(updateDoc(doc(admin,base+"commissionSales/outside"),{paidRunId:"commission"}));
+ await assertSucceeds(updateDoc(doc(admin,base+"commissionSales/in-period"),{paidRunId:"commission"}));
+});
+
 test("only approved commission sales can be claimed by a draft payroll, and not twice",async()=>{
  const owner=as("owner"),admin=as("admin"),base="tenants/north/";
  await env.withSecurityRulesDisabled(async c=>{
