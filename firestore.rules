@@ -549,6 +549,70 @@ service cloud.firestore {
     allow delete: if owner();
    }
 
+   // Payroll Operations Center 3.0: strict tenant isolation and no composite indexes.
+   match /paySchedules/{scheduleId} {
+    allow get,list: if clientView(t);
+    allow create,update: if clientAdmin(t) && scheduleId == 'current' &&
+     request.resource.data.keys().hasOnly(['cadence','mode','anchorDate','paydayOffsetDays','namePrefix','updatedBy','updatedAt']) &&
+     request.resource.data.cadence in ['weekly','biweekly','semimonthly','monthly'] &&
+     request.resource.data.mode in ['combined','timecards-only','commissions-only'] &&
+     date(request.resource.data.anchorDate) &&
+     request.resource.data.paydayOffsetDays is int &&
+     request.resource.data.paydayOffsetDays >= 0 && request.resource.data.paydayOffsetDays <= 30 &&
+     request.resource.data.namePrefix is string && request.resource.data.namePrefix.size() <= 55 &&
+     request.resource.data.updatedBy == request.auth.uid && request.resource.data.updatedAt == request.time;
+    allow delete: if owner();
+   }
+   // Each compensation version is immutable; pay-period previews select the
+   // version effective on their end date. Historical runs are never rewritten.
+   match /compensationChanges/{changeId} {
+    allow get,list: if clientView(t);
+    allow create: if clientAdmin(t) &&
+     request.resource.data.keys().hasOnly(['employeeId','effectiveDate','payType','hourlyRateCents','annualSalaryCents','taxRateBasisPoints','recurringDeductionCents','note','createdBy','createdAt']) &&
+     text(request.resource.data.employeeId,128) &&
+     exists(employeePath(t,request.resource.data.employeeId)) &&
+     changeId == request.resource.data.employeeId + '_' + request.resource.data.effectiveDate &&
+     date(request.resource.data.effectiveDate) &&
+     request.resource.data.payType in ['hourly','salary'] &&
+     request.resource.data.payType == get(employeePath(t,request.resource.data.employeeId)).data.payType &&
+     (request.resource.data.payType == 'hourly' ?
+      (cent(request.resource.data.get('hourlyRateCents',-1)) && !('annualSalaryCents' in request.resource.data)) :
+      (cent(request.resource.data.get('annualSalaryCents',-1)) && !('hourlyRateCents' in request.resource.data))) &&
+     request.resource.data.taxRateBasisPoints is int &&
+     request.resource.data.taxRateBasisPoints >= 0 && request.resource.data.taxRateBasisPoints <= 10000 &&
+     cent(request.resource.data.recurringDeductionCents) &&
+     request.resource.data.note is string && request.resource.data.note.size() <= 160 &&
+     request.resource.data.createdBy == request.auth.uid &&
+     request.resource.data.createdAt == request.time;
+    allow update: if false;
+    allow delete: if owner();
+   }
+   // A client can submit and read only its own communications;
+   // only Sterling staff can progress or close a request.
+   match /clientPayrollRequests/{requestId} {
+    allow get: if sterlingSupport() ||
+     (clientView(t) && resource.data.createdBy == request.auth.uid);
+    allow list: if sterlingSupport() ||
+     (clientView(t) && resource.data.createdBy == request.auth.uid);
+    allow create: if clientHelpDesk(t) &&
+     request.resource.data.keys().hasOnly(['type','subject','details','status','createdBy','createdAt','updatedBy','response']) &&
+     request.resource.data.type in ['payroll-correction','employee-access','billing','general'] &&
+     text(request.resource.data.subject,120) &&
+     request.resource.data.subject.size() >= 5 &&
+     text(request.resource.data.details,1500) &&
+     request.resource.data.details.size() >= 10 &&
+     request.resource.data.status == 'submitted' &&
+     request.resource.data.createdBy == request.auth.uid &&
+     request.resource.data.createdAt == request.time &&
+     request.resource.data.updatedBy == '' && request.resource.data.response == '';
+    allow update: if sterlingSupport() &&
+     request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedBy','updatedAt','response']) &&
+     request.resource.data.status in ['submitted','in_review','resolved','rejected'] &&
+     request.resource.data.updatedBy == request.auth.uid &&
+     request.resource.data.updatedAt == request.time &&
+     request.resource.data.response is string && request.resource.data.response.size() <= 1500;
+    allow delete: if owner();
+   }
    match /employees/{e} {
     allow get: if clientView(t) || ownsEmployee(t,e);
     allow list: if clientView(t);
