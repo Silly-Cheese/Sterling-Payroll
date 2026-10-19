@@ -353,6 +353,31 @@ export async function mountOperationsCenter({db,getState,notify,confirmAction,on
    notify(result.length-1+" employee earnings entries exported.");
   }catch(e){notify("Export failed: "+e.message,true)}
  };
+ $("opExportYTD").onclick=async()=>{
+  try{
+   const {t,u,v}=account();
+   if(loadErrors.some(x=>/^(payrollRuns|employees):/.test(x)))throw Error("Pay records are incomplete. Retry before exporting.");
+   const currentYear=String(new Date().getFullYear());
+   const runs=data.runs.filter(x=>x.status==="finalized"&&x.periodEnd?.startsWith(currentYear));
+   if(runs.length>40)throw Error("Year-to-date export is limited to 40 finalized runs; use the full ledger export for large archives.");
+   const totals=new Map(),department=new Map(data.employees.map(x=>[x.id,x.department||"Unassigned"]));
+   for(const run of runs){
+    const lines=await allRunLines(t,u,v,run.id);
+    for(const l of lines){
+     const item=totals.get(l.employeeId)||{name:l.employeeName||"Employee",department:department.get(l.employeeId)||"Unassigned",
+      runs:0,gross:0,commission:0,tax:0,other:0,net:0};
+     item.runs++;item.gross+=l.grossCents||0;item.commission+=l.commissionCents||0;item.tax+=l.taxCents||0;
+     item.other+=l.otherDeductionCents??((l.deductionCents||0)-(l.taxCents||0));item.net+=l.netCents||0;
+     totals.set(l.employeeId,item);
+    }
+   }
+   csvDownload([["Year","Employee","Department","Pay periods","Gross","Commission","Simulated taxes","Other deductions","Simulated net"],
+    ...[...totals.values()].sort((a,b)=>a.name.localeCompare(b.name)).map(x=>
+     [currentYear,x.name,x.department,x.runs,...[x.gross,x.commission,x.tax,x.other,x.net].map(y=>(y/100).toFixed(2))])],
+    "Sterling-Fictional-YTD-"+currentYear+".csv");
+   notify("Year-to-date report exported for "+totals.size+" employees.");
+  }catch(e){notify("Year-to-date report: "+e.message,true)}
+ };
  $("opPrintReport").onclick=()=>window.print();
  function healthChecks(){
   const checks=[
