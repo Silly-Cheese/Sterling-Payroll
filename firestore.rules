@@ -33,6 +33,15 @@ service cloud.firestore {
       request.resource.data.overtimeHours == 0 &&
       request.resource.data.get('paidLeaveHours',0) == 0));
   }
+  // A commission claim must reference a draft accepting sales and a sale date
+  // within that run's period. Claiming sales never changes the sale's amount.
+  function validCommissionClaim(t,r,saleDate){
+   return exists(runPath(t,r)) &&
+    get(runPath(t,r)).data.status == 'draft' &&
+    get(runPath(t,r)).data.get('processingMode','combined') in ['combined','commissions-only'] &&
+    saleDate >= get(runPath(t,r)).data.periodStart &&
+    saleDate <= get(runPath(t,r)).data.periodEnd;
+  }
   function clientView(t){return platformView() || (member(t) && role(t) != 'employee');}
   function employeeLinkPath(t){return /databases/$(database)/documents/tenants/$(t)/employeeLinks/$(request.auth.uid);}
   function employeeLinked(t){return member(t) && exists(employeeLinkPath(t));}
@@ -387,8 +396,7 @@ service cloud.firestore {
         exists(runPath(t,resource.data.paidRunId)) &&
         get(runPath(t,resource.data.paidRunId)).data.status == 'draft')) :
        (resource.data.paidRunId == '' &&
-        exists(runPath(t,request.resource.data.paidRunId)) &&
-        get(runPath(t,request.resource.data.paidRunId)).data.status == 'draft')));
+        validCommissionClaim(t,request.resource.data.paidRunId,resource.data.saleDate))));
     allow delete: if owner();
    }
    match /serviceAgreements/current {
