@@ -3,7 +3,7 @@ import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmai
 import {getFirestore,collection,doc,getDoc,getDocs,addDoc,setDoc,updateDoc,query,limit,writeBatch,runTransaction,serverTimestamp,orderBy,documentId,startAfter,startAt,endAt} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 import {calculateLine,summarizeLines,toCents,money,hoursValue,canTransition,validPeriod,cleanEmail} from "./payroll-core.js";
 import {mountStaffAccounts} from "./staff.js";
-import {mountPhase3} from "./phase3.js?v=sterling-payroll-modes-20261019";
+import {mountPhase3} from "./phase3.js?v=sterling-payroll-mode-ui-fix-20261019";
 // Phase 4 loads lazily, so a pending Pages deployment cannot break the sign-in screen.
 import {buildPayrollPreview,DEFAULT_POLICY} from "./phase3-core.js?v=sterling-payroll-modes-20261019";
 import {mountPhase2} from "./phase2.js?v=sterling-governance-20261018";
