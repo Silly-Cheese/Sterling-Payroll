@@ -415,3 +415,30 @@ test("only Sterling can grant company membership",async()=>{
  await assertFails(setDoc(doc(admin,"tenants","north","members","stranger"),fields));
  await assertSucceeds(setDoc(doc(owner,"tenants","north","members","stranger"),fields));
 });
+
+test("simulated tax policy accepts an authorized percentage and rejects rates over 100%",async()=>{
+ const db=as("owner"),ref=doc(db,"tenants","north","payrollPolicies","current");
+ const base={version:2,overtimeMultiplierHundredths:150,defaultBonusCents:0,defaultDeductionCents:200,
+  defaultTaxRateBasisPoints:1250,requireApprovedTime:true};
+ await assertFails(setDoc(ref,{...base,defaultTaxRateBasisPoints:10001}));
+ await assertSucceeds(setDoc(ref,base));
+ const updated={...base,version:3,defaultTaxRateBasisPoints:1500};
+ await assertSucceeds(updateDoc(ref,updated));
+ assert.equal((await getDoc(ref)).data().defaultTaxRateBasisPoints,1500);
+});
+test("tax details must reconcile with total deductions on draft pay lines",async()=>{
+ await env.withSecurityRulesDisabled(async context=>{
+  await setDoc(doc(context.firestore(),"tenants","north","payrollRuns","draft-tax"),{
+   status:"draft",periodStart:"2026-10-12",periodEnd:"2026-10-17",payDate:"2026-10-18",createdBy:"owner"
+  });
+ });
+ const db=as("owner"),path=doc(db,"tenants","north","payrollRuns","draft-tax","lines","e1");
+ const line={employeeId:"e1",employeeName:"Fictional Employee",payType:"hourly",regularHours:10,overtimeHours:0,
+  regularCents:20000,overtimeCents:0,bonusCents:0,commissionCents:0,
+  taxRateBasisPoints:1250,taxCents:2500,otherDeductionCents:1000,
+  deductionCents:3500,grossCents:20000,netCents:16500,policyVersion:2,paidLeaveHours:0};
+ await assertFails(setDoc(path,{...line,otherDeductionCents:2000}));
+ await assertSucceeds(setDoc(path,line));
+ await assertFails(updateDoc(path,{taxRateBasisPoints:10001}));
+ await assertSucceeds(updateDoc(path,{taxRateBasisPoints:1500,taxCents:3000,deductionCents:4000,netCents:16000}));
+});
