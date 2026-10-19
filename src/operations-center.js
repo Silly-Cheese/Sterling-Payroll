@@ -1,5 +1,5 @@
 import {collection,doc,getDoc,getDocs,query,orderBy,documentId,startAfter,limit,runTransaction,setDoc,addDoc,serverTimestamp} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
-import {schedulePeriods,validatePaySchedule,validatePeriodAgainstRuns,validateCompensationProfile,reconcileRun,payrollReadiness,groupedPayrollReport,CSV,validDate} from "./operations-core.js?v=sterling-ops30-20261019";
+import {schedulePeriods,validatePaySchedule,validatePeriodAgainstRuns,validateCompensationProfile,reconcileRun,payrollReadiness,groupedPayrollReport,CSV,validDate,plusDays} from "./operations-core.js?v=sterling-ops30-20261019";
 import {toCents,money} from "./payroll-core.js";
 const E=(tag,cls,value)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(value!==undefined)e.textContent=String(value);return e};
 const dateNow=()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-")};
@@ -100,10 +100,23 @@ export async function mountOperationsCenter({db,getState,notify,confirmAction,on
  function renderSchedules(){
   const entries=data.schedules.map(s=>{
    const next=schedulePeriods(s,1)[0];
-   return entry(s.name,s.cadence+" · "+s.processingMode+" · Next "+next.periodStart+" – "+next.periodEnd+" · Payday "+next.payDate,
-    canManage()?[btn("Preview",()=>previewSaved(s)),btn("Create next draft",()=>createFromSchedule(s),"primary")]:[]);
+   const buttons=canManage()?[btn("Preview",()=>previewSaved(s)),btn(s.active?"Pause schedule":"Resume schedule",()=>toggleSchedule(s))]:[];
+   if(canManage()&&s.active)buttons.push(btn("Create next draft",()=>createFromSchedule(s),"primary"));
+   return entry(s.name,s.cadence+" · "+s.processingMode+" · Next "+next.periodStart+" – "+next.periodEnd+
+    " · Payday "+next.payDate+(s.active?"":" · Paused"),buttons);
   });
   list($("opScheduleList"),entries,"No recurring schedules have been saved.");
+ }
+ async function toggleSchedule(s){
+  if(!canManage())throw Error("Payroll-management permission required.");
+  const {t,u,v}=account();guard(t,u,v);
+  const ref=doc(db,"tenants",t,"paySchedules",s.id);
+  await runTransaction(db,async tx=>{
+   const snapshot=await tx.get(ref);
+   if(!snapshot.exists())throw Error("Schedule was deleted.");
+   tx.update(ref,{active:!snapshot.data().active,updatedBy:u,updatedAt:serverTimestamp()});
+  });
+  notify("Schedule updated.");await refresh();activate("schedules");
  }
  function previewSaved(s){
   const periods=schedulePeriods(s,3);
@@ -201,12 +214,16 @@ export async function mountOperationsCenter({db,getState,notify,confirmAction,on
   guard(t,u,v);
   const id="scheduled-"+s.id+"-"+period.periodStart;
   const target=doc(db,"tenants",t,"payrollRuns",id);
+  const scheduleRef=doc(db,"tenants",t,"paySchedules",s.id);
   await runTransaction(db,async tx=>{
-   const snapshot=await tx.get(target);
+   const [snapshot,currentSchedule]=await Promise.all([tx.get(target),tx.get(scheduleRef)]);
    if(snapshot.exists())throw Error("This schedule's pay period was already generated.");
+   if(!currentSchedule.exists()||!currentSchedule.data().active)throw Error("Schedule is no longer active.");
+   if(currentSchedule.data().nextStart!==s.nextStart)throw Error("Schedule changed. Refresh and create the current period instead.");
    tx.set(target,{name:s.name+" · "+period.periodStart,processingMode:period.processingMode,
     periodStart:period.periodStart,periodEnd:period.periodEnd,payDate:period.payDate,
     status:"draft",createdAt:serverTimestamp(),createdBy:u,submittedBy:"",approvedBy:"",finalizedBy:""});
+   tx.update(scheduleRef,{nextStart:plusDays(period.periodEnd,1),updatedBy:u,updatedAt:serverTimestamp()});
   });
   notify("Scheduled draft created. Review its inputs before generating simulated pay lines.");
   await refreshCompany();
