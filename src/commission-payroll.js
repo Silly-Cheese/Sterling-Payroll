@@ -1,8 +1,9 @@
 import {collection,doc,getDoc,getDocs,query,where,limit} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 import {attachApprovedSales} from "./commission-core.js";
 import {calculateLine} from "./payroll-core.js";
+import {emptyCommissionLine,usesTimecards} from "./payroll-run-modes.js?v=sterling-payroll-modes-20261019";
 const MAX_SALES=140;
-export async function prepareRunCommissions(db,tenantId,run,lines,employees=[]){
+export async function prepareRunCommissions(db,tenantId,run,lines,employees=[],policy={}){
  let settings;
  try{settings=await getDoc(doc(db,"tenants",tenantId,"commissionSettings","current"))}
  catch(error){
@@ -37,8 +38,10 @@ export async function prepareRunCommissions(db,tenantId,run,lines,employees=[]){
    employee={id:record.id,...record.data()};
   }
   if(employee.status!=="active")throw Error("An approved sale references an inactive employee. Review it before payroll.");
-  const line=calculateLine({employee,regularHours:0,overtimeHours:0,bonusCents:0,deductionCents:0});
-  line.policyVersion=1;line.paidLeaveHours=0;
+  const line=usesTimecards(run.processingMode)?
+   calculateLine({employee,regularHours:0,overtimeHours:0,bonusCents:0,deductionCents:0}):
+   emptyCommissionLine(employee,policy);
+  if(usesTimecards(run.processingMode)){line.policyVersion=policy.version||1;line.paidLeaveHours=0;}
   filled.push(line);included.add(employee.id);
  }
  const prepared=attachApprovedSales(filled,eligible,run.periodStart,run.periodEnd);
