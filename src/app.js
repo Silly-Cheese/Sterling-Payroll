@@ -993,6 +993,7 @@ async function generateLines(run){
  // recalculated against the final amount after commissions are attached.
  const lines=applySimulatedTaxes(commission.lines,policy.defaultTaxRateBasisPoints||0);
  preview.lines=lines;
+ preview.sources=[...preview.sources,...(commission.applied||[]).map(sale=>"sale:"+sale.id)];
  preview.totals=summarizeLines(lines);
  if(!lines.length)throw Error(usesTimecards(run.processingMode)?
   "No eligible approved timecards or commission earnings for this pay period.":
