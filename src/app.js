@@ -809,7 +809,7 @@ function renderRunDetails(){
  $("runStatusChip").textContent=run.status.toUpperCase();
  $("runStatusChip").className="status-chip "+(run.status==="finalized"?"success":run.status==="rejected"?"danger":"");
  const totals=summarizeLines(state.lines),box=$("runTotals");box.replaceChildren();
- for(const [title,amount] of [["Employees",totals.employees],["Simulated gross",money(totals.grossCents)],["Commission earnings",money(state.lines.reduce((n,l)=>n+(l.commissionCents||0),0))],["Simulated net",money(totals.netCents)]]){
+ for(const [title,amount] of [["Employees",totals.employees],["Simulated gross",money(totals.grossCents)],["Commission earnings",money(state.lines.reduce((n,l)=>n+(l.commissionCents||0),0))],["Simulated taxes",money(state.lines.reduce((n,l)=>n+(l.taxCents||0),0))],["Simulated net",money(totals.netCents)]]){
   const el=mk("div","metric");el.append(mk("div","metric-label",title),mk("strong","",amount));box.append(el);
  }
  const wrap=$("runLines");wrap.replaceChildren();
