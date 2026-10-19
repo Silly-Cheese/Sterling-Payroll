@@ -110,7 +110,7 @@ export async function mountOperationsCenter({db,getState,notify,confirmAction,on
  async function toggleSchedule(s){
   if(!canManage())throw Error("Payroll-management permission required.");
   const {t,u,v}=account();guard(t,u,v);
-  const ref=doc(db,"tenants",t,"paySchedules",s.id);
+  const ref=doc(db,"tenants",t,"payCycleSchedules",s.id);
   await runTransaction(db,async tx=>{
    const snapshot=await tx.get(ref);
    if(!snapshot.exists())throw Error("Schedule was deleted.");
@@ -152,7 +152,7 @@ export async function mountOperationsCenter({db,getState,notify,confirmAction,on
   $("opReload").disabled=true;status("Reading company payroll, timekeeping, commissions, and authorized operations records…");
   loadErrors=[];const next={...data};
   const sources=[["employees",false],["timeEntries",false],["payrollRuns",false],["commissionSales",true],
-   ["paySchedules",true],["compensationProfiles",true],["compensationHistory",true],["auditEvents",true]];
+   ["payCycleSchedules",true],["compensationProfiles",true],["compensationHistory",true],["auditEvents",true]];
   for(const [source,optional] of sources){
    const property={timeEntries:"time",payrollRuns:"runs",commissionSales:"sales",paySchedules:"schedules",compensationProfiles:"profiles",compensationHistory:"history",auditEvents:"audit"}[source]||source;
    try{
@@ -214,7 +214,7 @@ export async function mountOperationsCenter({db,getState,notify,confirmAction,on
   guard(t,u,v);
   const id="scheduled-"+s.id+"-"+period.periodStart;
   const target=doc(db,"tenants",t,"payrollRuns",id);
-  const scheduleRef=doc(db,"tenants",t,"paySchedules",s.id);
+  const scheduleRef=doc(db,"tenants",t,"payCycleSchedules",s.id);
   await runTransaction(db,async tx=>{
    const [snapshot,currentSchedule]=await Promise.all([tx.get(target),tx.get(scheduleRef)]);
    if(snapshot.exists())throw Error("This schedule's pay period was already generated.");
@@ -246,7 +246,7 @@ export async function mountOperationsCenter({db,getState,notify,confirmAction,on
     processingMode:$("opMode").value,nextStart:$("opNextStart").value,payDelay:$("opPayDelay").value});
    if(!await confirmAction("Save pay schedule","Save "+schedule.name+" for the selected company? It will not automatically finalize or make payments."))return;
    guard(t,u,v);
-   await addDoc(coll(t,"paySchedules"),{...schedule,createdAt:serverTimestamp(),createdBy:u,updatedAt:serverTimestamp()});
+   await addDoc(coll(t,"payCycleSchedules"),{...schedule,createdAt:serverTimestamp(),createdBy:u,updatedAt:serverTimestamp()});
    notify("Pay schedule saved.");await refresh();activate("schedules");
   }catch(e){notify("Schedule: "+e.message,true)}
  };
