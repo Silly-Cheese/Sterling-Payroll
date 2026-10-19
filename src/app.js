@@ -393,7 +393,7 @@ function renderClients(){
    if(!await confirmAction("Client company status","Set "+c.name+" to "+status+"?"))return;
    const batch=writeBatch(db);
    batch.update(doc(db,"tenants",c.id),{status});
-   batch.set(doc(db,"tenants",c.id,"auditEvents"),{category:"client",action:"company-status",subject:c.id,detail:c.status+" → "+status,actor:state.user.uid,at:serverTimestamp()});
+   batch.set(doc(collection(db,"tenants",c.id,"auditEvents")),{category:"client",action:"company-status",subject:c.id,detail:c.status+" → "+status,actor:state.user.uid,at:serverTimestamp()});
    await batch.commit();await loadTenantDirectory();renderClients();toast("Client status updated.");
   },"small"));
   if(state.platformOwner)actions.push(button("Delete company",()=>ownerActions.remove("tenants",{id:c.id,name:c.name}),"small danger"));
@@ -797,7 +797,7 @@ $("renameRunForm").onsubmit=async event=>{
   if(!canRenameRun(current))throw Error("This payroll run is no longer editable.");
   if(current.name===name){renameDialog.close();toast("Payroll run name is unchanged.");return;}
   const target=doc(db,"tenants",company,"payrollRuns",runId);
-  const audit=doc(db,"tenants",company,"auditEvents");
+  const audit=doc(collection(db,"tenants",company,"auditEvents"));
   await runTransaction(db,async transaction=>{
    if(state.tenantId!==company||state.user?.uid!==actor)throw Error("Company changed during rename.");
    const snapshot=await transaction.get(target);
