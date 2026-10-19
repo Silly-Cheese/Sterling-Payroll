@@ -20,6 +20,19 @@ service cloud.firestore {
   function role(t){return get(memberPath(t)).data.role;}
   function clientAdmin(t){return platform() || (member(t) && role(t) == 'client_admin');}
   function payrollStaff(t){return platformOps() || clientAdmin(t) || (member(t) && role(t) == 'payroll_specialist');}
+  // Legacy runs without processingMode continue to use combined earnings.
+  function runMode(t,r){return get(runPath(t,r)).data.get('processingMode','combined');}
+  function validModeLine(t,r){
+   return (runMode(t,r) != 'timecards-only' ||
+     request.resource.data.get('commissionCents',0) == 0) &&
+    (runMode(t,r) != 'commissions-only' ||
+     (request.resource.data.regularCents == 0 &&
+      request.resource.data.overtimeCents == 0 &&
+      request.resource.data.bonusCents == 0 &&
+      request.resource.data.regularHours == 0 &&
+      request.resource.data.overtimeHours == 0 &&
+      request.resource.data.get('paidLeaveHours',0) == 0));
+  }
   function clientView(t){return platformView() || (member(t) && role(t) != 'employee');}
   function employeeLinkPath(t){return /databases/$(database)/documents/tenants/$(t)/employeeLinks/$(request.auth.uid);}
   function employeeLinked(t){return member(t) && exists(employeeLinkPath(t));}
@@ -607,7 +620,7 @@ service cloud.firestore {
     allow list: if clientView(t) || (employeeLinked(t) && resource.data.status == 'finalized');
     allow create: if payrollStaff(t) &&
      request.resource.data.keys().hasOnly(['periodStart','periodEnd','payDate','status','createdAt','createdBy',
-      'submittedBy','approvedBy','finalizedBy','correctionOf','correctionReason']) &&
+      'submittedBy','approvedBy','finalizedBy','correctionOf','correctionReason','name','processingMode']) &&
      date(request.resource.data.periodStart) && date(request.resource.data.periodEnd) &&
      date(request.resource.data.payDate) &&
      request.resource.data.periodStart <= request.resource.data.periodEnd &&
@@ -616,6 +629,9 @@ service cloud.firestore {
      request.resource.data.createdBy == request.auth.uid &&
      request.resource.data.submittedBy == '' && request.resource.data.approvedBy == '' &&
      request.resource.data.finalizedBy == '' &&
+     request.resource.data.get('name','') is string &&
+     request.resource.data.get('name','').size() <= 80 &&
+     request.resource.data.get('processingMode','combined') in ['combined','timecards-only','commissions-only'] &&
      request.resource.data.get('correctionOf','') is string &&
      request.resource.data.get('correctionReason','') is string &&
      (request.resource.data.get('correctionOf','') == '' ||
@@ -624,6 +640,14 @@ service cloud.firestore {
        exists(runPath(t,request.resource.data.correctionOf)) &&
        get(runPath(t,request.resource.data.correctionOf)).data.status == 'finalized'));
     allow update: if (
+       ((payrollStaff(t) && resource.data.status in ['draft','rejected']) || owner()) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name','nameUpdatedBy','nameUpdatedAt']) &&
+        request.resource.data.get('name','') is string &&
+        request.resource.data.name.size() > 0 &&
+        request.resource.data.name.size() <= 80 &&
+        request.resource.data.nameUpdatedBy == request.auth.uid &&
+        request.resource.data.nameUpdatedAt == request.time
+       ||
        (payrollStaff(t) && resource.data.status == 'draft' &&
         request.resource.data.status == 'submitted' &&
         request.resource.data.submittedBy == request.auth.uid &&
@@ -725,7 +749,7 @@ service cloud.firestore {
        request.resource.data.get('policyVersion',1) is int &&
        request.resource.data.get('paidLeaveHours',0) is number &&
        request.resource.data.get('paidLeaveHours',0) >= 0 &&
-       request.resource.data.get('paidLeaveHours',0) <= 744;
+       request.resource.data.get('paidLeaveHours',0) <= 744 && validModeLine(t,r);
      allow update: if (
       (payrollStaff(t) && exists(runPath(t,r)) && get(runPath(t,r)).data.status == 'draft' &&
        exists(employeePath(t,employeeId)) &&
@@ -746,7 +770,7 @@ service cloud.firestore {
        request.resource.data.grossCents == request.resource.data.regularCents +
         request.resource.data.overtimeCents + request.resource.data.bonusCents +
         request.resource.data.get('commissionCents',0) &&
-       request.resource.data.netCents == request.resource.data.grossCents - request.resource.data.deductionCents)
+       request.resource.data.netCents == request.resource.data.grossCents - request.resource.data.deductionCents && validModeLine(t,r))
       ||
       (owner() && get(runPath(t,r)).data.status == 'finalized' &&
        validRevision(t,r,'line',employeeId) &&
@@ -762,7 +786,7 @@ service cloud.firestore {
         request.resource.data.get('commissionCents',0) &&
        request.resource.data.netCents == request.resource.data.grossCents - request.resource.data.deductionCents &&
        request.resource.data.lastCorrectedBy == request.auth.uid &&
-       request.resource.data.lastCorrectedAt == request.time)
+       request.resource.data.lastCorrectedAt == request.time && validModeLine(t,r))
      );
      allow delete: if owner() || (payrollStaff(t) && exists(runPath(t,r)) &&
        get(runPath(t,r)).data.status == 'draft');
