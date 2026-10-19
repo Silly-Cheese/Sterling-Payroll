@@ -93,7 +93,7 @@ export function validateLeave(form){
 export function csvStatement({company,run,lines}){
  const quote=v=>'"'+String(v??"").replaceAll('"','""')+'"';
  const rows=[["Sterling Payroll — SIMULATED PAY ONLY"],["Company",company],["Period",run.periodStart+" through "+run.periodEnd],["Simulated pay date",run.payDate],
-  ["Employee","Regular","Overtime","Bonus","Commission","Deductions","Gross","Net"],
-  ...lines.map(l=>[l.employeeName,l.regularCents,l.overtimeCents,l.bonusCents,l.commissionCents||0,l.deductionCents,l.grossCents,l.netCents].map((v,i)=>i===0?v:(v/100).toFixed(2)))];
+  ["Employee","Regular","Overtime","Bonus","Commission","Simulated taxes","Tax rate (%)","Other deductions","Total deductions","Gross","Net"],
+  ...lines.map(l=>[l.employeeName,(l.regularCents/100).toFixed(2),(l.overtimeCents/100).toFixed(2),(l.bonusCents/100).toFixed(2),((l.commissionCents||0)/100).toFixed(2),((l.taxCents||0)/100).toFixed(2),((l.taxRateBasisPoints||0)/100).toFixed(2),((l.otherDeductionCents??((l.deductionCents||0)-(l.taxCents||0)))/100).toFixed(2),((l.deductionCents||0)/100).toFixed(2),(l.grossCents/100).toFixed(2),(l.netCents/100).toFixed(2)])];
  return rows.map(r=>r.map(quote).join(",")).join("\r\n");
 }
