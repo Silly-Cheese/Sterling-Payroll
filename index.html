@@ -203,8 +203,16 @@
           <div class="two-col asymmetric">
             <article class="panel"><h2>New payroll run</h2><p class="muted">Create a draft period, then generate fictional pay line items from employee compensation and time records.</p>
               <form id="runForm" class="form-stack">
-                <label>Payroll run name (optional)<input id="runName" type="text" maxlength="80" autocomplete="off" placeholder="October 2026 · Regular payroll"></label>
-                <p class="fine-print">Use a name to distinguish payroll runs. Dates remain attached for accurate records.</p>
+                <label>Payroll run name (optional)<input id="runName" type="text" maxlength="80" autocomplete="off" placeholder="October bonus run · Sterling Motors"></label>
+                <p class="fine-print">Give the run a recognizable name. You can rename it later with the appropriate permissions.</p>
+                <fieldset class="payroll-processing-fieldset">
+                  <legend>Which earnings should this run include?</legend>
+                  <label class="payroll-processing-option"><input type="radio" name="runProcessingModeChoice" value="combined" checked><span><strong>Timecards + commissions</strong><small>Regular wages, overtime, leave and approved sales commissions</small></span></label>
+                  <label class="payroll-processing-option"><input type="radio" name="runProcessingModeChoice" value="timecards-only"><span><strong>Timecards only</strong><small>Regular wages, overtime and leave; no sales commission</small></span></label>
+                  <label class="payroll-processing-option"><input type="radio" name="runProcessingModeChoice" value="commissions-only"><span><strong>Commissions only</strong><small>Approved sales only; no hourly wages, salaries, leave or bonuses</small></span></label>
+                  <select id="runProcessingMode" class="hidden" aria-label="Payroll processing mode" tabindex="-1"><option value="combined" selected>Timecards and commissions</option><option value="timecards-only">Timecards only</option><option value="commissions-only">Commissions only</option></select>
+                </fieldset>
+                <p class="fine-print">The processing mode is fixed when you create the run. Existing payroll runs continue using their original combined behavior.</p>
                 <label>Period start<input id="periodStart" type="date" required></label>
                 <label>Period end<input id="periodEnd" type="date" required></label>
                 <label>Simulated payday<input id="payDate" type="date" required></label>
