@@ -21,7 +21,7 @@ jobs:
       - name: Assemble public site
         run: |
           mkdir -p _site/src
-          cp index.html *.css favicon.svg phase2.html phase3-time.html phase3-payroll.html phase4.html phase5.html phase6.html commissions.html _site/
+          cp index.html *.css favicon.svg phase2.html phase3-time.html phase3-payroll.html phase4.html phase5.html phase6.html commissions.html operations-center.html _site/
           # Copy every source module so additions cannot silently break Pages.
           cp src/*.js _site/src/
           touch _site/.nojekyll
