@@ -438,6 +438,7 @@ test("tax details must reconcile with total deductions on draft pay lines",async
   taxRateBasisPoints:1250,taxCents:2500,otherDeductionCents:1000,
   deductionCents:3500,grossCents:20000,netCents:16500,policyVersion:2,paidLeaveHours:0};
  await assertFails(setDoc(path,{...line,otherDeductionCents:2000}));
+ await assertFails(setDoc(path,{...line,taxRateBasisPoints:1500}));
  await assertSucceeds(setDoc(path,line));
  await assertFails(updateDoc(path,{taxRateBasisPoints:10001}));
  await assertSucceeds(updateDoc(path,{taxRateBasisPoints:1500,taxCents:3000,deductionCents:4000,netCents:16000}));
