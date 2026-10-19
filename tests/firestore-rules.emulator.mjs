@@ -308,6 +308,36 @@ test("commission plans validate percentage and fixed settings; sale amount must 
  await assertFails(setDoc(doc(db,base+"commissionSales/badfixed"),{...sale,employeeId:"e2",type:"fixed",rateBasisPoints:0,fixedCents:1500,
   commissionCents:2500,createdBy:"admin"}));
 });
+
+
+test("only Sterling owner can delete commission assignments without removing historical sales or pay lines",async()=>{
+ const base="tenants/north/";
+ await env.withSecurityRulesDisabled(async context=>{
+  const db=context.firestore();
+  await setDoc(doc(db,base+"commissionPlans/e1"),{
+   employeeId:"e1",type:"percent",rateBasisPoints:2500,fixedCents:0,
+   active:true,updatedBy:"admin"
+  });
+  await setDoc(doc(db,base+"commissionSales/history-one"),{
+   employeeId:"e1",saleDate:"2026-10-12",description:"Historical sale",
+   saleAmountCents:40000,commissionCents:10000,type:"percent",
+   rateBasisPoints:2500,fixedCents:0,status:"approved",
+   approvedBy:"owner",paidRunId:"p1",createdBy:"admin"
+  });
+ });
+ const assignment=doc(as("owner"),base+"commissionPlans/e1");
+ await assertFails(deleteDoc(doc(as("viewer"),base+"commissionPlans/e1")));
+ await assertFails(deleteDoc(doc(as("admin"),base+"commissionPlans/e1")));
+ await assertSucceeds(deleteDoc(assignment));
+ assert.equal((await getDoc(assignment)).exists(),false);
+ const history=await getDoc(doc(as("owner"),base+"commissionSales/history-one"));
+ assert.equal(history.exists(),true);
+ assert.equal(history.data().commissionCents,10000);
+ assert.equal(history.data().paidRunId,"p1");
+ const finalized=await getDoc(doc(as("owner"),base+"payrollRuns/p1/lines/e1"));
+ assert.equal(finalized.exists(),true);
+});
+
 test("only approved commission sales can be claimed by a draft payroll, and not twice",async()=>{
  const owner=as("owner"),admin=as("admin"),base="tenants/north/";
  await env.withSecurityRulesDisabled(async c=>{
