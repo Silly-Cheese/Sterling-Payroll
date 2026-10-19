@@ -518,7 +518,7 @@ service cloud.firestore {
    // This does not grant clients rights to edit Sterling billing/agreements.
    match /compensationProfiles/{employeeId} {
     allow get,list: if clientView(t);
-    allow create,update: if payrollStaff(t) &&
+    allow create,update: if clientAdmin(t) &&
      exists(employeePath(t,employeeId)) &&
      request.resource.data.keys().hasOnly(['employeeId','effectiveFrom','taxRateBasisPoints','recurringDeductionCents','updatedAt','updatedBy']) &&
      request.resource.data.employeeId == employeeId &&
@@ -534,7 +534,7 @@ service cloud.firestore {
    // Append-only compensation policy history for past-effective calculation.
    match /compensationHistory/{changeId} {
     allow get,list: if clientView(t);
-    allow create: if payrollStaff(t) &&
+    allow create: if clientAdmin(t) &&
      request.resource.data.keys().hasOnly(['employeeId','effectiveFrom','taxRateBasisPoints','recurringDeductionCents','changedAt','changedBy']) &&
      text(request.resource.data.employeeId,128) &&
      exists(employeePath(t,request.resource.data.employeeId)) &&
