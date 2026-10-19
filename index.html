@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="./styles.css?v=sterling-governance-20261018">
   <link rel="stylesheet" href="./ui-system.css?v=sterling-commission-plan-delete-20261019">
   <link rel="stylesheet" href="./payroll-refresh.css?v=sterling-payroll-modes-20261019">
+  <link rel="stylesheet" href="./operations-center.css?v=sterling-ops30-20261019">
 </head>
 <body>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
@@ -57,6 +58,7 @@
         <button data-page="employees" class="nav-item client-only" type="button"><span class="nav-icon" aria-hidden="true">♙</span> Employees</button>
         <button data-page="time" class="nav-item client-only" type="button"><span class="nav-icon" aria-hidden="true">◷</span> Timekeeping</button>
         <button data-page="payroll" class="nav-item client-only" type="button"><span class="nav-icon" aria-hidden="true">▣</span> Payroll Runs</button>
+        <button data-page="command" class="nav-item client-only" type="button"><span class="nav-icon" aria-hidden="true">◉</span> Operations Center</button>
         <button data-page="commissions" class="nav-item client-only hidden" type="button"><span class="nav-icon" aria-hidden="true">◇</span> Commissions</button>
         <button data-page="employeePortal" class="nav-item client-only hidden" type="button"><span class="nav-icon" aria-hidden="true">♧</span> Employee Portal</button>
         <div class="nav-section-heading client-only">MANAGEMENT & SUPPORT</div>
@@ -110,6 +112,7 @@
           </div>
         </section>
         
+        <section id="page-command" class="page hidden"><div id="ops30Root"></div></section>
         <section id="page-assurance" class="page hidden"><div id="phase6Suite"></div></section>
         <section id="page-service" class="page hidden"><div id="phase5Suite"></div></section>
         <section id="page-commissions" class="page hidden"><div id="commissionsWorkspace"></div></section>
