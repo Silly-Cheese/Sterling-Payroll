@@ -14,10 +14,32 @@ export async function mountPhase3({db,getState,refreshCompany,notify,confirmActi
  const time=document.getElementById("phase3Time"),payroll=document.getElementById("phase3Payroll");
  if(!time||!payroll)throw Error("Phase 3 workspace containers missing");
  const html=await Promise.all(["phase3-time.html","phase3-payroll.html"].map(async name=>{
-  const response=await fetch("./"+name+"?v=sterling-sim-tax-20261018");if(!response.ok)throw Error("Missing "+name);return response.text()
+  const response=await fetch("./"+name+"?v=sterling-payroll-mode-ui-fix-20261019",{cache:"no-store"});if(!response.ok)throw Error("Missing "+name);return response.text()
  }));
  time.innerHTML=html[0];payroll.innerHTML=html[1];
  const $=id=>document.getElementById(id),S=()=>getState();
+ // Older hosted partials may outlive the app module in a browser/CDN cache.
+ // Repair the optional tax setting in-place rather than crashing the entire
+ // company workspace when the partial and application are different versions.
+ function ensureTaxRateInput(){
+  const found=$("p3TaxRate");
+  if(found)return found;
+  const form=$("p3PolicyForm");
+  if(!form)throw Error("Payroll policy form was not deployed. Refresh after GitHub Pages finishes publishing.");
+  const label=document.createElement("label");
+  label.textContent="Default simulated tax deduction (% of gross pay)";
+  const input=document.createElement("input");
+  input.type="number";input.id="p3TaxRate";input.min="0";input.max="100";
+  input.step="0.01";input.value="0.00";
+  label.append(input);
+  const save=form.querySelector('button[type="submit"]');
+  form.insertBefore(label,save);
+  const hint=document.createElement("p");hint.className="fine-print";
+  hint.textContent="This is a fictional withholding percentage, not a real tax calculation.";
+  form.insertBefore(hint,save);
+  return input;
+ }
+ ensureTaxRateInput();
  let corrections=[],leaves=[],policy=DEFAULT_POLICY,tenantLoaded="";
  const tcol=name=>collection(db,"tenants",S().tenantId,name);
  const tdoc=(name,id)=>doc(db,"tenants",S().tenantId,name,id);
@@ -68,7 +90,7 @@ export async function mountPhase3({db,getState,refreshCompany,notify,confirmActi
   $("p3Multiplier").value=String(policy.overtimeMultiplierHundredths);
   $("p3Bonus").value=(policy.defaultBonusCents/100).toFixed(2);
   $("p3Deduction").value=(policy.defaultDeductionCents/100).toFixed(2);
-  $("p3TaxRate").value=((policy.defaultTaxRateBasisPoints||0)/100).toFixed(2);
+  ensureTaxRateInput().value=((policy.defaultTaxRateBasisPoints||0)/100).toFixed(2);
   $("p3PolicyStatus").textContent="Policy version "+policy.version+" • Approved time required";
   $("p3PolicyForm").classList.toggle("hidden",!adminAllowed());
   $("p3CorrectionForm").classList.toggle("hidden",!writeAllowed());
@@ -180,8 +202,8 @@ export async function mountPhase3({db,getState,refreshCompany,notify,confirmActi
   try{
    if(!adminAllowed())throw Error("Client administrator required");
    const next=validatePolicy({version:policy.version+1,overtimeMultiplierHundredths:Number($("p3Multiplier").value),
-    defaultBonusCents:toCents($("p3Bonus").value),defaultDeductionCents:toCents($("p3Deduction").value),defaultTaxRateBasisPoints:taxBasisPoints($("p3TaxRate").value),requireApprovedTime:true});
-   if(!await confirmAction("Change pay policy","Apply this fictional payroll policy, including "+$("p3TaxRate").value+"% simulated taxes on gross earnings, to future draft generations? Previously finalized payroll remains unchanged."))return;
+    defaultBonusCents:toCents($("p3Bonus").value),defaultDeductionCents:toCents($("p3Deduction").value),defaultTaxRateBasisPoints:taxBasisPoints(ensureTaxRateInput().value),requireApprovedTime:true});
+   if(!await confirmAction("Change pay policy","Apply this fictional payroll policy, including "+ensureTaxRateInput().value+"% simulated taxes on gross earnings, to future draft generations? Previously finalized payroll remains unchanged."))return;
    if(tenantLoaded!==S().tenantId)throw Error("Company changed; refresh first");
    if(policy.version===1&&!(await getDoc(tdoc("payrollPolicies","current"))).exists())await setDoc(tdoc("payrollPolicies","current"),next);
    else await updateDoc(tdoc("payrollPolicies","current"),next);
