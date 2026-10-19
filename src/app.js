@@ -1110,7 +1110,7 @@ onAuthStateChanged(auth,async user=>{
   }
   if(!commissionsUI){
    try{
-    const {mountCommissions}=await import("./commissions.js?v=sterling-commission-studio-r4-20261018");
+    const {mountCommissions}=await import("./commissions.js?v=sterling-commission-plan-delete-20261019");
     commissionsUI=await mountCommissions({db,getState:()=>state,notify:toast,confirmAction,
      ownerDelete:(kind,record)=>ownerActions.remove(kind,record)});
    }catch(error){console.error("Commission module unavailable",error);toast("Commission tools are not available; check GitHub Pages deployment.",true)}
