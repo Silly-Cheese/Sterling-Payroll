@@ -1,6 +1,7 @@
 import {collection,doc,getDoc,getDocs,addDoc,updateDoc,setDoc,serverTimestamp,query,limit,orderBy,documentId,startAfter} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 import {toCents,money} from "./payroll-core.js";
 import {taxBasisPoints} from "./payroll-tax-core.js?v=sterling-sim-tax-20261018";
+import {usesTimecards,payrollRunModeLabel} from "./payroll-run-modes.js?v=sterling-payroll-modes-20261019";
 import {readCompletePages} from "./payroll-paging.js?v=sterling-complete-payroll-20261017";
 import {mountBulkTimecardApprovals} from "./timecard-bulk.js?v=sterling-timekeeping-20261018";
 import {DEFAULT_POLICY,validatePolicy,validReviewTransition,validateCorrection,validateLeave,buildPayrollPreview,csvStatement} from "./phase3-core.js?v=sterling-sim-tax-20261018";
@@ -198,28 +199,33 @@ export async function mountPhase3({db,getState,refreshCompany,notify,confirmActi
   const status=$("p3RunReview");
   const setProgress=()=>{
    if(S().tenantId===companyId)
-    status.textContent="Loading complete company payroll data… "+
+    status.textContent="Loading "+payrollRunModeLabel(run.processingMode).toLowerCase()+" inputs… "+
      counts.employees+" employees · "+counts.timeEntries+" timecards · "+
      counts.timeCorrections+" corrections · "+counts.leaveRequests+" leave records";
   };
   setProgress();
   try{
-   const kinds=["employees","timeEntries","timeCorrections","leaveRequests"];
-   const [employees,entries,allCorrections,allLeaves,policyDoc]=await Promise.all([
-    ...kinds.map(kind=>loadAll(companyId,kind,check,({count})=>{
-     counts[kind]=count;
-     setProgress();
-    })),
+   const timeRequired=usesTimecards(run.processingMode);
+   const kinds=timeRequired?["employees","timeEntries","timeCorrections","leaveRequests"]:["employees"];
+   const [sets,policyDoc]=await Promise.all([
+    Promise.all(kinds.map(kind=>loadAll(companyId,kind,check,({count})=>{
+     counts[kind]=count;setProgress();
+    }))),
     getDoc(doc(db,"tenants",companyId,"payrollPolicies","current"))
    ]);
    check();
+   const [employees,entries=[],allCorrections=[],allLeaves=[]]=sets;
    const currentPolicy=policyDoc.exists()?validatePolicy(policyDoc.data()):DEFAULT_POLICY;
-   const preview=buildPayrollPreview({employees,entries,corrections:allCorrections,
-    leaveRequests:allLeaves,policy:currentPolicy,start:run.periodStart,end:run.periodEnd});
+   const preview=timeRequired?
+    buildPayrollPreview({employees,entries,corrections:allCorrections,
+     leaveRequests:allLeaves,policy:currentPolicy,start:run.periodStart,end:run.periodEnd}):
+    {lines:[],issues:[],sources:[],totals:null};
    check();
    status.textContent=preview.issues.length?
     preview.issues.length+" unresolved exceptions: "+preview.issues.map(x=>x.kind+" ("+x.detail+")").slice(0,12).join(", "):
-    preview.lines.length+" ready payroll lines • "+(preview.totals?money(preview.totals.grossCents):"$0.00")+" simulated gross";
+    timeRequired?
+     preview.lines.length+" timecard payroll lines • "+(preview.totals?money(preview.totals.grossCents):"$0.00")+" before any commissions":
+     "Commission-only run: timecards and salary wages are excluded. Approved sales will be loaded for the selected period.";
    return {preview,policy:currentPolicy,employees};
   }catch(error){
    if(S().tenantId===companyId)status.textContent="Could not load complete payroll inputs: "+(error.message||error);
