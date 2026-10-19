@@ -18,6 +18,7 @@ import {planPayrollDraftWrites} from "./payroll-write-plan.js?v=sterling-payroll
 import {payrollNextSteps} from "./payroll-workflow.js?v=sterling-payroll-overhaul-20261018";
 import {mountPaylineEditor} from "./payroll-line-editor.js?v=sterling-payroll-overhaul-20261018";
 import {mountPayrollExperience} from "./payroll-experience.js?v=sterling-payroll-overhaul-20261018";
+import {applySimulatedTaxes} from "./payroll-tax-core.js?v=sterling-sim-tax-20261018";
 
 const app=initializeApp({
  apiKey:"AIzaSyBAAAUc0nDiiD7zfURjohVj1UBA-1yQmV0",
@@ -817,7 +818,7 @@ function renderRunDetails(){
  else if(!visibleLines.length)wrap.append(mk("p","muted","No employees match that search. Clear it to see the full draft."));
  else{
   const table=mk("table"),head=mk("thead"),hrow=mk("tr");
-  for(const label of ["Employee","Regular","Overtime","Bonus","Commission","Deductions","Gross","Net","Adjust"] )hrow.append(mk("th","",label));
+  for(const label of ["Employee","Regular","Overtime","Bonus","Commission","Simulated taxes","Total deductions","Gross","Net","Adjust"] )hrow.append(mk("th","",label));
   head.append(hrow);table.append(head);
   const tbody=mk("tbody");
   for(const line of visibleLines){
@@ -825,7 +826,7 @@ function renderRunDetails(){
    const moneyColumns=[
     ["Employee",line.employeeName],["Regular",money(line.regularCents)],
     ["Overtime",money(line.overtimeCents)],["Bonus",money(line.bonusCents)],
-    ["Commission",money(line.commissionCents||0)],["Deductions",money(line.deductionCents)],
+    ["Commission",money(line.commissionCents||0)],["Simulated taxes",money(line.taxCents||0)],["Total deductions",money(line.deductionCents)],
     ["Gross",money(line.grossCents)],["Net",money(line.netCents)]
    ];
    for(const [label,value] of moneyColumns){
@@ -844,7 +845,7 @@ function renderRunDetails(){
       if(!runSnapshot.exists()||runSnapshot.data().status!=="draft")throw Error("Payroll is no longer an editable draft.");
       if(!lineSnapshot.exists())throw Error("This employee pay line was removed.");
       const current=lineSnapshot.data();
-      for(const field of ["regularCents","overtimeCents","commissionCents","bonusCents","deductionCents"]){
+      for(const field of ["regularCents","overtimeCents","commissionCents","bonusCents","deductionCents","taxCents","taxRateBasisPoints","otherDeductionCents"]){
        if((current[field]||0)!==(line[field]||0))throw Error("Another user changed this pay line. Reopen it to see the latest amounts.");
       }
       transaction.update(lineRef,values);
@@ -897,7 +898,9 @@ async function generateLines(run){
  }catch(error){
   throw Error("Commission preparation failed ("+(error?.code||error?.message||error)+"). Check the company commission permissions; payroll lines were not changed.");
  }
- const lines=commission.lines;
+ // Commissions affect gross earnings, so simulated tax withholding must be
+ // recalculated against the final amount after commissions are attached.
+ const lines=applySimulatedTaxes(commission.lines,policy.defaultTaxRateBasisPoints||0);
  preview.lines=lines;
  preview.totals=summarizeLines(lines);
  if(!lines.length)throw Error("No approved simulated earnings for this period");
