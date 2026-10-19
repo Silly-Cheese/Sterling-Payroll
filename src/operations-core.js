@@ -119,3 +119,27 @@ export function CSV(rows){
  const quote=x=>'"'+String(x??"").replace(/"/g,'""')+'"';
  return rows.map(row=>row.map(quote).join(",")).join("\r\n")+"\r\n";
 }
+
+export function validateGeneratedPayLines(lines,run){
+ if(!Array.isArray(lines)||!run)throw Error("Missing payroll draft inputs.");
+ const problems=[],seen=new Set(),mode=run.processingMode||"combined";
+ if(!VALID_MODES.includes(mode))problems.push("Invalid processing mode.");
+ if(!lines.length)problems.push("No calculated pay lines.");
+ for(const l of lines){
+  const who=l.employeeName||l.employeeId||"Unknown employee";
+  if(!l.employeeId||seen.has(l.employeeId))problems.push("Duplicate or invalid employee: "+who);
+  seen.add(l.employeeId);
+  for(const key of ["regularCents","overtimeCents","bonusCents","commissionCents","taxCents","deductionCents","grossCents","netCents"]){
+   if(!Number.isSafeInteger(l[key]??0)||(l[key]??0)<0)problems.push(who+": invalid "+key);
+  }
+  if((l.regularCents||0)+(l.overtimeCents||0)+(l.bonusCents||0)+(l.commissionCents||0)!==l.grossCents)
+   problems.push(who+": gross earnings do not reconcile.");
+  if(l.grossCents-l.deductionCents!==l.netCents)problems.push(who+": net earnings do not reconcile.");
+  if((l.taxCents||0)+(l.otherDeductionCents??(l.deductionCents-(l.taxCents||0)))!==l.deductionCents)
+   problems.push(who+": tax and other deductions do not reconcile.");
+  if(mode==="commissions-only"&&((l.regularCents||0)||(l.overtimeCents||0)||(l.bonusCents||0)||
+    (l.regularHours||0)||(l.overtimeHours||0)||(l.paidLeaveHours||0)))problems.push(who+": wages in commission-only run.");
+  if(mode==="timecards-only"&&(l.commissionCents||0))problems.push(who+": commissions in timecard-only run.");
+ }
+ return {ready:problems.length===0,problems};
+}
