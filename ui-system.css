@@ -349,3 +349,24 @@ body[data-density="compact"] .page .panel{padding:clamp(14px,1.5vw,20px)}
  #commissionsWorkspace .commission-approval-toolbar .commission-toolbar-buttons{width:100%}
  #commissionsWorkspace .commission-approval-toolbar .commission-toolbar-buttons .btn{flex:1 1 auto}
 }
+
+
+/* Destructive plan action stays visually separate from ordinary editing. */
+#commissionsWorkspace .commission-row-actions .btn.danger,
+#commissionsWorkspace #commissionPlanDelete{
+ background:#382523;
+ border-color:#875955;
+ color:#ffd1c9;
+}
+#commissionsWorkspace .commission-row-actions .btn.danger:hover,
+#commissionsWorkspace #commissionPlanDelete:hover{
+ background:#50302c;
+ border-color:#c17a73;
+}
+#commissionsWorkspace #commissionPlanDelete:not(.hidden){margin-inline-end:auto}
+@media(max-width:650px){
+ #commissionsWorkspace #commissionPlanDelete:not(.hidden){
+  margin-inline-end:0;
+  order:3;
+ }
+}
