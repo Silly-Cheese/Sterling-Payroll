@@ -254,6 +254,7 @@ export async function mountPhase3({db,getState,refreshCompany,notify,confirmActi
    if(!source||source.status!=="finalized"||reason.length<6||reason.length>200)throw Error("Choose a finalized run and provide a reason (6–200 characters)");
    if(!await confirmAction("Create correction payroll","Create a separate correction draft for "+source.periodEnd+"? Original finalized run will remain unchanged."))return;
    await addDoc(tcol("payrollRuns"),{periodStart:source.periodStart,periodEnd:source.periodEnd,payDate:source.payDate,
+    processingMode:source.processingMode||"combined",
     status:"draft",createdAt:serverTimestamp(),createdBy:S().user.uid,submittedBy:"",approvedBy:"",finalizedBy:"",
     correctionOf:source.id,correctionReason:reason});
    await refreshCompany();await refresh();notify("Correction draft created. Open it to regenerate simulated lines.");
