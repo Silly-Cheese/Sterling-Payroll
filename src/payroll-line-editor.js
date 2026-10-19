@@ -1,4 +1,4 @@
-import {calculateTaxAdjustment} from "./payroll-tax-core.js";
+import {calculateTaxAdjustment} from "./payroll-tax-core.js?v=sterling-sim-tax-20261018";
 import {money} from "./payroll-core.js";
 export function mountPaylineEditor(){
  const dialog=document.createElement("dialog");
