@@ -54,7 +54,13 @@ function toast(text,error=false){
 }
 function fail(error,prefix="Operation failed"){
  console.error(prefix,error);
- toast(prefix+": "+String(error?.code||error?.message||error),true);
+ const code=String(error?.code||"");
+ const details=String(error?.message||error||"");
+ const permissions=code.includes("permission-denied")||details.includes("Missing or insufficient permissions");
+ const message=permissions?
+  "Firebase denied this operation. Check the signed-in role and whether this repository's Firestore rules have been published to the correct Firebase project.":
+  details;
+ toast(prefix+": "+message,true);
 }
 const mk=(tag,cls,text)=>{const el=document.createElement(tag);if(cls)el.className=cls;if(text!==undefined)el.textContent=String(text);return el};
 function button(label,fn,cls=""){
