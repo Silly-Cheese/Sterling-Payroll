@@ -22,6 +22,7 @@ import {normalizePayrollRunName,payrollRunLabel,payrollRunSubtitle} from "./payr
 import {normalizePayrollRunMode,usesCommissions,usesTimecards,payrollRunModeLabel} from "./payroll-run-modes.js?v=sterling-payroll-modes-20261019";
 import {applySimulatedTaxes} from "./payroll-tax-core.js?v=sterling-sim-tax-20261018";
 import {applyEffectiveCompensation} from "./profile-payroll.js?v=sterling-ops30-20261019";
+import {validateGeneratedPayLines} from "./operations-core.js?v=sterling-ops30-20261019";
 
 const app=initializeApp({
  apiKey:"AIzaSyBAAAUc0nDiiD7zfURjohVj1UBA-1yQmV0",
@@ -1021,6 +1022,9 @@ async function generateLines(run){
  preview.lines=lines;
  preview.sources=[...preview.sources,...(commission.applied||[]).map(sale=>"sale:"+sale.id)];
  preview.totals=summarizeLines(lines);
+ const preflight=validateGeneratedPayLines(lines,run);
+ if(!preflight.ready)throw Error("Payroll integrity check prevented writing incorrect pay lines: "+
+  preflight.problems.slice(0,7).join(" • "));
  if(!lines.length)throw Error(usesTimecards(run.processingMode)?
   "No eligible approved timecards or commission earnings for this pay period.":
   "No approved commission sales were found in this period. Approve eligible sales first.");
