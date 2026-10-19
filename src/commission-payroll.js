@@ -2,8 +2,9 @@ import {collection,doc,getDoc,getDocs,query,where,limit} from "https://www.gstat
 import {attachApprovedSales} from "./commission-core.js";
 import {calculateLine} from "./payroll-core.js";
 import {emptyCommissionLine,usesTimecards} from "./payroll-run-modes.js?v=sterling-payroll-modes-20261019";
+import {currentCompensation} from "./payroll-next-core.js?v=sterling-next-20261018";
 const MAX_SALES=140;
-export async function prepareRunCommissions(db,tenantId,run,lines,employees=[],policy={}){
+export async function prepareRunCommissions(db,tenantId,run,lines,employees=[],policy={},compensationChanges=[]){
  let settings;
  try{settings=await getDoc(doc(db,"tenants",tenantId,"commissionSettings","current"))}
  catch(error){
@@ -38,9 +39,19 @@ export async function prepareRunCommissions(db,tenantId,run,lines,employees=[],p
    employee={id:record.id,...record.data()};
   }
   if(employee.status!=="active")throw Error("An approved sale references an inactive employee. Review it before payroll.");
+  const compensation=currentCompensation({versions:compensationChanges.filter(x=>x.employeeId===employee.id)},run.periodEnd);
+  const effective=compensation?{...employee,...(employee.payType==="hourly"?
+   {hourlyRateCents:compensation.hourlyRateCents}:{annualSalaryCents:compensation.annualSalaryCents})}:employee;
   const line=usesTimecards(run.processingMode)?
-   calculateLine({employee,regularHours:0,overtimeHours:0,bonusCents:0,deductionCents:0}):
-   emptyCommissionLine(employee,policy);
+   calculateLine({employee:effective,regularHours:0,overtimeHours:0,bonusCents:0,deductionCents:0}):
+   emptyCommissionLine(effective,policy);
+  if(compensation){
+   line.taxRateBasisPoints=compensation.taxRateBasisPoints;
+   if(!usesTimecards(run.processingMode)){
+    line.deductionCents=compensation.recurringDeductionCents;
+    line.otherDeductionCents=compensation.recurringDeductionCents;
+   }
+  }
   if(usesTimecards(run.processingMode)){line.policyVersion=policy.version||1;line.paidLeaveHours=0;}
   filled.push(line);included.add(employee.id);
  }
