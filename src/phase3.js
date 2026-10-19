@@ -219,7 +219,7 @@ export async function mountPhase3({db,getState,refreshCompany,notify,confirmActi
    if(S().tenantId!==companyId||S().user?.uid!==actor||S().selectedRun!==selectedRun)
     throw Error("Company, account, or payroll selection changed; retry.");
   };
-  const counts={employees:0,timeEntries:0,timeCorrections:0,leaveRequests:0};
+  const counts={employees:0,timeEntries:0,timeCorrections:0,leaveRequests:0,compensationChanges:0};
   const status=$("p3RunReview");
   const setProgress=()=>{
    if(S().tenantId===companyId)
@@ -231,18 +231,24 @@ export async function mountPhase3({db,getState,refreshCompany,notify,confirmActi
   try{
    const timeRequired=usesTimecards(run.processingMode);
    const kinds=timeRequired?["employees","timeEntries","timeCorrections","leaveRequests"]:["employees"];
-   const [sets,policyDoc]=await Promise.all([
+   const [sets,policyDoc,compensationChanges]=await Promise.all([
     Promise.all(kinds.map(kind=>loadAll(companyId,kind,check,({count})=>{
      counts[kind]=count;setProgress();
     }))),
-    getDoc(doc(db,"tenants",companyId,"payrollPolicies","current"))
+    getDoc(doc(db,"tenants",companyId,"payrollPolicies","current")),
+    loadAll(companyId,"compensationChanges",check,({count})=>{
+     counts.compensationChanges=count;setProgress();
+    }).catch(error=>{
+     if(error?.code==="permission-denied")throw Error("Compensation profile rules are not published. Deploy the updated Firestore rules before generating payroll.");
+     throw error;
+    })
    ]);
    check();
    const [employees,entries=[],allCorrections=[],allLeaves=[]]=sets;
    const currentPolicy=policyDoc.exists()?validatePolicy(policyDoc.data()):DEFAULT_POLICY;
    const preview=timeRequired?
     buildPayrollPreview({employees,entries,corrections:allCorrections,
-     leaveRequests:allLeaves,policy:currentPolicy,start:run.periodStart,end:run.periodEnd}):
+     leaveRequests:allLeaves,compensationChanges,policy:currentPolicy,start:run.periodStart,end:run.periodEnd}):
     {lines:[],issues:[],sources:[],totals:null};
    check();
    status.textContent=preview.issues.length?
@@ -250,7 +256,7 @@ export async function mountPhase3({db,getState,refreshCompany,notify,confirmActi
     timeRequired?
      preview.lines.length+" timecard payroll lines • "+(preview.totals?money(preview.totals.grossCents):"$0.00")+" before any commissions":
      "Commission-only run: timecards and salary wages are excluded. Approved sales will be loaded for the selected period.";
-   return {preview,policy:currentPolicy,employees};
+   return {preview,policy:currentPolicy,employees,compensationChanges};
   }catch(error){
    if(S().tenantId===companyId)status.textContent="Could not load complete payroll inputs: "+(error.message||error);
    throw error;
@@ -261,10 +267,10 @@ export async function mountPhase3({db,getState,refreshCompany,notify,confirmActi
   if(!run)return notify("Open a payroll run before inspection.",true);
   const company=S().tenantId,actor=S().user?.uid;
   try{
-   const {preview,policy,employees}=await buildPreview(run);
+   const {preview,policy,employees,compensationChanges}=await buildPreview(run);
    if(preview.issues.length)return;
    if(!usesCommissions(run.processingMode))return;
-   const commissions=await prepareRunCommissions(db,company,run,preview.lines,employees,policy);
+   const commissions=await prepareRunCommissions(db,company,run,preview.lines,employees,policy,compensationChanges);
    if(company!==S().tenantId||actor!==S().user?.uid||S().selectedRun!==run.id)return;
    if(!commissions.enabled){
     $("p3RunReview").textContent=usesTimecards(run.processingMode)?
