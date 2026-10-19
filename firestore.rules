@@ -579,20 +579,26 @@ service cloud.firestore {
    match /payrollPolicies/current {
     allow read: if clientView(t);
     allow create: if clientAdmin(t) &&
-     request.resource.data.keys().hasOnly(['version','overtimeMultiplierHundredths','defaultBonusCents','defaultDeductionCents','requireApprovedTime']) &&
+     request.resource.data.keys().hasOnly(['version','overtimeMultiplierHundredths','defaultBonusCents','defaultDeductionCents','defaultTaxRateBasisPoints','requireApprovedTime']) &&
      request.resource.data.version == 2 &&
      request.resource.data.overtimeMultiplierHundredths is int &&
      request.resource.data.overtimeMultiplierHundredths >= 100 &&
      request.resource.data.overtimeMultiplierHundredths <= 300 &&
      cent(request.resource.data.defaultBonusCents) && cent(request.resource.data.defaultDeductionCents) &&
+     request.resource.data.get('defaultTaxRateBasisPoints',0) is int &&
+     request.resource.data.get('defaultTaxRateBasisPoints',0) >= 0 &&
+     request.resource.data.get('defaultTaxRateBasisPoints',0) <= 10000 &&
      request.resource.data.requireApprovedTime == true;
     allow update: if clientAdmin(t) &&
-     request.resource.data.keys().hasOnly(['version','overtimeMultiplierHundredths','defaultBonusCents','defaultDeductionCents','requireApprovedTime']) &&
+     request.resource.data.keys().hasOnly(['version','overtimeMultiplierHundredths','defaultBonusCents','defaultDeductionCents','defaultTaxRateBasisPoints','requireApprovedTime']) &&
      request.resource.data.version == resource.data.version + 1 &&
      request.resource.data.overtimeMultiplierHundredths is int &&
      request.resource.data.overtimeMultiplierHundredths >= 100 &&
      request.resource.data.overtimeMultiplierHundredths <= 300 &&
      cent(request.resource.data.defaultBonusCents) && cent(request.resource.data.defaultDeductionCents) &&
+     request.resource.data.get('defaultTaxRateBasisPoints',0) is int &&
+     request.resource.data.get('defaultTaxRateBasisPoints',0) >= 0 &&
+     request.resource.data.get('defaultTaxRateBasisPoints',0) <= 10000 &&
      request.resource.data.requireApprovedTime == true;
     allow delete: if false;
    }
@@ -694,7 +700,7 @@ service cloud.firestore {
        exists(runPath(t,r)) && get(runPath(t,r)).data.status == 'draft' &&
        exists(employeePath(t,employeeId)) &&
        request.resource.data.keys().hasOnly(['employeeId','employeeName','payType','regularHours','overtimeHours',
-         'regularCents','overtimeCents','bonusCents','deductionCents','grossCents','netCents','policyVersion','paidLeaveHours','commissionCents']) &&
+         'regularCents','overtimeCents','bonusCents','deductionCents','grossCents','netCents','policyVersion','paidLeaveHours','commissionCents','taxRateBasisPoints','taxCents','otherDeductionCents']) &&
        request.resource.data.employeeId == employeeId &&
        text(request.resource.data.employeeName,120) &&
        request.resource.data.payType in ['hourly','salary'] &&
@@ -703,6 +709,13 @@ service cloud.firestore {
        cent(request.resource.data.bonusCents) && cent(request.resource.data.deductionCents) &&
        cent(request.resource.data.grossCents) && cent(request.resource.data.netCents) &&
        cent(request.resource.data.get('commissionCents',0)) &&
+       request.resource.data.get('taxRateBasisPoints',0) is int &&
+       request.resource.data.get('taxRateBasisPoints',0) >= 0 &&
+       request.resource.data.get('taxRateBasisPoints',0) <= 10000 &&
+       cent(request.resource.data.get('taxCents',0)) &&
+       cent(request.resource.data.get('otherDeductionCents',request.resource.data.deductionCents)) &&
+       request.resource.data.get('otherDeductionCents',request.resource.data.deductionCents) +
+        request.resource.data.get('taxCents',0) == request.resource.data.deductionCents &&
        request.resource.data.grossCents == request.resource.data.regularCents +
         request.resource.data.overtimeCents + request.resource.data.bonusCents +
         request.resource.data.get('commissionCents',0) &&
@@ -719,6 +732,13 @@ service cloud.firestore {
        cent(request.resource.data.bonusCents) && cent(request.resource.data.deductionCents) &&
        cent(request.resource.data.grossCents) && cent(request.resource.data.netCents) &&
        cent(request.resource.data.get('commissionCents',0)) &&
+       request.resource.data.get('taxRateBasisPoints',0) is int &&
+       request.resource.data.get('taxRateBasisPoints',0) >= 0 &&
+       request.resource.data.get('taxRateBasisPoints',0) <= 10000 &&
+       cent(request.resource.data.get('taxCents',0)) &&
+       cent(request.resource.data.get('otherDeductionCents',request.resource.data.deductionCents)) &&
+       request.resource.data.get('otherDeductionCents',request.resource.data.deductionCents) +
+        request.resource.data.get('taxCents',0) == request.resource.data.deductionCents &&
        request.resource.data.grossCents == request.resource.data.regularCents +
         request.resource.data.overtimeCents + request.resource.data.bonusCents +
         request.resource.data.get('commissionCents',0) &&
