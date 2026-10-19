@@ -19,6 +19,7 @@ import {payrollNextSteps} from "./payroll-workflow.js?v=sterling-payroll-overhau
 import {mountPaylineEditor} from "./payroll-line-editor.js?v=sterling-sim-tax-20261018";
 import {mountPayrollExperience} from "./payroll-experience.js?v=sterling-payroll-overhaul-20261018";
 import {normalizePayrollRunName,payrollRunLabel,payrollRunSubtitle} from "./payroll-run-names.js?v=sterling-run-names-20261019";
+import {normalizePayrollRunMode,usesCommissions,usesTimecards,payrollRunModeLabel} from "./payroll-run-modes.js?v=sterling-payroll-modes-20261019";
 import {applySimulatedTaxes} from "./payroll-tax-core.js?v=sterling-sim-tax-20261018";
 
 const app=initializeApp({
@@ -741,13 +742,15 @@ $("runForm").addEventListener("submit",async event=>{
  event.preventDefault();if(!canPayroll()||!state.tenantId)return;
  const periodStart=$("periodStart").value,periodEnd=$("periodEnd").value,payDate=$("payDate").value;
  if(!validPeriod(periodStart,periodEnd,payDate))return toast("Pay period dates must be valid, and payday must be after the period.",true);
- let name;
- try{name=normalizePayrollRunName($("runName").value,{optional:true})}
- catch(error){return toast(error.message,true)}
+ let name,processingMode;
+ try{
+  name=normalizePayrollRunName($("runName").value,{optional:true});
+  processingMode=normalizePayrollRunMode($("runProcessingMode").value);
+ }catch(error){return toast(error.message,true)}
  try{
   const run=doc(sub("payrollRuns"));const batch=writeBatch(db);
-  batch.set(run,{...(name?{name}:{}),periodStart,periodEnd,payDate,status:"draft",createdAt:serverTimestamp(),createdBy:state.user.uid,submittedBy:"",approvedBy:"",finalizedBy:""});
-  auditClient(batch,"payroll","payroll-create",run.id,periodStart+" → "+periodEnd);await batch.commit();
+  batch.set(run,{...(name?{name}:{}),processingMode,periodStart,periodEnd,payDate,status:"draft",createdAt:serverTimestamp(),createdBy:state.user.uid,submittedBy:"",approvedBy:"",finalizedBy:""});
+  auditClient(batch,"payroll","payroll-create",run.id,(name||periodStart+" → "+periodEnd)+" · "+payrollRunModeLabel(processingMode));await batch.commit();
   await refreshCompany();await selectRun(run.id);event.target.dispatchEvent(new Event("sterling:complete"));toast("Draft payroll created.");
  }catch(e){fail(e,"Payroll run creation failed")}
 });
@@ -821,7 +824,7 @@ function renderRuns(){
  const el=$("runList");el.replaceChildren();
  const q=$("runSearch").value.toLowerCase().trim(),status=$("runStatus").value;
  const sortBy=$("runSort").value;
- const filtered=state.runs.filter(r=>(status==="all"||r.status===status)&&[r.name,r.periodStart,r.periodEnd,r.payDate,r.status].join(" ").toLowerCase().includes(q))
+ const filtered=state.runs.filter(r=>(status==="all"||r.status===status)&&[r.name,r.periodStart,r.periodEnd,r.payDate,r.status,payrollRunModeLabel(r.processingMode)].join(" ").toLowerCase().includes(q))
  .sort((a,b)=>{
   if(sortBy==="oldest")return String(a.periodStart||"").localeCompare(String(b.periodStart||""));
   if(sortBy==="payday")return String(b.payDate||"").localeCompare(String(a.payDate||""));
@@ -841,7 +844,7 @@ function renderRuns(){
    actions.push(button("Delete permanently",()=>ownerActions.remove("payrollRuns",run),"small danger"));
   }
   frag.append(item(payrollRunLabel(run),
-   (payrollRunSubtitle(run)?payrollRunSubtitle(run)+" · ":"")+"Simulated payday: "+run.payDate,
+   (payrollRunSubtitle(run)?payrollRunSubtitle(run)+" · ":"")+payrollRunModeLabel(run.processingMode)+" · Simulated payday: "+run.payDate,
    actions,run.status,css));
  }
  el.append(frag);
@@ -881,7 +884,7 @@ function renderRunDetails(){
  $("runDetails").classList.remove("hidden");
  $("runHeading").textContent=payrollRunLabel(run);
  $("runPeriodLabel").textContent=(payrollRunSubtitle(run)||run.periodStart+" — "+run.periodEnd)+
-  " · Simulated payday: "+run.payDate;
+  " · "+payrollRunModeLabel(run.processingMode)+" · Simulated payday: "+run.payDate;
  $("renameRunButton").classList.toggle("hidden",!canRenameRun(run));
  $("renameRunButton").onclick=()=>openRenameRun(run);
  $("runStatusChip").textContent=run.status.toUpperCase();
@@ -918,7 +921,7 @@ function renderRunDetails(){
    }
    const cell=mk("td");cell.dataset.label="Actions";
    if(run.status==="draft"&&canPayroll()){
-    cell.append(button("Adjust",()=>paylineEditor.open({record:line,onSave:async values=>{
+    cell.append(button("Adjust",()=>paylineEditor.open({record:line,allowBonus:usesTimecards(run.processingMode),onSave:async values=>{
      const company=state.tenantId,actor=state.user.uid,runId=run.id,employeeId=line.employeeId;
      if(!canPayroll()||state.selectedRun!==runId)throw Error("Reopen this payroll draft before editing.");
      const runRef=doc(db,"tenants",company,"payrollRuns",runId);
@@ -976,27 +979,36 @@ async function generateLines(run){
  const tenantId=state.tenantId,actor=state.user?.uid;
  const {preview,policy,employees}=await phase3.buildPreview(run);
  if(preview.issues.length)throw Error("Resolve "+preview.issues.length+" time and payroll exceptions before generating");
- let commission;
- try{
-  commission=await prepareRunCommissions(db,tenantId,run,preview.lines,employees);
- }catch(error){
-  throw Error("Commission preparation failed ("+(error?.code||error?.message||error)+"). Check the company commission permissions; payroll lines were not changed.");
+ let commission={lines:preview.lines,claim:[],release:[],commissionCents:0,enabled:false};
+ if(usesCommissions(run.processingMode)){
+  try{
+   commission=await prepareRunCommissions(db,tenantId,run,preview.lines,employees,policy);
+  }catch(error){
+   throw Error("Commission preparation failed ("+(error?.code||error?.message||error)+"). Check company permissions; no payroll lines were changed.");
+  }
+  if(!commission.enabled&& !usesTimecards(run.processingMode))
+   throw Error("Commission-only payroll requires the company commissions program to be enabled.");
  }
  // Commissions affect gross earnings, so simulated tax withholding must be
  // recalculated against the final amount after commissions are attached.
  const lines=applySimulatedTaxes(commission.lines,policy.defaultTaxRateBasisPoints||0);
  preview.lines=lines;
  preview.totals=summarizeLines(lines);
- if(!lines.length)throw Error("No approved simulated earnings for this period");
+ if(!lines.length)throw Error(usesTimecards(run.processingMode)?
+  "No eligible approved timecards or commission earnings for this pay period.":
+  "No approved commission sales were found in this period. Approve eligible sales first.");
  if(lines.length>250)throw Error("Draft exceeds 250-employee safety limit");
- if(!await confirmAction("Generate payroll preview","Generate "+lines.length+" reviewed pay lines with "+money(preview.totals.grossCents)+" fictional gross pay (including "+money(commission.commissionCents)+" commissions)? Existing draft lines will be replaced."))return;
+ if(!await confirmAction("Generate payroll preview","Generate "+lines.length+" "+payrollRunModeLabel(run.processingMode).toLowerCase()+
+  " pay lines with "+money(preview.totals.grossCents)+" simulated gross (including "+
+  money(commission.commissionCents)+" commissions)? Existing draft lines will be replaced."))return;
  if(commission.notice)toast(commission.notice,true);
  const stillAuthorized=()=>tenantId===state.tenantId&&run.id===state.selectedRun&&
   state.user?.uid===actor&&canPayroll();
  if(!stillAuthorized())throw Error("Company, account or payroll selection changed during preparation. Reopen the run and retry.");
  const runSnapshot=await getDoc(doc(db,"tenants",tenantId,"payrollRuns",run.id));
  if(!runSnapshot.exists()||runSnapshot.data().status!=="draft"||
-  runSnapshot.data().periodStart!==run.periodStart||runSnapshot.data().periodEnd!==run.periodEnd)
+  runSnapshot.data().periodStart!==run.periodStart||runSnapshot.data().periodEnd!==run.periodEnd||
+  normalizePayrollRunMode(runSnapshot.data().processingMode,{legacy:true})!==normalizePayrollRunMode(run.processingMode,{legacy:true}))
   throw Error("The payroll draft changed while it was being prepared. Reopen the run and retry.");
  const base=collection(db,"tenants",tenantId,"payrollRuns",run.id,"lines");
  const oldSnapshot=await getDocs(query(base,limit(251)));
