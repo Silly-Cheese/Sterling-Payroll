@@ -241,3 +241,14 @@ h1,h2{letter-spacing:-.025em}
  .sterling-payline-dialog .payline-editor-fields label:last-child{grid-column:auto}
  #p3TaxRate{max-width:100%}
 }
+
+/* Clear, compact earning-source choices for every new pay period. */
+.payroll-processing-fieldset{display:grid;gap:8px;min-width:0;margin:5px 0 0;padding:13px;border:1px solid #485a4c;border-radius:11px;background:#16211e}
+.payroll-processing-fieldset legend{padding:0 7px;color:#ebd6af;font-size:12px;font-weight:750}
+#shell .payroll-processing-option{display:flex;align-items:flex-start;gap:11px;min-width:0;padding:12px;border:1px solid #374940;border-radius:10px;background:#1b2923;cursor:pointer;line-height:1.35}
+#shell .payroll-processing-option:hover{background:#24332a;border-color:#9a825a}
+#shell .payroll-processing-option:has(input:checked){border-color:#d6af70;background:#342e22;box-shadow:inset 3px 0 0 #e2be83}
+#shell .payroll-processing-option input[type="radio"]{accent-color:#e8cb92;flex:0 0 auto;width:17px;height:17px;margin:1px 0 0}
+.payroll-processing-option span{display:grid;gap:5px;min-width:0}
+.payroll-processing-option strong{font-size:12px;color:#f5e4c8}
+.payroll-processing-option small{font-size:11px;color:#bac8b9;line-height:1.5;font-weight:400}
