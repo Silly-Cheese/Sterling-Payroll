@@ -1,0 +1,79 @@
+<section class="next-hero">
+ <div><div class="eyebrow">STERLING PAYROLL SERVICES · OPERATIONS 3.0</div>
+  <h2>Payroll operations center</h2>
+  <p>Prepare periods, verify records, manage compensation, resolve approvals and communicate with Sterling.</p></div>
+ <div class="next-toolbar"><button id="nextRefresh" type="button" class="btn">Refresh all data</button><span id="nextAccess" class="subtle-pill">SIMULATION</span></div>
+</section>
+<div id="nextStatus" role="status" class="next-status">Choose a company to load the operations center.</div>
+<div class="next-tabs" aria-label="Operations center areas">
+ <button type="button" data-next-tab="readiness">Integrity</button>
+ <button type="button" data-next-tab="schedule">Schedules</button>
+ <button type="button" data-next-tab="compensation">Compensation</button>
+ <button type="button" data-next-tab="approvals">Approvals</button>
+ <button type="button" data-next-tab="reconciliation">Reconciliation</button>
+ <button type="button" data-next-tab="reports">Reports</button>
+ <button type="button" data-next-tab="requests">Client requests</button>
+ <button type="button" data-next-tab="diagnostics">Diagnostics</button>
+</div>
+<section id="next-readiness" class="next-panel">
+ <div class="next-head"><div><h3>Payroll integrity engine</h3><p>Review structural exceptions and data coverage before processing a fictional pay period.</p></div><button id="nextGoTime" class="btn" type="button">Review timecards</button></div>
+ <div id="nextMetrics" class="next-metrics"></div><div id="nextFindings" class="next-records"></div>
+</section>
+<section id="next-schedule" class="next-panel hidden">
+ <div class="next-head"><div><h3>Pay period scheduling</h3><p>Save a company's cadence and preview future periods without overlapping existing runs.</p></div></div>
+ <form id="nextScheduleForm" class="next-form next-form-grid">
+  <label>Cadence<select name="cadence"><option value="weekly">Weekly</option><option value="biweekly">Biweekly</option><option value="semimonthly">Twice monthly (1–15 / 16–end)</option><option value="monthly">Monthly</option></select></label>
+  <label>Default processing mode<select name="mode"><option value="combined">Timecards + commissions</option><option value="timecards-only">Timecards only</option><option value="commissions-only">Commissions only</option></select></label>
+  <label>Anchor or next period date<input name="anchorDate" type="date" required></label>
+  <label>Payday offset in days<input name="paydayOffsetDays" type="number" min="0" max="30" step="1" value="1" required></label>
+  <label class="next-wide">Payroll naming prefix<input name="namePrefix" maxlength="55" placeholder="Sterling regular payroll" value="Regular payroll"></label>
+  <div class="next-actions next-wide"><button id="nextSaveSchedule" class="btn primary" type="submit">Save schedule</button><button type="button" id="nextPreviewSchedule" class="btn">Preview five periods</button></div>
+ </form>
+ <div id="nextSchedulePreview" class="next-records"></div>
+</section>
+<section id="next-compensation" class="next-panel hidden">
+ <div class="next-head"><div><h3>Effective-dated compensation</h3><p>Keep a history of future rate changes and simulated deduction preferences without rewriting previous payroll.</p></div></div>
+ <form id="nextCompForm" class="next-form next-form-grid">
+  <label class="next-wide">Employee<select name="employeeId" id="nextCompEmployee" required></select></label>
+  <label>Effective from<input name="effectiveDate" type="date" required></label>
+  <label>Hourly rate or annual salary ($)<input name="payRate" type="number" min="0" max="10000000" step=".01" required></label>
+  <label>Fictional tax (%)<input name="taxRatePercent" type="number" min="0" max="100" step=".01" value="0" required></label>
+  <label>Other recurring deduction ($)<input name="recurringDeduction" type="number" min="0" max="10000000" step=".01" value="0" required></label>
+  <label class="next-wide">Reason or note<input name="note" maxlength="160" placeholder="Compensation change explanation"></label>
+  <div class="next-actions next-wide"><button class="btn primary" id="nextSaveComp" type="submit">Record compensation change</button></div>
+ </form>
+ <div id="nextCompHistory" class="next-records"></div>
+</section>
+<section id="next-approvals" class="next-panel hidden">
+ <div class="next-head"><div><h3>Unified approval queue</h3><p>Review pending hours, commission sales and pay runs in one place. Independent approvals are still required.</p></div><button class="btn" id="nextGoPayroll" type="button">Go to payroll</button></div>
+ <div class="next-controls"><label>Queue<select id="nextApprovalFilter"><option value="all">All requests</option><option value="time">Timecards</option><option value="commission">Commissions</option><option value="run">Pay runs</option></select></label><button class="btn primary" id="nextApproveEligible" type="button">Approve eligible pending items</button></div>
+ <div id="nextApprovalList" class="next-records"></div>
+</section>
+<section id="next-reconciliation" class="next-panel hidden">
+ <div class="next-head"><div><h3>Payroll reconciliation</h3><p>Trace simulated gross, net, taxes and claimed commissions for a selected run.</p></div></div>
+ <div class="next-controls"><label>Payroll run<select id="nextReconRun"></select></label><button id="nextReconcile" type="button" class="btn primary">Inspect run</button></div>
+ <div id="nextReconciliationResults" class="next-records"></div>
+</section>
+<section id="next-reports" class="next-panel hidden">
+ <div class="next-head"><div><h3>Reporting & exports</h3><p>Download correctly scoped simulated company records. No real payments or tax returns are generated.</p></div></div>
+ <div class="next-controls"><label>Report<select id="nextReportType"><option value="periods">Payroll periods</option><option value="hours">Timecards</option><option value="commissions">Sales commissions</option><option value="employees">Employee directory</option></select></label>
+  <label>Employee<select id="nextReportEmployee"></select></label>
+  <label>From date<input type="date" id="nextReportStart"></label><label>Through date<input type="date" id="nextReportEnd"></label>
+  <button id="nextDownloadCSV" type="button" class="btn primary">Export CSV</button><button id="nextPrintReport" type="button" class="btn">Printable report</button>
+ </div>
+ <div id="nextReportSummary" class="next-records"></div>
+</section>
+<section id="next-requests" class="next-panel hidden">
+ <div class="next-head"><div><h3>Client-company requests</h3><p>Request an account change, payroll correction or Sterling support review through a controlled workflow.</p></div></div>
+ <form id="nextRequestForm" class="next-form">
+  <label>Request type<select name="type"><option value="payroll-correction">Payroll correction request</option><option value="employee-access">Employee/account access</option><option value="billing">Billing question</option><option value="general">Other support</option></select></label>
+  <label>Subject<input name="subject" maxlength="120" required placeholder="What needs attention?"></label>
+  <label>Details<textarea name="details" maxlength="1500" minlength="10" required placeholder="Provide the relevant run name, dates and explanation."></textarea></label>
+  <div class="next-actions"><button type="submit" class="btn primary">Submit request</button></div>
+ </form>
+ <div id="nextRequestsList" class="next-records"></div>
+</section>
+<section id="next-diagnostics" class="next-panel hidden">
+ <div class="next-head"><div><h3>System health & diagnostics</h3><p>Check deployed assets, access failures and source completeness without revealing account secrets.</p></div><button id="nextRunDiagnostics" class="btn primary" type="button">Run diagnostics</button></div>
+ <div id="nextDiagnostics" class="next-records"></div>
+</section>
