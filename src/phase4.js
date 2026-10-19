@@ -1,5 +1,5 @@
 import {collection,doc,getDoc,getDocs,addDoc,setDoc,updateDoc,query,where,orderBy,limit,serverTimestamp} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
-import {paystubHtml,validatePreferences,recentFinalized} from "./phase4-core.js";
+import {paystubHtml,validatePreferences,recentFinalized} from "./phase4-core.js?v=sterling-sim-tax-20261018";
 import {money} from "./payroll-core.js";
 import {compactForm,buildPortalTabs} from "./workspace-ui.js";
 const E=(tag,className,text)=>{const n=document.createElement(tag);if(className)n.className=className;if(text!==undefined)n.textContent=String(text);return n};
