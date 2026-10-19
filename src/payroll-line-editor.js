@@ -40,7 +40,7 @@ export function mountPaylineEditor(){
  actions.append(cancel,save);
  form.append(totals,inputGroup,taxPresets,preview,error,actions);
  host.append(eyebrow,title,details,form);dialog.append(host);document.body.append(dialog);
- let line=null,callback=null,busy=false,previousFocus=null;
+ let line=null,callback=null,busy=false,previousFocus=null,allowBonus=true;
  function summary(label,value){const item=document.createElement("div"),dt=document.createElement("dt"),dd=document.createElement("dd");dt.textContent=label;dd.textContent=money(value);item.append(dt,dd);return item;}
  function render(){
   if(!line)return;
@@ -68,16 +68,20 @@ export function mountPaylineEditor(){
   catch(err){error.hidden=false;error.textContent=err.message||String(err)}
   finally{busy=false;cancel.disabled=false;render()}
  };
- return {open({record,onSave}){
+ return {open({record,onSave,allowBonus:bonusAllowed=true}){
   if(dialog.open||busy)throw Error("Finish the open adjustment before editing another pay line.");
-  line=record;callback=onSave;previousFocus=document.activeElement;
+  line=record;callback=onSave;allowBonus=bonusAllowed;previousFocus=document.activeElement;
   title.textContent="Adjust "+(record.employeeName||"employee")+" pay";
-  details.textContent="Deduct a chosen percentage of final gross pay as fictional taxes, plus any separate dollar deduction. Wages and approved commissions remain unchanged.";
+  details.textContent=allowBonus?
+   "Deduct a percentage of gross pay as fictional taxes, plus a separate dollar deduction. Base wages and approved commissions stay unchanged.":
+   "Commission-only mode: wages and bonuses are excluded. Adjust simulated tax percentage and other deductions only.";
+  bonus.disabled=!allowBonus;
+  bonus.closest("label").classList.toggle("hidden",!allowBonus);
   bonus.value=((record.bonusCents||0)/100).toFixed(2);
   // Legacy records contain only total deductions, so treat them as fixed until
   // a rate is selected. Newer records preserve both values separately.
   deduction.value=((record.otherDeductionCents??Math.max(0,(record.deductionCents||0)-(record.taxCents||0)))/100).toFixed(2);
   tax.value=((record.taxRateBasisPoints||0)/100).toFixed(2);
-  error.hidden=true;render();dialog.showModal();bonus.focus();
+  error.hidden=true;render();dialog.showModal();(allowBonus?bonus:tax).focus();
  },close(){if(dialog.open&&!busy)dialog.close()}};
 }
