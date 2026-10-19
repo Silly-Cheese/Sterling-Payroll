@@ -491,6 +491,64 @@ service cloud.firestore {
      allow delete: if owner();
     }
    }
+   // Simulated payroll cadence configurations. No actual payments or unattended cron jobs.
+   match /paySchedules/{scheduleId} {
+    allow get,list: if clientView(t);
+    allow create: if payrollStaff(t) &&
+     request.resource.data.keys().hasOnly(['name','cadence','processingMode','nextStart','payDelay','active','createdBy','createdAt','updatedAt']) &&
+     text(request.resource.data.name,80) &&
+     request.resource.data.cadence in ['weekly','biweekly','semimonthly','monthly'] &&
+     request.resource.data.processingMode in ['combined','timecards-only','commissions-only'] &&
+     date(request.resource.data.nextStart) &&
+     request.resource.data.payDelay is int && request.resource.data.payDelay >= 0 && request.resource.data.payDelay <= 30 &&
+     request.resource.data.active is bool &&
+     request.resource.data.createdBy == request.auth.uid &&
+     request.resource.data.createdAt == request.time &&
+     request.resource.data.updatedAt == request.time;
+    allow update: if payrollStaff(t) &&
+     request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nextStart','active','updatedBy','updatedAt']) &&
+     date(request.resource.data.nextStart) &&
+     request.resource.data.nextStart >= resource.data.nextStart &&
+     request.resource.data.active is bool &&
+     request.resource.data.updatedBy == request.auth.uid &&
+     request.resource.data.updatedAt == request.time;
+    allow delete: if owner();
+   }
+   // Effective-dated fictional withholding and other recurring deduction.
+   // This does not grant clients rights to edit Sterling billing/agreements.
+   match /compensationProfiles/{employeeId} {
+    allow get,list: if clientView(t);
+    allow create,update: if payrollStaff(t) &&
+     exists(employeePath(t,employeeId)) &&
+     request.resource.data.keys().hasOnly(['employeeId','effectiveFrom','taxRateBasisPoints','recurringDeductionCents','updatedAt','updatedBy']) &&
+     request.resource.data.employeeId == employeeId &&
+     date(request.resource.data.effectiveFrom) &&
+     request.resource.data.taxRateBasisPoints is int &&
+     request.resource.data.taxRateBasisPoints >= 0 &&
+     request.resource.data.taxRateBasisPoints <= 10000 &&
+     cent(request.resource.data.recurringDeductionCents) &&
+     request.resource.data.updatedBy == request.auth.uid &&
+     request.resource.data.updatedAt == request.time;
+    allow delete: if owner();
+   }
+   // Append-only compensation policy history for past-effective calculation.
+   match /compensationHistory/{changeId} {
+    allow get,list: if clientView(t);
+    allow create: if payrollStaff(t) &&
+     request.resource.data.keys().hasOnly(['employeeId','effectiveFrom','taxRateBasisPoints','recurringDeductionCents','changedAt','changedBy']) &&
+     text(request.resource.data.employeeId,128) &&
+     exists(employeePath(t,request.resource.data.employeeId)) &&
+     date(request.resource.data.effectiveFrom) &&
+     request.resource.data.taxRateBasisPoints is int &&
+     request.resource.data.taxRateBasisPoints >= 0 &&
+     request.resource.data.taxRateBasisPoints <= 10000 &&
+     cent(request.resource.data.recurringDeductionCents) &&
+     request.resource.data.changedBy == request.auth.uid &&
+     request.resource.data.changedAt == request.time;
+    allow update: if false;
+    allow delete: if owner();
+   }
+
    match /employees/{e} {
     allow get: if clientView(t) || ownsEmployee(t,e);
     allow list: if clientView(t);
