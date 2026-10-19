@@ -14,7 +14,7 @@ const BATCH_SIZE=3, VISIBLE_SIZE=35;
 
 export async function mountCommissions({db,getState,notify,confirmAction,ownerDelete}){
  const root=document.getElementById("commissionsWorkspace");
- const response=await fetch("./commissions.html?v=sterling-commission-studio-r3-20261018");
+ const response=await fetch("./commissions.html?v=sterling-commission-plan-delete-20261019");
  if(!root||!response.ok)throw Error("Commission workspace template is missing from the deployment");
  root.innerHTML=await response.text();
  const $=id=>root.querySelector("#"+id),S=()=>getState();
