@@ -390,6 +390,51 @@ test("named payroll drafts accept each processing mode while rejecting unknown o
  await assertFails(setDoc(doc(db,base+"bad-name"),{...draft,name:"X".repeat(81),processingMode:"combined"}));
 });
 
+
+test("new operations documents respect tenant roles and immutable compensation history",async()=>{
+ const root="tenants/north/";
+ await env.withSecurityRulesDisabled(async c=>{
+  await setDoc(doc(c.firestore(),root+"employees/e1"),{
+   displayName:"Employee One",status:"active",payType:"hourly",
+   hourlyRateCents:2500,annualSalaryCents:0
+  });
+ });
+ const profile={employeeId:"e1",effectiveDate:"2026-10-01",payType:"hourly",
+  hourlyRateCents:2500,taxRateBasisPoints:1500,recurringDeductionCents:1500,
+  note:"Effective-dated rate",createdBy:"admin",createdAt:serverTimestamp()};
+ const ref=root+"compensationChanges/e1_2026-10-01";
+ await assertFails(setDoc(doc(as("viewer"),ref),{...profile,createdBy:"viewer"}));
+ await assertSucceeds(setDoc(doc(as("admin"),ref),profile));
+ await assertFails(updateDoc(doc(as("admin"),ref),{hourlyRateCents:2600}));
+ await assertFails(setDoc(doc(as("admin"),"tenants/south/compensationChanges/e1_2026-10-01"),profile));
+ const schedule={name:"Monthly payroll",cadence:"monthly",processingMode:"commissions-only",
+  nextStart:"2026-10-01",payDelay:2,active:true,
+  createdBy:"admin",createdAt:serverTimestamp(),updatedAt:serverTimestamp()};
+ await assertFails(setDoc(doc(as("viewer"),root+"payCycleSchedules/october"),{...schedule,createdBy:"viewer"}));
+ await assertSucceeds(setDoc(doc(as("admin"),root+"payCycleSchedules/october"),schedule));
+ await assertFails(updateDoc(doc(as("viewer"),root+"payCycleSchedules/october"),{active:false}));
+});
+test("pay policy tax percentage and payroll generation audit are guarded",async()=>{
+ const policy="tenants/north/payrollPolicies/current";
+ await assertFails(setDoc(doc(as("viewer"),policy),{
+  version:2,overtimeMultiplierHundredths:150,defaultBonusCents:0,
+  defaultDeductionCents:0,defaultTaxRateBasisPoints:1250,requireApprovedTime:true
+ }));
+ await assertSucceeds(setDoc(doc(as("admin"),policy),{
+  version:2,overtimeMultiplierHundredths:150,defaultBonusCents:0,
+  defaultDeductionCents:0,defaultTaxRateBasisPoints:1250,requireApprovedTime:true
+ }));
+ await assertFails(updateDoc(doc(as("admin"),policy),{version:3,defaultTaxRateBasisPoints:12500}));
+ await assertSucceeds(setDoc(doc(as("admin"),"tenants/north/auditEvents/payroll-generate-test"),{
+  category:"payroll",action:"payroll-generate",subject:"commission-only-batch",
+  detail:"Test simulated pay lines",actor:"admin",at:serverTimestamp()
+ }));
+ await assertFails(setDoc(doc(as("viewer"),"tenants/north/auditEvents/fake-test"),{
+  category:"payroll",action:"payroll-generate",subject:"commission-only-batch",
+  detail:"Unauthorized audit",actor:"viewer",at:serverTimestamp()
+ }));
+});
+
 test("real commission-only generation: six zero-wage pay lines followed by approved sale claims",async()=>{
  const base="tenants/north/",runId="commission-only-batch";
  await env.withSecurityRulesDisabled(async context=>{
