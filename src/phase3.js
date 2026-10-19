@@ -1,7 +1,9 @@
 import {collection,doc,getDoc,getDocs,addDoc,updateDoc,setDoc,serverTimestamp,query,limit,orderBy,documentId,startAfter} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 import {toCents,money} from "./payroll-core.js";
 import {taxBasisPoints} from "./payroll-tax-core.js?v=sterling-sim-tax-20261018";
-import {usesTimecards,payrollRunModeLabel} from "./payroll-run-modes.js?v=sterling-payroll-modes-20261019";
+import {usesTimecards,usesCommissions,payrollRunModeLabel} from "./payroll-run-modes.js?v=sterling-payroll-modes-20261019";
+import {prepareRunCommissions} from "./commission-payroll.js?v=sterling-payroll-modes-20261019";
+import {applySimulatedTaxes} from "./payroll-tax-core.js?v=sterling-sim-tax-20261018";
 import {readCompletePages} from "./payroll-paging.js?v=sterling-complete-payroll-20261017";
 import {mountBulkTimecardApprovals} from "./timecard-bulk.js?v=sterling-timekeeping-20261018";
 import {DEFAULT_POLICY,validatePolicy,validReviewTransition,validateCorrection,validateLeave,buildPayrollPreview,csvStatement} from "./phase3-core.js?v=sterling-payroll-modes-20261019";
@@ -257,7 +259,27 @@ export async function mountPhase3({db,getState,refreshCompany,notify,confirmActi
  $("p3Inspect").onclick=async()=>{
   const run=S().runs.find(x=>x.id===S().selectedRun);
   if(!run)return notify("Open a payroll run before inspection.",true);
-  try{await buildPreview(run)}catch(e){describeError("Run inspection failed",e)}
+  const company=S().tenantId,actor=S().user?.uid;
+  try{
+   const {preview,policy,employees}=await buildPreview(run);
+   if(preview.issues.length)return;
+   if(!usesCommissions(run.processingMode))return;
+   const commissions=await prepareRunCommissions(db,company,run,preview.lines,employees,policy);
+   if(company!==S().tenantId||actor!==S().user?.uid||S().selectedRun!==run.id)return;
+   if(!commissions.enabled){
+    $("p3RunReview").textContent=usesTimecards(run.processingMode)?
+     "Commissions are disabled for this company. Only timecard pay will be included.":
+     "Cannot calculate commission-only payroll: enable the company commissions program first.";
+    return;
+   }
+   const lines=applySimulatedTaxes(commissions.lines,policy.defaultTaxRateBasisPoints||0);
+   const approvedCount=commissions.applied?.length||0;
+   const commissionText=approvedCount+" approved commission sales worth "+
+    money(commissions.commissionCents)+" in this period";
+   $("p3RunReview").textContent=lines.length?
+    payrollRunModeLabel(run.processingMode)+" · "+lines.length+" employee pay lines · "+commissionText:
+    "No eligible pay lines. "+commissionText+". Approve commission sales dated within the selected pay period.";
+  }catch(e){describeError("Run inspection failed",e)}
  };
  $("p3Export").onclick=async()=>{
   try{
