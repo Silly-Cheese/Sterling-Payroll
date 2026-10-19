@@ -285,7 +285,7 @@ export async function mountCommissions({db,getState,notify,confirmAction,ownerDe
   guard(company,actor);
   if(!S().platformOwner)throw Error("Sterling owner permission is required to delete commission assignments.");
   const target=doc(db,"tenants",company,"commissionPlans",id);
-  const auditRef=doc(db,"tenants",company,"auditEvents");
+  const auditRef=doc(collection(db,"tenants",company,"auditEvents"));
   await runTransaction(db,async transaction=>{
    guard(company,actor);
    if(!S().platformOwner)throw Error("Owner permission changed. Reopen this company.");
