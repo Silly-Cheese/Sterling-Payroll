@@ -367,6 +367,79 @@ test("named payroll drafts accept each processing mode while rejecting unknown o
  await assertFails(setDoc(doc(db,base+"bad-mode"),{...draft,processingMode:"invalid"}));
  await assertFails(setDoc(doc(db,base+"bad-name"),{...draft,name:"X".repeat(81),processingMode:"combined"}));
 });
+
+test("real commission-only generation: six zero-wage pay lines followed by approved sale claims",async()=>{
+ const base="tenants/north/",runId="commission-only-batch";
+ await env.withSecurityRulesDisabled(async context=>{
+  const db=context.firestore();
+  await setDoc(doc(db,base+"payrollRuns/"+runId),{
+   name:"October commissions",processingMode:"commissions-only",
+   periodStart:"2026-10-01",periodEnd:"2026-10-31",payDate:"2026-10-31",
+   status:"draft",createdBy:"admin",submittedBy:"",approvedBy:"",finalizedBy:""
+  });
+  for(let i=1;i<=6;i++){
+   const id="sales-"+i;
+   await setDoc(doc(db,base+"employees/"+id),{
+    displayName:"Commission employee "+i,payType:"salary",status:"active",
+    annualSalaryCents:9000000,payFrequency:"monthly"
+   });
+   await setDoc(doc(db,base+"commissionSales/"+id),{
+    employeeId:id,saleDate:"2026-10-15",description:"Approved sample sale",
+    saleAmountCents:120000,commissionCents:12000,type:"percent",rateBasisPoints:1000,fixedCents:0,
+    status:"approved",approvedBy:"owner",paidRunId:"",createdBy:"admin"
+   });
+  }
+ });
+ const admin=as("admin"),lines=writeBatch(admin);
+ for(let i=1;i<=6;i++){
+  const id="sales-"+i;
+  lines.set(doc(admin,base+"payrollRuns/"+runId+"/lines/"+id),{
+   employeeId:id,employeeName:"Commission employee "+i,payType:"salary",
+   regularHours:0,overtimeHours:0,paidLeaveHours:0,regularCents:0,overtimeCents:0,
+   bonusCents:0,commissionCents:12000,grossCents:12000,
+   taxRateBasisPoints:1250,taxCents:1500,otherDeductionCents:0,
+   deductionCents:1500,netCents:10500,policyVersion:2
+  });
+ }
+ await assertSucceeds(lines.commit());
+ const claims=writeBatch(admin);
+ for(let i=1;i<=6;i++)claims.update(doc(admin,base+"commissionSales/sales-"+i),{paidRunId:runId});
+ await assertSucceeds(claims.commit());
+ const owner=as("owner");
+ await assertSucceeds(getDoc(doc(owner,base+"payrollRuns/"+runId+"/lines/sales-1")));
+ await assertFails(setDoc(doc(as("viewer"),base+"payrollRuns/"+runId+"/lines/unauthorized"),{
+  employeeId:"unauthorized",employeeName:"Unauthorized",payType:"salary",
+  regularHours:0,overtimeHours:0,regularCents:0,overtimeCents:0,bonusCents:0,
+  commissionCents:12000,deductionCents:0,grossCents:12000,netCents:12000
+ }));
+});
+test("commission-only rules reject salary, leave, bonus and falsified simulated tax",async()=>{
+ const path="tenants/north/payrollRuns/strict-commission";
+ await env.withSecurityRulesDisabled(async c=>{
+  await setDoc(doc(c.firestore(),path),{
+   status:"draft",processingMode:"commissions-only",periodStart:"2026-10-01",
+   periodEnd:"2026-10-31",payDate:"2026-10-31",createdBy:"admin"
+  });
+ });
+ const admin=as("admin"),line={
+  employeeId:"e1",employeeName:"Fictional Employee",payType:"hourly",
+  regularHours:0,overtimeHours:0,paidLeaveHours:0,regularCents:0,overtimeCents:0,
+  bonusCents:0,commissionCents:12000,grossCents:12000,
+  taxRateBasisPoints:1250,taxCents:1500,otherDeductionCents:0,
+  deductionCents:1500,netCents:10500,policyVersion:1
+ };
+ await assertSucceeds(setDoc(doc(admin,path+"/lines/e1"),line));
+ for(const [label,patch] of [
+  ["salary",{regularCents:1000,grossCents:13000,netCents:11500}],
+  ["hours",{regularHours:1}],
+  ["leave",{paidLeaveHours:2}],
+  ["bonus",{bonusCents:100,grossCents:12100,netCents:10600}],
+  ["tax",{taxCents:1000,deductionCents:1000,netCents:11000}]
+ ]){
+  await assertFails(setDoc(doc(admin,path+"/lines/e1"),{...line,...patch}),label);
+ }
+});
+
 test("run processing mode controls payroll line earnings and cannot be modified afterward",async()=>{
  const admin=as("admin"),base="tenants/north/";
  await env.withSecurityRulesDisabled(async c=>{
