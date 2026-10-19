@@ -223,3 +223,21 @@ h1,h2{letter-spacing:-.025em}
 @media(prefers-reduced-motion:reduce){
  #shell .nav-item,#shell .btn{transition:none!important}
 }
+
+/* Fictional withholding controls: employee draft editor and policy form */
+.payline-tax-presets{display:flex;align-items:center;gap:7px;flex-wrap:wrap;
+ margin-top:-7px;padding:10px 11px;border:1px solid #405548;
+ background:#1b2923;border-radius:10px}
+.payline-tax-presets small{font-size:11px;line-height:1.4;color:#c5cfbf;font-weight:700;margin-right:5px}
+.payline-tax-presets .btn.small{min-height:31px;padding:5px 10px;
+ color:#efdfbc;background:#2b352c;border:1px solid #647157;font-size:11px;border-radius:8px}
+.payline-tax-presets .btn.small:hover,.payline-tax-presets .btn.small:focus-visible{
+ background:#514633;border-color:#c0a477;color:#fff5dc}
+.sterling-payline-dialog .payline-editor-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+.sterling-payline-dialog .payline-editor-fields label:last-child{grid-column:1 / -1}
+#p3TaxRate{max-width:240px}
+@media(max-width:490px){
+ .sterling-payline-dialog .payline-editor-fields{grid-template-columns:1fr}
+ .sterling-payline-dialog .payline-editor-fields label:last-child{grid-column:auto}
+ #p3TaxRate{max-width:100%}
+}
