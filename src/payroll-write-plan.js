@@ -1,6 +1,6 @@
 // Bound Firestore writes by security-rule document-access limits (20 per batch).
-// Six mutations per transaction leaves room for tenant, owner, run and employee checks.
-export const PAYROLL_SAFE_WRITE_SIZE = 6;
+// Three mutations per batch leave headroom for tenant, owner, run, employee, and commission authorization reads.
+export const PAYROLL_SAFE_WRITE_SIZE = 3;
 
 export function chunkPayrollWrites(items, size = PAYROLL_SAFE_WRITE_SIZE) {
  if (!Number.isInteger(size) || size < 1 || size > PAYROLL_SAFE_WRITE_SIZE)
