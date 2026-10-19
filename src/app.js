@@ -21,6 +21,7 @@ import {mountPayrollExperience} from "./payroll-experience.js?v=sterling-payroll
 import {normalizePayrollRunName,payrollRunLabel,payrollRunSubtitle} from "./payroll-run-names.js?v=sterling-run-names-20261019";
 import {normalizePayrollRunMode,usesCommissions,usesTimecards,payrollRunModeLabel} from "./payroll-run-modes.js?v=sterling-payroll-modes-20261019";
 import {applySimulatedTaxes} from "./payroll-tax-core.js?v=sterling-sim-tax-20261018";
+import {applyEffectiveCompensation} from "./profile-payroll.js?v=sterling-ops30-20261019";
 
 const app=initializeApp({
  apiKey:"AIzaSyBAAAUc0nDiiD7zfURjohVj1UBA-1yQmV0",
@@ -993,7 +994,30 @@ async function generateLines(run){
  }
  // Commissions affect gross earnings, so simulated tax withholding must be
  // recalculated against the final amount after commissions are attached.
- const lines=applySimulatedTaxes(commission.lines,policy.defaultTaxRateBasisPoints||0);
+ // Effective-date profiles are scoped by company and selected pay period.
+ // Legacy projects without deployed Operations 3.0 rules keep previous defaults.
+ let effectiveLines=commission.lines,profileCount=0;
+ try{
+  const history=[],baseProfiles=collection(db,"tenants",tenantId,"compensationHistory");
+  let cursor=null;
+  for(let page=0;page<10;page++){
+   const parts=[orderBy(documentId()),limit(200)];
+   if(cursor)parts.push(startAfter(cursor));
+   const snapshot=await getDocs(query(baseProfiles,...parts));
+   if(!stillAuthorized())throw Error("Company changed while compensation history was loading.");
+   history.push(...snapshot.docs.map(d=>({id:d.id,...d.data()})));
+   if(snapshot.size<200){cursor=null;break}
+   cursor=snapshot.docs.at(-1);
+  }
+  if(cursor)throw Error("Too many compensation history records to calculate safely.");
+  profileCount=history.length;
+  effectiveLines=applyEffectiveCompensation(commission.lines,history,run.periodEnd);
+ }catch(error){
+  if(error?.code!=="permission-denied")throw error;
+  // No profile edits can succeed while the new rules remain unpublished.
+  toast("Compensation profiles are unavailable until updated Firebase rules are published; company default policy will be used.",true);
+ }
+ const lines=applySimulatedTaxes(effectiveLines,policy.defaultTaxRateBasisPoints||0);
  preview.lines=lines;
  preview.sources=[...preview.sources,...(commission.applied||[]).map(sale=>"sale:"+sale.id)];
  preview.totals=summarizeLines(lines);
