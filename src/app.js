@@ -848,6 +848,12 @@ function renderRunDetails(){
        if((current[field]||0)!==(line[field]||0))throw Error("Another user changed this pay line. Reopen it to see the latest amounts.");
       }
       transaction.update(lineRef,values);
+      const audit=doc(db,"tenants",company,"auditEvents");
+      transaction.set(audit,{
+       category:"payroll",action:"draft-payline-adjust",subject:employeeId,
+       detail:"Adjusted fictional bonus and deduction for "+String(line.employeeName||"Employee").slice(0,100),
+       actor:actor,at:serverTimestamp()
+      });
      });
      await selectRun(runId);toast("Draft earnings updated.");
     }}),"small"));
