@@ -18,6 +18,7 @@ import {planPayrollDraftWrites} from "./payroll-write-plan.js?v=sterling-payroll
 import {payrollNextSteps} from "./payroll-workflow.js?v=sterling-payroll-overhaul-20261018";
 import {mountPaylineEditor} from "./payroll-line-editor.js?v=sterling-sim-tax-20261018";
 import {mountPayrollExperience} from "./payroll-experience.js?v=sterling-payroll-overhaul-20261018";
+import {normalizePayrollRunName,payrollRunLabel,payrollRunSubtitle} from "./payroll-run-names.js?v=sterling-run-names-20261019";
 import {applySimulatedTaxes} from "./payroll-tax-core.js?v=sterling-sim-tax-20261018";
 
 const app=initializeApp({
@@ -365,8 +366,9 @@ function renderDashboard(){
  }
  const recent=$("recentPayroll");recent.replaceChildren();
  if(!state.runs.length)recent.append(mk("p","muted","No payroll runs loaded for this company."));
- else for(const run of state.runs.slice(0,5))recent.append(item(run.periodStart+" — "+run.periodEnd,
-  run.status+" · "+run.payDate,[button("Open",()=>{go("payroll");return selectRun(run.id)},"small")]));
+ else for(const run of state.runs.slice(0,5))recent.append(item(payrollRunLabel(run),
+  (payrollRunSubtitle(run)?payrollRunSubtitle(run)+" · ":"")+run.status+" · "+run.payDate,
+  [button("Open",()=>{go("payroll");return selectRun(run.id)},"small")]));
  for(const [name,value,subtitle] of metrics){
   const box=mk("article","metric");box.append(mk("div","metric-label",name),mk("strong","",value),mk("small","",subtitle));el.append(box);
  }
@@ -739,18 +741,87 @@ $("runForm").addEventListener("submit",async event=>{
  event.preventDefault();if(!canPayroll()||!state.tenantId)return;
  const periodStart=$("periodStart").value,periodEnd=$("periodEnd").value,payDate=$("payDate").value;
  if(!validPeriod(periodStart,periodEnd,payDate))return toast("Pay period dates must be valid, and payday must be after the period.",true);
+ let name;
+ try{name=normalizePayrollRunName($("runName").value,{optional:true})}
+ catch(error){return toast(error.message,true)}
  try{
   const run=doc(sub("payrollRuns"));const batch=writeBatch(db);
-  batch.set(run,{periodStart,periodEnd,payDate,status:"draft",createdAt:serverTimestamp(),createdBy:state.user.uid,submittedBy:"",approvedBy:"",finalizedBy:""});
+  batch.set(run,{...(name?{name}:{}),periodStart,periodEnd,payDate,status:"draft",createdAt:serverTimestamp(),createdBy:state.user.uid,submittedBy:"",approvedBy:"",finalizedBy:""});
   auditClient(batch,"payroll","payroll-create",run.id,periodStart+" → "+periodEnd);await batch.commit();
   await refreshCompany();await selectRun(run.id);event.target.dispatchEvent(new Event("sterling:complete"));toast("Draft payroll created.");
  }catch(e){fail(e,"Payroll run creation failed")}
 });
+function canRenameRun(run){
+ return Boolean(run&&state.tenantId&&
+  (state.platformOwner||(canPayroll()&&["draft","rejected"].includes(run.status))));
+}
+let renamingRunId="",renamingCompany="",renameBusy=false;
+const renameDialog=$("renameRunDialog");
+function closeRenameRun(){
+ if(!renameBusy&&renameDialog.open)renameDialog.close();
+}
+$("renameRunCancel").onclick=closeRenameRun;
+$("renameRunClose").onclick=closeRenameRun;
+renameDialog.addEventListener("cancel",event=>{if(renameBusy)event.preventDefault()});
+function openRenameRun(run){
+ if(!canRenameRun(run))throw Error("You are not authorized to rename this payroll run.");
+ if(renameDialog.open||renameBusy)throw Error("Finish the current rename first.");
+ renamingRunId=run.id;renamingCompany=state.tenantId;
+ $("renameRunInput").value=String(run.name||"");
+ $("renameRunError").classList.add("hidden");
+ renameDialog.showModal();$("renameRunInput").focus();
+}
+$("renameRunForm").onsubmit=async event=>{
+ event.preventDefault();
+ if(renameBusy)return;
+ const runId=renamingRunId,company=renamingCompany,actor=state.user?.uid;
+ let name;
+ try{name=normalizePayrollRunName($("renameRunInput").value)}
+ catch(error){
+  $("renameRunError").textContent=error.message;
+  $("renameRunError").classList.remove("hidden");return;
+ }
+ renameBusy=true;$("renameRunSave").disabled=true;$("renameRunCancel").disabled=true;
+ $("renameRunClose").disabled=true;
+ $("renameRunError").classList.add("hidden");
+ try{
+  if(state.tenantId!==company||state.user?.uid!==actor)throw Error("The company or signed-in account changed.");
+  const current=state.runs.find(r=>r.id===runId);
+  if(!canRenameRun(current))throw Error("This payroll run is no longer editable.");
+  if(current.name===name){renameDialog.close();toast("Payroll run name is unchanged.");return;}
+  const target=doc(db,"tenants",company,"payrollRuns",runId);
+  const audit=doc(db,"tenants",company,"auditEvents");
+  await runTransaction(db,async transaction=>{
+   if(state.tenantId!==company||state.user?.uid!==actor)throw Error("Company changed during rename.");
+   const snapshot=await transaction.get(target);
+   if(!snapshot.exists())throw Error("Payroll run no longer exists.");
+   const latest=snapshot.data();
+   if(latest.name!==current.name||latest.status!==current.status)
+    throw Error("This payroll run changed. Refresh it before renaming.");
+   if(!state.platformOwner&&!["draft","rejected"].includes(latest.status))
+    throw Error("Only the Sterling Owner may rename a submitted or finalized payroll.");
+   transaction.update(target,{name,nameUpdatedBy:actor,nameUpdatedAt:serverTimestamp()});
+   transaction.set(audit,{category:"payroll",action:"payroll-rename",subject:runId,
+    detail:("Renamed payroll from "+(latest.name||latest.periodStart+" — "+latest.periodEnd)+" to "+name).slice(0,300),
+    actor,at:serverTimestamp()});
+  });
+  renameDialog.close();
+  toast("Payroll run renamed to "+name+".");
+  await refreshCompany();
+  if(state.selectedRun===runId)renderRunDetails();
+ }catch(error){
+  $("renameRunError").textContent=error.message||String(error);
+  $("renameRunError").classList.remove("hidden");
+ }finally{
+  renameBusy=false;$("renameRunSave").disabled=false;$("renameRunCancel").disabled=false;
+  $("renameRunClose").disabled=false;
+ }
+};
 function renderRuns(){
  const el=$("runList");el.replaceChildren();
  const q=$("runSearch").value.toLowerCase().trim(),status=$("runStatus").value;
  const sortBy=$("runSort").value;
- const filtered=state.runs.filter(r=>(status==="all"||r.status===status)&&[r.periodStart,r.periodEnd,r.payDate,r.status].join(" ").toLowerCase().includes(q))
+ const filtered=state.runs.filter(r=>(status==="all"||r.status===status)&&[r.name,r.periodStart,r.periodEnd,r.payDate,r.status].join(" ").toLowerCase().includes(q))
  .sort((a,b)=>{
   if(sortBy==="oldest")return String(a.periodStart||"").localeCompare(String(b.periodStart||""));
   if(sortBy==="payday")return String(b.payDate||"").localeCompare(String(a.payDate||""));
@@ -763,12 +834,15 @@ function renderRuns(){
  for(const run of filtered.slice(0,250)){
   const css=run.status==="finalized"?"success":run.status==="rejected"?"danger":"";
   const actions=[button("Open",()=>selectRun(run.id),"small")];
+  if(canRenameRun(run))actions.push(button("Rename",()=>openRenameRun(run),"small"));
   if(state.platformOwner){
    actions.push(button("Owner signoff",()=>openOwnerReview("payrollRuns",run.id),"small"));
    if(!["draft","rejected"].includes(run.status))actions.push(button("Correct / void",()=>openPayrollEditor(run.id),"small"));
    actions.push(button("Delete permanently",()=>ownerActions.remove("payrollRuns",run),"small danger"));
   }
-  frag.append(item(run.periodStart+" — "+run.periodEnd,"Simulated payday: "+run.payDate,actions,run.status,css));
+  frag.append(item(payrollRunLabel(run),
+   (payrollRunSubtitle(run)?payrollRunSubtitle(run)+" · ":"")+"Simulated payday: "+run.payDate,
+   actions,run.status,css));
  }
  el.append(frag);
  if(filtered.length>250)el.append(mk("p","fine-print","Displaying the first 250 matches. Refine the filter."));
@@ -805,7 +879,11 @@ function renderRunDetails(){
  const run=state.runs.find(r=>r.id===state.selectedRun);if(!run)return;
  payrollExperience?.sync();
  $("runDetails").classList.remove("hidden");
- $("runHeading").textContent=run.periodStart+" — "+run.periodEnd;
+ $("runHeading").textContent=payrollRunLabel(run);
+ $("runPeriodLabel").textContent=(payrollRunSubtitle(run)||run.periodStart+" — "+run.periodEnd)+
+  " · Simulated payday: "+run.payDate;
+ $("renameRunButton").classList.toggle("hidden",!canRenameRun(run));
+ $("renameRunButton").onclick=()=>openRenameRun(run);
  $("runStatusChip").textContent=run.status.toUpperCase();
  $("runStatusChip").className="status-chip "+(run.status==="finalized"?"success":run.status==="rejected"?"danger":"");
  const totals=summarizeLines(state.lines),box=$("runTotals");box.replaceChildren();
