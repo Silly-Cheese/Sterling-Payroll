@@ -1,5 +1,6 @@
 import {collection,doc,getDoc,getDocs,addDoc,updateDoc,setDoc,serverTimestamp,query,limit,orderBy,documentId,startAfter} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 import {toCents,money} from "./payroll-core.js";
+import {taxBasisPoints} from "./payroll-tax-core.js";
 import {readCompletePages} from "./payroll-paging.js?v=sterling-complete-payroll-20261017";
 import {mountBulkTimecardApprovals} from "./timecard-bulk.js?v=sterling-timekeeping-20261018";
 import {DEFAULT_POLICY,validatePolicy,validReviewTransition,validateCorrection,validateLeave,buildPayrollPreview,csvStatement} from "./phase3-core.js";
@@ -66,6 +67,7 @@ export async function mountPhase3({db,getState,refreshCompany,notify,confirmActi
   $("p3Multiplier").value=String(policy.overtimeMultiplierHundredths);
   $("p3Bonus").value=(policy.defaultBonusCents/100).toFixed(2);
   $("p3Deduction").value=(policy.defaultDeductionCents/100).toFixed(2);
+  $("p3TaxRate").value=((policy.defaultTaxRateBasisPoints||0)/100).toFixed(2);
   $("p3PolicyStatus").textContent="Policy version "+policy.version+" • Approved time required";
   $("p3PolicyForm").classList.toggle("hidden",!adminAllowed());
   $("p3CorrectionForm").classList.toggle("hidden",!writeAllowed());
@@ -177,8 +179,8 @@ export async function mountPhase3({db,getState,refreshCompany,notify,confirmActi
   try{
    if(!adminAllowed())throw Error("Client administrator required");
    const next=validatePolicy({version:policy.version+1,overtimeMultiplierHundredths:Number($("p3Multiplier").value),
-    defaultBonusCents:toCents($("p3Bonus").value),defaultDeductionCents:toCents($("p3Deduction").value),requireApprovedTime:true});
-   if(!await confirmAction("Change pay policy","Apply new fictional pay policy to future draft generations?"))return;
+    defaultBonusCents:toCents($("p3Bonus").value),defaultDeductionCents:toCents($("p3Deduction").value),defaultTaxRateBasisPoints:taxBasisPoints($("p3TaxRate").value),requireApprovedTime:true});
+   if(!await confirmAction("Change pay policy","Apply this fictional payroll policy, including "+$("p3TaxRate").value+"% simulated taxes on gross earnings, to future draft generations? Previously finalized payroll remains unchanged."))return;
    if(tenantLoaded!==S().tenantId)throw Error("Company changed; refresh first");
    if(policy.version===1&&!(await getDoc(tdoc("payrollPolicies","current"))).exists())await setDoc(tdoc("payrollPolicies","current"),next);
    else await updateDoc(tdoc("payrollPolicies","current"),next);
