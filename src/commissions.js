@@ -118,6 +118,7 @@ export async function mountCommissions({db,getState,notify,confirmAction,ownerDe
   for(const [id,plan] of rows){
    const description=plan.type==="percent"?(plan.rateBasisPoints/100)+"% of each sale":money(plan.fixedCents)+" per sale";
    const actions=admin()?[button("Edit plan",()=>openPlan(id))]:[];
+   if(S().platformOwner)actions.push(button("Delete assignment",()=>deletePlan(id),"danger"));
    target.append(row(employeeName(id),description,plan.active?"active":"inactive",actions));
   }
  }
@@ -269,10 +270,48 @@ export async function mountCommissions({db,getState,notify,confirmAction,ownerDe
   $("commissionPlanSave").textContent=bulk?"Save plans for selected employees":"Save commission plan";
   if(bulk)renderBulkSelection();
  }
+ async function deletePlan(id){
+  if(!S().platformOwner)throw Error("Only the Sterling owner can delete a commission assignment.");
+  const current=plans.get(id),person=employeeName(id);
+  if(!current)throw Error("That employee's commission assignment no longer exists. Refresh and try again.");
+  const company=tenantId,actor=S().user?.uid;
+  const count=sales.filter(s=>s.employeeId===id).length;
+  const important=sales.filter(s=>s.employeeId===id&&(s.status==="approved"||s.paidRunId)).length;
+  const confirmed=await confirmAction("Delete commission assignment",
+   "Remove the commission plan for "+person+"? The employee will no longer be eligible for new commission sales until another plan is assigned. "+
+   (count?"Their "+count+" recorded sales"+(important?" (including "+important+" approved or payroll-linked)":"")+" will remain unchanged. ":"")+
+   "Existing approved sales and simulated payroll history will NOT be deleted.");
+  if(!confirmed)return;
+  guard(company,actor);
+  if(!S().platformOwner)throw Error("Sterling owner permission is required to delete commission assignments.");
+  const target=doc(db,"tenants",company,"commissionPlans",id);
+  const auditRef=doc(db,"tenants",company,"auditEvents");
+  await runTransaction(db,async transaction=>{
+   guard(company,actor);
+   if(!S().platformOwner)throw Error("Owner permission changed. Reopen this company.");
+   const latest=await transaction.get(target);
+   if(!latest.exists())throw Error("The commission assignment was already deleted. Refresh to see current records.");
+   const data=latest.data();
+   for(const field of ["employeeId","type","rateBasisPoints","fixedCents","active","updatedBy"]){
+    if(data[field]!==current[field])throw Error("This plan was changed by another user. Refresh and review before deleting it.");
+   }
+   transaction.delete(target);
+   transaction.set(auditRef,{
+    category:"commissions",action:"commission-plan-delete",subject:id,
+    detail:("Removed commission plan for "+person+". Prior sales and pay records retained.").slice(0,300),
+    actor,at:serverTimestamp()
+   });
+  });
+  if($("commissionPlanDialog").open&&editingPlan===id)$("commissionPlanDialog").close();
+  notify("Commission assignment removed for "+person+". Existing sales and payroll history remain.");
+  await refresh();activateView("plans");
+ }
  function openPlan(id=""){
   editingPlan=id;planEmployeeIds.clear();
   $("commissionPlanForm").reset();
   $("commissionPlanTitle").textContent=id?"Edit commission plan":"Assign commission plan";
+  $("commissionPlanDelete").classList.toggle("hidden",!id||!S().platformOwner);
+  $("commissionPlanDelete").disabled=!id||!S().platformOwner;
   $("commissionBulkToggleWrap").classList.toggle("hidden",Boolean(id));
   const available=employees.filter(e=>e.status==="active"||e.id===id);
   $("commissionEmployee").replaceChildren(option("","Choose an employee"),...available.map(e=>option(e.id,e.displayName)));
@@ -290,6 +329,13 @@ export async function mountCommissions({db,getState,notify,confirmAction,ownerDe
   $("commissionPlanDialog").showModal();
  }
  $("commissionPlanNew").onclick=()=>openPlan();
+ $("commissionPlanDelete").onclick=async()=>{
+  if(!editingPlan)return;
+  const control=$("commissionPlanDelete");control.disabled=true;
+  try{await deletePlan(editingPlan)}
+  catch(error){warn(error,"Deleting commission assignment")}
+  finally{control.disabled=false}
+ };
  $("commissionBulkPlan").onchange=togglePlanMode;
  $("commissionBulkSearch").oninput=renderBulkSelection;
  $("commissionBulkSelectUnassigned").onclick=()=>{
