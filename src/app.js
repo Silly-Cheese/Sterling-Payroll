@@ -1072,10 +1072,19 @@ async function generateLines(run){
   catch(error){
    const reason=error?.code||error?.message||error;
    const denied=String(reason).includes("permission-denied");
-   statusNode.textContent=denied?"Firebase blocked payroll writes. Verify that Firestore security rules have been deployed to sterling-payroll-5d200. The run remains a draft.":
-    "Generation stopped after "+saved+" of "+writeCount+" draft changes. The run remains a draft; retry generation to reconcile it.";
-   throw Error("Saving payroll records (batch "+(i+1)+"/"+groups.length+") failed: "+reason+". "+
-    (saved?"Earlier batches were saved; retry generation to finish this draft.":"No pay lines were saved by this attempt."));
+   const operationTypes=[...new Set(groups[i].map(change=>change.type))];
+   const phase=operationTypes.map(type=>type==="line"?"employee pay-line writes":
+    type==="claim"?"approved commission claims":
+    type==="release"?"old commission releases":"draft line deletion").join(" and ");
+   statusNode.textContent=denied?
+    "Firebase denied "+phase+" (batch "+(i+1)+"/"+groups.length+"). "+
+    "Deploy the matching Firestore rules to sterling-payroll-5d200 and verify your payroll role. "+
+    "No records in this batch were saved; the run remains a draft.":
+    "Generation stopped during "+phase+" after "+saved+" of "+writeCount+
+    " draft changes. The run remains a draft; retry only after resolving the error.";
+   throw Error("Saving "+phase+" (batch "+(i+1)+"/"+groups.length+") failed: "+reason+". "+
+    (saved?"Earlier batches may already be saved; generation can reconcile the draft after the cause is fixed.":
+     "No writes from this generation attempt were committed."));
   }
   saved+=groups[i].length;
   if(stillAuthorized())statusNode.textContent="Saving verified payroll lines… "+saved+" / "+writeCount+" changes";
