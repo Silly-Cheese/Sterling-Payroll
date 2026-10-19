@@ -355,6 +355,61 @@ test("only approved commission sales can be claimed by a draft payroll, and not 
  await assertSucceeds(updateDoc(doc(owner,base+"commissionSales/approved"),{paidRunId:""}));
  await assertSucceeds(updateDoc(doc(admin,base+"commissionSales/approved"),{paidRunId:"second-run"}));
 });
+
+test("named payroll drafts accept each processing mode while rejecting unknown ones",async()=>{
+ const db=as("admin"),base="tenants/north/payrollRuns/";
+ const draft={periodStart:"2026-10-12",periodEnd:"2026-10-18",payDate:"2026-10-19",
+  status:"draft",createdAt:serverTimestamp(),createdBy:"admin",
+  submittedBy:"",approvedBy:"",finalizedBy:""};
+ for(const mode of ["combined","timecards-only","commissions-only"]){
+  await assertSucceeds(setDoc(doc(db,base+"run-"+mode),{...draft,name:"October "+mode,processingMode:mode}));
+ }
+ await assertFails(setDoc(doc(db,base+"bad-mode"),{...draft,processingMode:"invalid"}));
+ await assertFails(setDoc(doc(db,base+"bad-name"),{...draft,name:"X".repeat(81),processingMode:"combined"}));
+});
+test("run processing mode controls payroll line earnings and cannot be modified afterward",async()=>{
+ const admin=as("admin"),base="tenants/north/";
+ await env.withSecurityRulesDisabled(async c=>{
+  const db=c.firestore();
+  for(const [id,mode] of [["co","commissions-only"],["tc","timecards-only"]])
+   await setDoc(doc(db,base+"payrollRuns/"+id),{periodStart:"2026-10-12",periodEnd:"2026-10-18",payDate:"2026-10-19",
+    status:"draft",processingMode:mode,createdBy:"admin",submittedBy:"",approvedBy:"",finalizedBy:""});
+ });
+ const line={employeeId:"e1",employeeName:"Fictional Employee",payType:"hourly",
+  regularHours:0,overtimeHours:0,regularCents:0,overtimeCents:0,
+  bonusCents:0,commissionCents:18000,deductionCents:0,grossCents:18000,netCents:18000,
+  policyVersion:1,paidLeaveHours:0};
+ await assertSucceeds(setDoc(doc(admin,base+"payrollRuns/co/lines/e1"),line));
+ await assertFails(setDoc(doc(admin,base+"payrollRuns/co/lines/e2"),{
+  ...line,employeeId:"e2",employeeName:"Other Person",regularHours:2,regularCents:5000,
+  grossCents:23000,netCents:23000
+ }));
+ await assertFails(setDoc(doc(admin,base+"payrollRuns/tc/lines/e1"),line));
+ await assertSucceeds(setDoc(doc(admin,base+"payrollRuns/tc/lines/e1"),{
+  ...line,regularHours:2,regularCents:5000,commissionCents:0,grossCents:5000,netCents:5000
+ }));
+ await assertFails(updateDoc(doc(admin,base+"payrollRuns/co"),{processingMode:"combined"}));
+});
+test("draft payroll can be renamed; completed run can only be renamed by Sterling owner",async()=>{
+ const base="tenants/north/payrollRuns/",admin=as("admin"),owner=as("owner");
+ await env.withSecurityRulesDisabled(async c=>{
+  await setDoc(doc(c.firestore(),base+"name-draft"),{status:"draft",createdBy:"admin",
+   periodStart:"2026-10-12",periodEnd:"2026-10-18",payDate:"2026-10-19"});
+  await setDoc(doc(c.firestore(),base+"name-final"),{status:"finalized",createdBy:"admin",
+   periodStart:"2026-10-12",periodEnd:"2026-10-18",payDate:"2026-10-19",
+   submittedBy:"admin",approvedBy:"owner",finalizedBy:"admin"});
+ });
+ await assertSucceeds(updateDoc(doc(admin,base+"name-draft"),{
+  name:"October regular wages",nameUpdatedBy:"admin",nameUpdatedAt:serverTimestamp()
+ }));
+ await assertFails(updateDoc(doc(admin,base+"name-final"),{
+  name:"My edit",nameUpdatedBy:"admin",nameUpdatedAt:serverTimestamp()
+ }));
+ await assertSucceeds(updateDoc(doc(owner,base+"name-final"),{
+  name:"October finalized",nameUpdatedBy:"owner",nameUpdatedAt:serverTimestamp()
+ }));
+});
+
 test("owner can delete approved fictional commission records but client users cannot",async()=>{
  await env.withSecurityRulesDisabled(async c=>{
   await setDoc(doc(c.firestore(),"tenants","north","commissionSales","doomed"),{employeeId:"e1",status:"approved",paidRunId:"",commissionCents:100});
