@@ -33,7 +33,14 @@
   <div class="payroll-advanced-body">
    <form id="p3PolicyForm" class="form-stack">
     <label>Overtime multiplier<select id="p3Multiplier"><option value="100">1.00×</option><option value="125">1.25×</option><option value="150">1.50×</option><option value="175">1.75×</option><option value="200">2.00×</option></select></label>
-    <div class="two-fields"><label>Default fictional bonus (USD)<input id="p3Bonus" type="number" min="0" step=".01" value="0.00"></label><label>Default fictional deduction (USD)<input id="p3Deduction" type="number" min="0" step=".01" value="0.00"></label></div>
+    <div class="two-fields">
+     <label>Default fictional bonus (USD)<input id="p3Bonus" type="number" min="0" step=".01" value="0.00"></label>
+     <label>Default other deduction (USD)<input id="p3Deduction" type="number" min="0" step=".01" value="0.00"></label>
+    </div>
+    <label>Default simulated tax deduction (% of gross pay)
+     <input id="p3TaxRate" type="number" min="0" max="100" step="0.01" value="0.00" placeholder="12.50">
+    </label>
+    <p class="fine-print">Example: 12.5% deducts $125 in simulated taxes from $1,000 gross earnings. This is a fictional rate—not an actual tax calculation. Other deductions are added separately.</p>
     <button class="btn primary" type="submit">Save payroll policy</button>
    </form>
    <p id="p3PolicyStatus" class="fine-print">Default policy applies until changed.</p>
