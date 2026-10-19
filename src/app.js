@@ -745,7 +745,7 @@ $("runForm").addEventListener("submit",async event=>{
  let name,processingMode;
  try{
   name=normalizePayrollRunName($("runName").value,{optional:true});
-  processingMode=normalizePayrollRunMode($("runProcessingMode").value);
+  processingMode=normalizePayrollRunMode(document.querySelector('input[name="runProcessingModeChoice"]:checked')?.value);
  }catch(error){return toast(error.message,true)}
  try{
   const run=doc(sub("payrollRuns"));const batch=writeBatch(db);
