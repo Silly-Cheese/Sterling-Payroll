@@ -7,7 +7,7 @@ const isoTime=t=>t?.toDate?.()?.toLocaleString?.()||"";
 const READER_LIMIT=5000;
 export async function mountOperationsCenter({db,getState,notify,confirmAction,onNavigate,onOpenRun,onOpenTime,refreshCompany}){
  const host=document.getElementById("ops30Root");
- const response=await fetch("./operations-center.html?v=sterling-ops30-20261019",{cache:"no-store"});
+ const response=await fetch("./operations-center.html?v=sterling-ops30-hotfix-20261019",{cache:"no-store"});
  if(!response.ok)throw Error("Missing Operations Center template. Wait for the GitHub Pages deployment.");
  host.innerHTML=await response.text();
  const $=id=>host.querySelector("#"+id),state=()=>getState(),coll=(tenant,name)=>collection(db,"tenants",tenant,name);
