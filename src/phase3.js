@@ -12,7 +12,7 @@ export async function mountPhase3({db,getState,refreshCompany,notify,confirmActi
  const time=document.getElementById("phase3Time"),payroll=document.getElementById("phase3Payroll");
  if(!time||!payroll)throw Error("Phase 3 workspace containers missing");
  const html=await Promise.all(["phase3-time.html","phase3-payroll.html"].map(async name=>{
-  const response=await fetch("./"+name+"?v=sterling-timekeeping-20261018");if(!response.ok)throw Error("Missing "+name);return response.text()
+  const response=await fetch("./"+name+"?v=sterling-payroll-overhaul-20261018");if(!response.ok)throw Error("Missing "+name);return response.text()
  }));
  time.innerHTML=html[0];payroll.innerHTML=html[1];
  const $=id=>document.getElementById(id),S=()=>getState();
