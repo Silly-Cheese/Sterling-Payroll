@@ -1,0 +1,64 @@
+
+/* Sterling Payroll Operations 3.0 — same dark design language, less visual clutter. */
+.ops30{display:grid;gap:17px;min-width:0}
+.ops30-hero{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:15px;
+ border:1px solid #445747;background:linear-gradient(120deg,#202b23,#14201d);border-radius:15px;padding:clamp(18px,2vw,28px)}
+.ops30-hero>div:first-child{flex:1 1 350px}
+.ops30-hero h2{font:500 clamp(25px,2.3vw,35px)/1.2 Georgia,serif;color:#f2dfb8;margin:5px 0 9px}
+.ops30-hero p{color:#b9c8bd;line-height:1.7;font-size:13px;max-width:720px;margin:0}
+.ops30-head-actions,.ops30-row,.ops30-form-buttons{display:flex;align-items:center;flex-wrap:wrap;gap:9px}
+.ops30-state{margin:0;font-size:12px;color:#c1d4c4;padding:11px 14px;border:1px solid #405646;background:#1c2921;border-radius:10px}
+.ops30-state.is-error{color:#ffd0c1;background:#35221f;border-color:#885f54}
+.ops30-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px}
+.ops30-metric{display:grid;gap:8px;border:1px solid #445549;background:#1d2823;border-radius:12px;padding:14px 16px;min-width:0}
+.ops30-metric span{font-size:11px;color:#c2cabd}
+.ops30-metric strong{font-size:clamp(22px,2.3vw,30px);font-variant-numeric:tabular-nums;color:#f3dcab}
+.ops30-tabs{display:flex;flex-wrap:nowrap;gap:5px;max-width:100%;overflow:auto;scrollbar-width:thin;padding:5px;
+ border:1px solid #3e4c43;border-radius:11px;background:#151e1b}
+#ops30Root .ops30-tabs button{min-height:41px;border:1px solid transparent;border-radius:8px;background:transparent;color:#bdc9bf;
+ padding:9px 12px;white-space:nowrap;font-size:12px;font-weight:750;cursor:pointer}
+#ops30Root .ops30-tabs button[aria-selected="true"]{background:#3b3529;border-color:#b5945e;color:#ffe0a9}
+.ops30-panel{border:1px solid #384b41;background:#17211e;border-radius:14px;padding:clamp(17px,2.1vw,26px);min-width:0}
+.ops30-panel.hidden{display:none!important}
+.ops30-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px}
+.ops30-head h3{font:500 clamp(21px,2vw,27px)/1.25 Georgia,serif;color:#f2e5ce;margin:0 0 8px}
+.ops30-head p{font-size:12px;line-height:1.7;color:#b3c3b5;max-width:800px;margin:0}
+.ops30-panel h4{font-size:14px;color:#e7d1a9;margin:22px 0 12px}
+.ops30-row{align-items:end;margin:12px 0}
+.ops30-row label{flex:1 1 260px}
+.ops30-panel label{min-width:0;display:grid;gap:6px;font-size:12px;font-weight:700}
+.ops30-panel label input,.ops30-panel label select,.ops30-panel label textarea{
+ background:#101a17;color:#f1eadd;border:1px solid #4a5a50;border-radius:9px;
+ width:100%;min-height:40px;padding:9px 11px;font:inherit;font-size:13px;line-height:1.4}
+.ops30-panel textarea{resize:vertical;min-height:95px}
+.ops30-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;min-width:0}
+.ops30-full,.ops30-form-buttons{grid-column:1/-1}
+.ops30-form-buttons{justify-content:flex-start;margin-top:3px}
+.ops30-form-buttons .btn{min-height:40px}
+.ops30-list{display:grid;gap:8px;margin-top:11px}
+.ops30-entry{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;border:1px solid #405248;border-radius:10px;
+ background:#1c2923;padding:12px 14px;min-width:0}
+.ops30-entry.severity-warning{border-color:#766047;background:#302b22}
+.ops30-entry.severity-error{border-color:#9a514e;background:#342421}
+.ops30-entry-copy{display:grid;gap:6px;flex:1 1 210px;min-width:0}
+.ops30-entry-copy strong{font-size:12px;color:#f0e2c3;line-height:1.4;overflow-wrap:anywhere}
+.ops30-entry-copy small{font-size:11px;color:#b3c5b7;line-height:1.6;overflow-wrap:anywhere}
+.ops30-entry-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.ops30-inspection{font-weight:650;font-size:13px;color:#e5d7b8;line-height:1.6;padding:10px 0}
+.ops30-table-wrap{max-width:100%;overflow:auto;border:1px solid #425247;border-radius:10px}
+.ops30-table{border-collapse:collapse;width:100%;font-size:12px}
+.ops30-table th{background:#29362c;color:#ead6aa;white-space:nowrap}
+.ops30-table th,.ops30-table td{padding:11px 12px;text-align:left;border-bottom:1px solid #34453c}
+.ops30-panel>p.muted{font-size:12px;line-height:1.6}
+@media(max-width:1150px){.ops30-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.ops30-hero{padding:17px}.ops30-form{grid-template-columns:1fr}.ops30-full,.ops30-form-buttons{grid-column:auto}.ops30-row>*{flex:1 1 100%}.ops30-head-actions{width:100%}.ops30-head-actions .btn{flex:1 1 auto}.ops30-entry{align-items:stretch}.ops30-entry-actions{flex:1 1 100%}.ops30-entry-actions .btn{flex:1 1 auto}}
+@media print{
+ body *{visibility:hidden!important}
+ #ops30Root,#ops30Root *{visibility:visible!important}
+ #ops30Root{position:absolute!important;inset:0;width:100%!important;background:white!important;color:black!important}
+ .ops30-tabs,.ops30-head-actions,.ops30-form,.ops30-row button,.ops30-entry-actions{display:none!important}
+ .ops30-panel:not([data-op-panel="reports"]){display:none!important}
+ .ops30-panel[data-op-panel="reports"]{display:block!important;border:0!important}
+ .ops30-hero{background:white!important;color:black!important;border:0!important}
+ .ops30-table td,.ops30-table th{color:black!important}
+}
