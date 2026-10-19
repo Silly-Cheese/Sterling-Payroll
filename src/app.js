@@ -1071,7 +1071,9 @@ async function generateLines(run){
   try{await batch.commit()}
   catch(error){
    const reason=error?.code||error?.message||error;
-   statusNode.textContent="Generation stopped after "+saved+" of "+writeCount+" draft changes. The run remains a draft; retry generation to reconcile it.";
+   const denied=String(reason).includes("permission-denied");
+   statusNode.textContent=denied?"Firebase blocked payroll writes. Verify that Firestore security rules have been deployed to sterling-payroll-5d200. The run remains a draft.":
+    "Generation stopped after "+saved+" of "+writeCount+" draft changes. The run remains a draft; retry generation to reconcile it.";
    throw Error("Saving payroll records (batch "+(i+1)+"/"+groups.length+") failed: "+reason+". "+
     (saved?"Earlier batches were saved; retry generation to finish this draft.":"No pay lines were saved by this attempt."));
   }
