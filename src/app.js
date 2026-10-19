@@ -1004,7 +1004,7 @@ async function generateLines(run){
    const parts=[orderBy(documentId()),limit(200)];
    if(cursor)parts.push(startAfter(cursor));
    const snapshot=await getDocs(query(baseProfiles,...parts));
-   if(!stillAuthorized())throw Error("Company changed while compensation history was loading.");
+   if(state.tenantId!==tenantId||state.user?.uid!==actor||state.selectedRun!==run.id)throw Error("Company changed while compensation history was loading.");
    history.push(...snapshot.docs.map(d=>({id:d.id,...d.data()})));
    if(snapshot.size<200){cursor=null;break}
    cursor=snapshot.docs.at(-1);
