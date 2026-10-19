@@ -39,6 +39,8 @@
   <form id="opCompForm" class="ops30-form">
    <label>Employee<select id="opCompEmployee" required></select></label>
    <label>Effective from<input id="opCompDate" type="date" required></label>
+   <label id="opCompRateLabel">Hourly rate / annual salary ($)<input id="opCompRate" type="number" min="0" max="10000000" step=".01" required></label>
+   <label>Reason for change<input id="opCompNote" maxlength="160" placeholder="Effective-dated compensation change"></label>
    <label>Simulated tax rate (%)<input id="opCompTax" type="number" step="0.01" min="0" max="100" value="0" required></label>
    <label>Other recurring deduction ($)<input id="opCompOther" type="number" step="0.01" min="0" value="0" required></label>
    <div class="ops30-form-buttons"><button class="btn primary" type="submit">Save compensation profile</button></div>
