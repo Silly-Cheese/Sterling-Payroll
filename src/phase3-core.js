@@ -1,5 +1,6 @@
 import {calculateLine,assertMoney,hoursValue,summarizeLines} from "./payroll-core.js";
 import {applySimulatedTaxes} from "./payroll-tax-core.js?v=sterling-sim-tax-20261018";
+import {payrollRunModeLabel} from "./payroll-run-modes.js?v=sterling-payroll-modes-20261019";
 export const DEFAULT_POLICY=Object.freeze({version:1,overtimeMultiplierHundredths:150,defaultBonusCents:0,defaultDeductionCents:0,defaultTaxRateBasisPoints:0,requireApprovedTime:true});
 export function validatePolicy(input){
  const version=Number(input.version||1);
@@ -92,7 +93,7 @@ export function validateLeave(form){
 }
 export function csvStatement({company,run,lines}){
  const quote=v=>'"'+String(v??"").replaceAll('"','""')+'"';
- const rows=[["Sterling Payroll — SIMULATED PAY ONLY"],["Company",company],["Period",run.periodStart+" through "+run.periodEnd],["Simulated pay date",run.payDate],
+ const rows=[["Sterling Payroll — SIMULATED PAY ONLY"],["Company",company],["Run name",run.name||run.periodStart+" — "+run.periodEnd],["Processing mode",payrollRunModeLabel(run.processingMode)],["Period",run.periodStart+" through "+run.periodEnd],["Simulated pay date",run.payDate],
   ["Employee","Regular","Overtime","Bonus","Commission","Simulated taxes","Tax rate (%)","Other deductions","Total deductions","Gross","Net"],
   ...lines.map(l=>[l.employeeName,(l.regularCents/100).toFixed(2),(l.overtimeCents/100).toFixed(2),(l.bonusCents/100).toFixed(2),((l.commissionCents||0)/100).toFixed(2),((l.taxCents||0)/100).toFixed(2),((l.taxRateBasisPoints||0)/100).toFixed(2),((l.otherDeductionCents??((l.deductionCents||0)-(l.taxCents||0)))/100).toFixed(2),((l.deductionCents||0)/100).toFixed(2),(l.grossCents/100).toFixed(2),(l.netCents/100).toFixed(2)])];
  return rows.map(r=>r.map(quote).join(",")).join("\r\n");
