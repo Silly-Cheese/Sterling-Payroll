@@ -12,7 +12,7 @@ export async function mountOperationsCenter({db,getState,notify,confirmAction,on
  host.innerHTML=await response.text();
  const $=id=>host.querySelector("#"+id),state=()=>getState(),coll=(tenant,name)=>collection(db,"tenants",tenant,name);
  let company="",actor="",epoch=0,loading=false;
- let data={employees:[],time:[],runs:[],sales:[],profiles:[],schedules:[],history:[],audit:[]};
+ let data={employees:[],time:[],runs:[],sales:[],profiles:[],schedules:[],history:[],changes:[],audit:[]};
  let loadErrors=[],lastHealth=[],active="readiness",inspected=null;
  const canManage=()=>Boolean(state().platformWrite||["client_admin","payroll_specialist"].includes(state().role));
  const canReview=()=>Boolean(state().platformOwner||state().role==="client_admin");
@@ -130,9 +130,15 @@ export async function mountOperationsCenter({db,getState,notify,confirmAction,on
   const map=new Map(data.employees.map(x=>[x.id,x]));
   list($("opCompList"),data.profiles.map(p=>entry(map.get(p.employeeId)?.displayName||p.employeeId,
    "Effective "+p.effectiveFrom+" · Simulated tax "+(p.taxRateBasisPoints/100).toFixed(2)+"% · Other deduction "+money(p.recurringDeductionCents))),"No employee-specific profiles yet. Company policy applies.");
-  list($("opCompHistory"),[...data.history].sort((a,b)=>(b.changedAt?.seconds||0)-(a.changedAt?.seconds||0)).slice(0,30).map(h=>entry(
-   map.get(h.employeeId)?.displayName||h.employeeId,
-   h.effectiveFrom+" · "+(h.taxRateBasisPoints/100).toFixed(2)+"% · "+money(h.recurringDeductionCents)+" · By "+h.changedBy)), "No compensation history yet.");
+  const changes=[...data.changes].sort((a,b)=>b.effectiveDate.localeCompare(a.effectiveDate)).slice(0,80);
+  const history=changes.length?changes.map(h=>entry(
+    map.get(h.employeeId)?.displayName||h.employeeId,
+    h.effectiveDate+" · "+(h.payType==="hourly"?"Hourly "+money(h.hourlyRateCents):"Annual "+money(h.annualSalaryCents))+
+    " · Fictional tax "+(h.taxRateBasisPoints/100).toFixed(2)+"% · Other "+money(h.recurringDeductionCents)+
+    (h.note?" · "+h.note:""))):
+    [...data.history].sort((a,b)=>(b.changedAt?.seconds||0)-(a.changedAt?.seconds||0)).slice(0,30).map(h=>entry(
+    map.get(h.employeeId)?.displayName||h.employeeId,h.effectiveFrom+" · "+(h.taxRateBasisPoints/100).toFixed(2)+"% · Other "+money(h.recurringDeductionCents)));
+  list($("opCompHistory"),history,"No compensation history yet.");
   const select=$("opCompEmployee"),old=select.value;
   select.replaceChildren(option("","Choose an employee"));
   for(const e of data.employees.filter(x=>x.status==="active").sort((a,b)=>a.displayName.localeCompare(b.displayName)))select.append(option(e.id,e.displayName));
@@ -143,6 +149,14 @@ export async function mountOperationsCenter({db,getState,notify,confirmAction,on
   $("opCompDate").value=selected?.effectiveFrom||dateNow();
   $("opCompTax").value=String((selected?.taxRateBasisPoints||0)/100);
   $("opCompOther").value=((selected?.recurringDeductionCents||0)/100).toFixed(2);
+  const employee=data.employees.find(x=>x.id===$("opCompEmployee").value);
+  const latest=data.changes.filter(x=>x.employeeId===employee?.id)
+   .sort((a,b)=>b.effectiveDate.localeCompare(a.effectiveDate))[0];
+  $("opCompRateLabel").firstChild.textContent=employee?.payType==="salary"?"Annual salary ($)":"Hourly rate ($)";
+  $("opCompRate").value=employee?
+   (((latest?.payType===employee.payType?(employee.payType==="salary"?latest.annualSalaryCents:latest.hourlyRateCents):
+     employee.payType==="salary"?employee.annualSalaryCents:employee.hourlyRateCents)||0)/100).toFixed(2):"";
+  $("opCompNote").value="";
  };
  async function refresh(){
   if(loading)return;
@@ -152,9 +166,9 @@ export async function mountOperationsCenter({db,getState,notify,confirmAction,on
   $("opReload").disabled=true;status("Reading company payroll, timekeeping, commissions, and authorized operations records…");
   loadErrors=[];const next={...data};
   const sources=[["employees",false],["timeEntries",false],["payrollRuns",false],["commissionSales",true],
-   ["payCycleSchedules",true],["compensationProfiles",true],["compensationHistory",true],["auditEvents",true]];
+   ["payCycleSchedules",true],["compensationProfiles",true],["compensationHistory",true],["compensationChanges",true],["auditEvents",true]];
   for(const [source,optional] of sources){
-   const property={timeEntries:"time",payrollRuns:"runs",commissionSales:"sales",paySchedules:"schedules",compensationProfiles:"profiles",compensationHistory:"history",auditEvents:"audit"}[source]||source;
+   const property={timeEntries:"time",payrollRuns:"runs",commissionSales:"sales",payCycleSchedules:"schedules",compensationProfiles:"profiles",compensationHistory:"history",compensationChanges:"changes",auditEvents:"audit"}[source]||source;
    try{
     const read=await all(t,u,v,source,{optional});
     next[property]=read.records;
@@ -266,12 +280,28 @@ export async function mountOperationsCenter({db,getState,notify,confirmAction,on
     "Effective "+draft.effectiveFrom+": "+(draft.taxRateBasisPoints/100)+"% fictional withholding and "+
     money(draft.recurringDeductionCents)+" other recurring deductions. Finalized payroll remains unchanged."))return;
    guard(t,u,v);
+   const employee=data.employees.find(x=>x.id===draft.employeeId);
+   if(!employee)throw Error("Employee was removed. Refresh and select an active employee.");
+   const cents=toCents($("opCompRate").value);
+   const note=$("opCompNote").value.trim().slice(0,160);
+   const changeId=draft.employeeId+"_"+draft.effectiveFrom;
+   const changeRef=doc(db,"tenants",t,"compensationChanges",changeId);
    const ref=doc(db,"tenants",t,"compensationProfiles",draft.employeeId);
    const history=doc(coll(t,"compensationHistory"));
    await runTransaction(db,async tx=>{
-    const employee=await tx.get(doc(db,"tenants",t,"employees",draft.employeeId));
-    if(!employee.exists()||employee.data().status!=="active")throw Error("Employee record changed.");
-    tx.set(ref,{...draft,updatedAt:serverTimestamp(),updatedBy:u});
+    const employeeRef=doc(db,"tenants",t,"employees",draft.employeeId);
+    const [currentEmployee,previousChange,previousProfile]=await Promise.all([
+     tx.get(employeeRef),tx.get(changeRef),tx.get(ref)
+    ]);
+    if(!currentEmployee.exists()||currentEmployee.data().status!=="active")throw Error("Employee record changed.");
+    if(previousChange.exists())throw Error("An effective-dated compensation version already exists for this employee and date.");
+    if(currentEmployee.data().payType!==employee.payType)throw Error("Employee pay type changed. Refresh before saving.");
+    tx.set(changeRef,{employeeId:draft.employeeId,effectiveDate:draft.effectiveFrom,payType:employee.payType,
+     ...(employee.payType==="salary"?{annualSalaryCents:cents}:{hourlyRateCents:cents}),
+     taxRateBasisPoints:draft.taxRateBasisPoints,recurringDeductionCents:draft.recurringDeductionCents,
+     note,createdBy:u,createdAt:serverTimestamp()});
+    if(!previousProfile.exists()||previousProfile.data().effectiveFrom<=draft.effectiveFrom)
+     tx.set(ref,{...draft,updatedAt:serverTimestamp(),updatedBy:u});
     tx.set(history,{...draft,changedAt:serverTimestamp(),changedBy:u});
    });
    notify("Compensation profile saved and history recorded.");await refresh();activate("profiles");
@@ -332,7 +362,7 @@ export async function mountOperationsCenter({db,getState,notify,confirmAction,on
    ["Employee register",!loadErrors.some(x=>x.startsWith("employees:")),data.employees.length+" employees loaded"],
    ["Timecards",!loadErrors.some(x=>x.startsWith("timeEntries:")),data.time.length+" entries loaded"],
    ["Commission source",!loadErrors.some(x=>x.startsWith("commissionSales:")),data.sales.length+" sales available"],
-   ["Schedule source",!loadErrors.some(x=>x.startsWith("paySchedules:")),data.schedules.length+" schedules available"],
+   ["Schedule source",!loadErrors.some(x=>x.startsWith("payCycleSchedules:")),data.schedules.length+" schedules available"],
    ["Firebase rules deployment",null,"Not verifiable from the client. Check Firebase deploy and emulator tests."],
    ["Browser frontend version",true,"Sterling Operations 3.0 · 2026-10-19"]
   ];
@@ -361,5 +391,5 @@ export async function mountOperationsCenter({db,getState,notify,confirmAction,on
  $("opNextStart").value=dateNow();$("opCompDate").value=dateNow();
  $("opReload").disabled=false;
  activate("readiness");
- return {refresh,clear(){++epoch;company="";actor="";data={employees:[],time:[],runs:[],sales:[],profiles:[],schedules:[],history:[],audit:[]};inspected=null;loadErrors=[];status("Choose a company.");}};
+ return {refresh,clear(){++epoch;company="";actor="";data={employees:[],time:[],runs:[],sales:[],profiles:[],schedules:[],history:[],changes:[],audit:[]};inspected=null;loadErrors=[];status("Choose a company.");}};
 }
