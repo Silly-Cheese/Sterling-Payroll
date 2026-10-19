@@ -6,7 +6,7 @@ import {prepareRunCommissions} from "./commission-payroll.js?v=sterling-payroll-
 import {applySimulatedTaxes} from "./payroll-tax-core.js?v=sterling-sim-tax-20261018";
 import {readCompletePages} from "./payroll-paging.js?v=sterling-complete-payroll-20261017";
 import {mountBulkTimecardApprovals} from "./timecard-bulk.js?v=sterling-timekeeping-20261018";
-import {DEFAULT_POLICY,validatePolicy,validReviewTransition,validateCorrection,validateLeave,buildPayrollPreview,csvStatement} from "./phase3-core.js?v=sterling-payroll-modes-20261019";
+import {DEFAULT_POLICY,validatePolicy,validReviewTransition,validateCorrection,validateLeave,buildPayrollPreview,csvStatement} from "./phase3-core.js?v=sterling-next-20261018";
 const el=(tag,cls,text)=>{const a=document.createElement(tag);if(cls)a.className=cls;if(text!==undefined)a.textContent=String(text);return a};
 const opt=(v,text)=>{const a=el("option","",text);a.value=v;return a};
 const display=(container,records,mapper,emptyMessage)=>{container.replaceChildren();if(!records.length)container.append(el("p","muted",emptyMessage));else for(const record of records)container.append(mapper(record))};
