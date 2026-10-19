@@ -180,6 +180,9 @@ export async function mountOperationsCenter({db,getState,notify,confirmAction,on
   }
   if(t!==state().tenantId||u!==state().user?.uid||v!==epoch){loading=false;return}
   data=next;loading=false;$("opReload").disabled=false;
+  const writable=canManage();
+  for(const node of $("opScheduleForm").querySelectorAll("input,select,button"))node.disabled=!writable;
+  for(const node of $("opCompForm").querySelectorAll("input,select,button"))node.disabled=!writable;
   const hard=loadErrors.filter(x=>!x.includes("restricted for this role"));
   status(hard.length?"Some data sources could not be read; results are incomplete: "+hard.join(" · "):
    "Company records loaded for "+(state().tenants.find(x=>x.id===t)?.name||"selected company")+". Figures are simulated and depend on your permissions.",
@@ -416,5 +419,5 @@ export async function mountOperationsCenter({db,getState,notify,confirmAction,on
  $("opNextStart").value=dateNow();$("opCompDate").value=dateNow();
  $("opReload").disabled=false;
  activate("readiness");
- return {refresh,clear(){++epoch;company="";actor="";data={employees:[],time:[],runs:[],sales:[],profiles:[],schedules:[],history:[],changes:[],audit:[]};inspected=null;loadErrors=[];status("Choose a company.");}};
+ return {refresh,clear(){++epoch;company="";actor="";data={employees:[],time:[],runs:[],sales:[],profiles:[],schedules:[],history:[],changes:[],audit:[]};inspected=null;loadErrors=[];loading=false;$("opReload").disabled=false;status("Choose a company.");}};
 }
