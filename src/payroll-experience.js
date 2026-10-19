@@ -1,4 +1,5 @@
 import {summarizePayrollWorkspace,payrollRunSteps} from "./payroll-workflow.js";
+import {usesTimecards,payrollRunModeLabel} from "./payroll-run-modes.js?v=sterling-payroll-modes-20261019";
 export function mountPayrollExperience({getState,onNavigate,onCreate,onRefresh}){
  const $=id=>document.getElementById(id);
  const heading=document.querySelector(".page-heading");
@@ -55,24 +56,26 @@ export function mountPayrollExperience({getState,onNavigate,onCreate,onRefresh})
    const content=document.createElement("span"),name=document.createElement("strong"),hint=document.createElement("small");
    name.textContent=step.label;
    hint.textContent=[
-    "Approve time entries","Create and calculate","Submit and approve","Confirm and finalize"
+    usesTimecards(run?.processingMode)?"Approve time entries":"Approve sales commissions","Create and calculate","Submit and approve","Confirm and finalize"
    ][index];content.append(name,hint);b.append(number,content);
    b.onclick=()=>{
-    onNavigate(stepPages[index]);
+    onNavigate(index===0&&!usesTimecards(run?.processingMode)?"commissions":stepPages[index]);
     if(index===1&&!run)onCreate("runForm");
-    if(index===0)document.getElementById("timeViewApprovals")?.click();
+    if(index===0&&usesTimecards(run?.processingMode))document.getElementById("timeViewApprovals")?.click();
+   if(index===0&&!usesTimecards(run?.processingMode))document.getElementById("commissionSalesTab")?.click();
    };
    steps.append(b);
   });
   message.textContent=!run?
-   "Start with reviewed time entries, then create a new draft pay period.":
+   "Choose a processing mode and create a named draft pay run.":
    run.status==="finalized"?"This simulated pay period is finalized and its existing pay lines are locked.":
    run.status==="rejected"?"This run was rejected. Reopen its draft, correct inputs, and submit again.":
    run.status==="draft"?"This run is a draft. Generate pay lines and check each employee before submitting.":
    run.status==="submitted"?"Submitted for a different authorized reviewer to approve or reject.":
    run.status==="approved"?"Approved. A separate authorized finalizer may complete the period.":
    "Select a payroll run to inspect its current stage.";
-  if(summary.pendingTime)message.textContent+=" There are "+summary.pendingTime+" pending time entries in currently loaded records.";
+  if(summary.pendingTime&&usesTimecards(run?.processingMode))message.textContent+=" There are "+summary.pendingTime+" pending time entries in currently loaded records.";
+  if(run)message.textContent="["+payrollRunModeLabel(run.processingMode)+"] "+message.textContent;
  }
  function sync(){
   const state=getState(),config=configs[state.page]||configs.dashboard;
