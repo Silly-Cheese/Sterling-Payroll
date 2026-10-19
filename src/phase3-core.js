@@ -1,6 +1,7 @@
 import {calculateLine,assertMoney,hoursValue,summarizeLines} from "./payroll-core.js";
 import {applySimulatedTaxes} from "./payroll-tax-core.js?v=sterling-sim-tax-20261018";
 import {payrollRunModeLabel} from "./payroll-run-modes.js?v=sterling-payroll-modes-20261019";
+import {currentCompensation} from "./payroll-next-core.js?v=sterling-next-20261018";
 export const DEFAULT_POLICY=Object.freeze({version:1,overtimeMultiplierHundredths:150,defaultBonusCents:0,defaultDeductionCents:0,defaultTaxRateBasisPoints:0,requireApprovedTime:true});
 export function validatePolicy(input){
  const version=Number(input.version||1);
@@ -17,7 +18,7 @@ export function validReviewTransition(record,reviewer,next){
  return Boolean(record&&record.status==="pending"&&["approved","rejected"].includes(next)&&
    reviewer&&record.createdBy!==reviewer);
 }
-export function buildPayrollPreview({employees,entries,corrections=[],leaveRequests=[],policy=DEFAULT_POLICY,start,end}){
+export function buildPayrollPreview({employees,entries,corrections=[],leaveRequests=[],compensationChanges=[],policy=DEFAULT_POLICY,start,end}){
  const config=validatePolicy(policy),issues=[],lines=[],sources=[];
  if(!/^\d{4}-\d\d-\d\d$/.test(start)||!/^\d{4}-\d\d-\d\d$/.test(end)||end<start)throw Error("Invalid payroll period");
  const byOriginal=new Map();
@@ -46,17 +47,21 @@ export function buildPayrollPreview({employees,entries,corrections=[],leaveReque
  // A run with incomplete/ambiguous approved time must not generate pay lines.
  if(issues.length)return {lines:[],issues,sources,totals:null};
  for(const employee of employees.filter(e=>e.status==="active")){
+  const applicable=currentCompensation({versions:compensationChanges.filter(x=>x.employeeId===employee.id)},end);
+  const effectiveEmployee=applicable?{...employee,...(applicable.payType==="hourly"?
+   {hourlyRateCents:applicable.hourlyRateCents}:{annualSalaryCents:applicable.annualSalaryCents})}:employee;
+  const deduction=applicable?.recurringDeductionCents??config.defaultDeductionCents;
   const work=approvedEntries.filter(x=>x.employeeId===employee.id);
   const leave=approvedLeave.filter(x=>x.employeeId===employee.id);
   const paidLeaveHours=Math.round(leave.reduce((sum,x)=>sum+hoursValue(x.hours),0)*100)/100;
   const regularHours=Math.round((work.reduce((sum,x)=>sum+hoursValue(x.regularHours),0)+paidLeaveHours)*100)/100;
   const overtimeHours=Math.round(work.reduce((sum,x)=>sum+hoursValue(x.overtimeHours),0)*100)/100;
   if(employee.payType==="hourly"&&regularHours+overtimeHours===0)continue;
-  const base=calculateLine({employee,regularHours,overtimeHours,
-    bonusCents:config.defaultBonusCents,deductionCents:config.defaultDeductionCents});
+  const base=calculateLine({employee:effectiveEmployee,regularHours,overtimeHours,
+    bonusCents:config.defaultBonusCents,deductionCents:deduction});
   // Overtime multiplier is a fictional policy; no claim of jurisdiction-specific law.
   if(employee.payType==="hourly"){
-   base.overtimeCents=Math.round(employee.hourlyRateCents*config.overtimeMultiplierHundredths/100*overtimeHours);
+   base.overtimeCents=Math.round(effectiveEmployee.hourlyRateCents*config.overtimeMultiplierHundredths/100*overtimeHours);
    base.grossCents=base.regularCents+base.overtimeCents+base.bonusCents;
    if(base.deductionCents>base.grossCents){issues.push({kind:"deductions-exceed-gross",detail:employee.id});continue}
    base.netCents=base.grossCents-base.deductionCents;
@@ -64,7 +69,7 @@ export function buildPayrollPreview({employees,entries,corrections=[],leaveReque
   base.paidLeaveHours=paidLeaveHours;
   base.policyVersion=config.version;
   // The final tax calculation runs once again after commissions are attached.
-  base.taxRateBasisPoints=config.defaultTaxRateBasisPoints;
+  base.taxRateBasisPoints=applicable?.taxRateBasisPoints??config.defaultTaxRateBasisPoints;
   base.taxCents=0;
   base.otherDeductionCents=base.deductionCents;
   lines.push(base);
