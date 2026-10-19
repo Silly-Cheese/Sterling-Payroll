@@ -555,3 +555,46 @@ test("Compensation profiles require valid rates and immutable history",async()=>
  await assertFails(updateDoc(doc(as("admin"),"tenants/north/compensationHistory/history-01"),{recurringDeductionCents:2000}));
  await assertFails(setDoc(doc(as("admin"),"tenants/south/compensationProfiles/e1"),profile));
 });
+
+
+test("Six commission-only pay lines and approved sale claim pass current Firestore rules",async()=>{
+ const base="tenants/north/",runId="commission-october";
+ await env.withSecurityRulesDisabled(async ctx=>{
+  const db=ctx.firestore();
+  await setDoc(doc(db,base+"payrollRuns/"+runId),{
+   status:"draft",processingMode:"commissions-only",name:"October Commission Payout",
+   periodStart:"2026-10-01",periodEnd:"2026-10-31",payDate:"2026-10-31",
+   createdBy:"owner",submittedBy:"",approvedBy:"",finalizedBy:""
+  });
+  for(let i=1;i<=6;i++){
+   const id="commission-e"+i;
+   await setDoc(doc(db,base+"employees/"+id),{displayName:"Agent "+i,
+    status:"active",payType:"salary",annualSalaryCents:8000000,payFrequency:"monthly"});
+  }
+  await setDoc(doc(db,base+"commissionSales/approved-october"),{
+   employeeId:"commission-e1",saleDate:"2026-10-12",description:"Fictional sale",
+   saleAmountCents:80000,commissionCents:20000,type:"percent",rateBasisPoints:2500,
+   fixedCents:0,status:"approved",approvedBy:"admin",paidRunId:"",createdBy:"owner"
+  });
+ });
+ const db=as("owner"),batch=writeBatch(db);
+ for(let i=1;i<=6;i++){
+  const id="commission-e"+i,comm=20000,tax=2500;
+  batch.set(doc(db,base+"payrollRuns/"+runId+"/lines/"+id),{
+   employeeId:id,employeeName:"Agent "+i,payType:"salary",
+   regularHours:0,overtimeHours:0,paidLeaveHours:0,
+   regularCents:0,overtimeCents:0,bonusCents:0,commissionCents:comm,
+   grossCents:comm,taxRateBasisPoints:1250,taxCents:tax,
+   otherDeductionCents:0,deductionCents:tax,netCents:comm-tax,policyVersion:1
+  });
+ }
+ await assertSucceeds(batch.commit());
+ const claim=writeBatch(db);
+ claim.update(doc(db,base+"commissionSales/approved-october"),{paidRunId:runId});
+ await assertSucceeds(claim.commit());
+ const saved=await getDoc(doc(db,base+"payrollRuns/"+runId+"/lines/commission-e1"));
+ assert.equal(saved.data().regularCents,0);
+ assert.equal(saved.data().commissionCents,20000);
+ assert.equal(saved.data().taxCents,2500);
+ assert.equal(saved.data().netCents,17500);
+});
