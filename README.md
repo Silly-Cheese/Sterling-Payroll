@@ -93,3 +93,14 @@ The reference column is optional. Imports are limited to 500 rows / 512 KB per f
 The sales register reads complete company sales in Firestore document-ID pages (up to 10,000 records), then supports employee, status, date and text filters plus date/name/sale-value/commission sorting without composite indexes. The UI renders 35 rows at once with a Show More control.
 
 Authorized independent reviewers can approve selected or all matching eligible pending sales in small Firestore transactions. The Sterling owner retains the existing override. Approved/rejected sales cannot be approved again; prior payroll links remain protected by rules. No new Firestore indexes or rules are required for this CSV feature, but existing security rules must be deployed for the existing permissions to be enforceable.
+
+## Simulated percentage deductions (fictional taxes)
+
+Sterling Payroll Services now has a **default simulated tax rate** per company and a **per-employee override** in editable payroll drafts.
+
+- **Default:** Payroll Runs → Simulation settings → Default simulated tax deduction (% of gross pay). Set 0.00–100.00% (up to two decimal places). This updates the company's versioned policy and applies when new payroll lines are generated; previously finalized statements are not rewritten.
+- **Employee override:** Open a draft payroll → Generate pay lines → Adjust on an employee → Simulated taxes (% of gross). Pick a 0%, 5%, 10%, 12.5%, 15%, 20% or 25% preset, or type a custom percentage. Save to record the simulated tax rate, calculated tax amount, and any separate fixed dollar deduction.
+- **Calculation:** Simulated tax withholding = gross earnings **including approved commission and bonus** × selected rate, rounded to the nearest cent. Other deductions are added separately. Total deductions may not exceed gross fictional earnings.
+- **Review:** Payroll register, gross/net summaries, CSV exports, and employee fictional statements display simulated taxes separately. Older payroll lines without tax metadata continue to show 0% tax and retain their historical fixed deductions.
+
+**Important:** These are illustrative simulated deductions only. They are **not** actual payroll taxes, withholding tables, legal tax filings, or remittances. The new Firestore fields require the updated `firestore.rules` to be deployed to project `sterling-payroll-5d200` before the feature works against production Firestore. GitHub Pages deployment does **not** deploy database security rules; use the gated Firestore rules workflow in this repository or publish the approved rules from Firebase Console.
