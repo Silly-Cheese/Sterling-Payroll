@@ -713,6 +713,8 @@ service cloud.firestore {
        request.resource.data.get('taxRateBasisPoints',0) >= 0 &&
        request.resource.data.get('taxRateBasisPoints',0) <= 10000 &&
        cent(request.resource.data.get('taxCents',0)) &&
+       request.resource.data.get('taxCents',0) ==
+        math.round(request.resource.data.grossCents * request.resource.data.get('taxRateBasisPoints',0) / 10000) &&
        cent(request.resource.data.get('otherDeductionCents',request.resource.data.deductionCents)) &&
        request.resource.data.get('otherDeductionCents',request.resource.data.deductionCents) +
         request.resource.data.get('taxCents',0) == request.resource.data.deductionCents &&
@@ -736,6 +738,8 @@ service cloud.firestore {
        request.resource.data.get('taxRateBasisPoints',0) >= 0 &&
        request.resource.data.get('taxRateBasisPoints',0) <= 10000 &&
        cent(request.resource.data.get('taxCents',0)) &&
+       request.resource.data.get('taxCents',0) ==
+        math.round(request.resource.data.grossCents * request.resource.data.get('taxRateBasisPoints',0) / 10000) &&
        cent(request.resource.data.get('otherDeductionCents',request.resource.data.deductionCents)) &&
        request.resource.data.get('otherDeductionCents',request.resource.data.deductionCents) +
         request.resource.data.get('taxCents',0) == request.resource.data.deductionCents &&
