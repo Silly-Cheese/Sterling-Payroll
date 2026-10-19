@@ -22,6 +22,6 @@ export function applyEffectiveCompensation(lines,history,periodEnd){
   // The withholding is recalculated against final gross, after commissions.
   return {...line,taxRateBasisPoints:selected.taxRateBasisPoints,
    otherDeductionCents:other,taxCents:oldTax,deductionCents:other+oldTax,
-   netCents:line.grossCents-other-oldTax,compensationEffectiveFrom:selected.effectiveFrom};
+   netCents:line.grossCents-other-oldTax};
  });
 }
