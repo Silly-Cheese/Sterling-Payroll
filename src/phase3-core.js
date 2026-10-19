@@ -1,13 +1,16 @@
 import {calculateLine,assertMoney,hoursValue,summarizeLines} from "./payroll-core.js";
-export const DEFAULT_POLICY=Object.freeze({version:1,overtimeMultiplierHundredths:150,defaultBonusCents:0,defaultDeductionCents:0,requireApprovedTime:true});
+import {applySimulatedTaxes} from "./payroll-tax-core.js";
+export const DEFAULT_POLICY=Object.freeze({version:1,overtimeMultiplierHundredths:150,defaultBonusCents:0,defaultDeductionCents:0,defaultTaxRateBasisPoints:0,requireApprovedTime:true});
 export function validatePolicy(input){
  const version=Number(input.version||1);
  const multiplier=Number(input.overtimeMultiplierHundredths);
  if(!Number.isSafeInteger(version)||version<1||version>999999)throw Error("Policy version out of range");
  if(!Number.isInteger(multiplier)||multiplier<100||multiplier>300)throw Error("Overtime multiplier must be 1.00–3.00");
  const bonus=assertMoney(input.defaultBonusCents,"default bonus"),deduction=assertMoney(input.defaultDeductionCents,"default deduction");
+ const rate=input.defaultTaxRateBasisPoints??0;
+ if(!Number.isInteger(rate)||rate<0||rate>10000)throw Error("Simulated tax rate must be 0–100% (up to two decimals).");
  if(input.requireApprovedTime!==true)throw Error("Time approval is mandatory for Phase 3");
- return {version,overtimeMultiplierHundredths:multiplier,defaultBonusCents:bonus,defaultDeductionCents:deduction,requireApprovedTime:true};
+ return {version,overtimeMultiplierHundredths:multiplier,defaultBonusCents:bonus,defaultDeductionCents:deduction,defaultTaxRateBasisPoints:rate,requireApprovedTime:true};
 }
 export function validReviewTransition(record,reviewer,next){
  return Boolean(record&&record.status==="pending"&&["approved","rejected"].includes(next)&&
@@ -59,10 +62,20 @@ export function buildPayrollPreview({employees,entries,corrections=[],leaveReque
   }
   base.paidLeaveHours=paidLeaveHours;
   base.policyVersion=config.version;
+  // The final tax calculation runs once again after commissions are attached.
+  base.taxRateBasisPoints=config.defaultTaxRateBasisPoints;
+  base.taxCents=0;
+  base.otherDeductionCents=base.deductionCents;
   lines.push(base);
  }
  if(issues.length)return {lines:[],issues,sources,totals:null};
- return {lines,issues,sources,totals:summarizeLines(lines)};
+ try{
+  const taxed=applySimulatedTaxes(lines,config.defaultTaxRateBasisPoints);
+  return {lines:taxed,issues,sources,totals:summarizeLines(taxed)};
+ }catch(error){
+  issues.push({kind:"tax-deduction-error",detail:error.message});
+  return {lines:[],issues,sources,totals:null};
+ }
 }
 export function validateCorrection(form){
  const regularHours=hoursValue(form.regularHours),overtimeHours=hoursValue(form.overtimeHours);
