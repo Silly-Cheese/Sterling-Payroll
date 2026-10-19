@@ -3,9 +3,9 @@ import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmai
 import {getFirestore,collection,doc,getDoc,getDocs,addDoc,setDoc,updateDoc,query,limit,writeBatch,runTransaction,serverTimestamp,orderBy,documentId,startAfter,startAt,endAt} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 import {calculateLine,summarizeLines,toCents,money,hoursValue,canTransition,validPeriod,cleanEmail} from "./payroll-core.js";
 import {mountStaffAccounts} from "./staff.js";
-import {mountPhase3} from "./phase3.js?v=sterling-payroll-overhaul-20261018";
+import {mountPhase3} from "./phase3.js?v=sterling-sim-tax-20261018";
 // Phase 4 loads lazily, so a pending Pages deployment cannot break the sign-in screen.
-import {buildPayrollPreview,DEFAULT_POLICY} from "./phase3-core.js";
+import {buildPayrollPreview,DEFAULT_POLICY} from "./phase3-core.js?v=sterling-sim-tax-20261018";
 import {mountPhase2} from "./phase2.js?v=sterling-governance-20261018";
 import {createOwnerRecordActions} from "./record-actions.js";
 import {createSterlingModals} from "./modals.js";
@@ -16,7 +16,7 @@ import {filterTimecards,sumTimecardHours,payPeriodForSelection,formatHours,apply
 import {prepareRunCommissions} from "./commission-payroll.js?v=sterling-payroll-security-20261017";
 import {planPayrollDraftWrites} from "./payroll-write-plan.js?v=sterling-payroll-security-20261017";
 import {payrollNextSteps} from "./payroll-workflow.js?v=sterling-payroll-overhaul-20261018";
-import {mountPaylineEditor} from "./payroll-line-editor.js?v=sterling-payroll-overhaul-20261018";
+import {mountPaylineEditor} from "./payroll-line-editor.js?v=sterling-sim-tax-20261018";
 import {mountPayrollExperience} from "./payroll-experience.js?v=sterling-payroll-overhaul-20261018";
 import {applySimulatedTaxes} from "./payroll-tax-core.js?v=sterling-sim-tax-20261018";
 
@@ -1095,7 +1095,7 @@ onAuthStateChanged(auth,async user=>{
   if(!staffUI)staffUI=mountStaffAccounts({db,getState:()=>state,notify:toast,confirmAction});
   if(!phase3)phase3=await mountPhase3({db,getState:()=>state,refreshCompany,notify:toast,confirmAction,ownerDelete:(kind,record)=>ownerActions.remove(kind,record),openOwnerReview});
   if(!phase4){
-   try{const {mountPhase4}=await import("./phase4.js?v=sterling-commissions-20261015");phase4=await mountPhase4({db,getState:()=>state,notify:toast,confirmAction,ownerDelete:(kind,record)=>ownerActions.remove(kind,record)})}
+   try{const {mountPhase4}=await import("./phase4.js?v=sterling-sim-tax-20261018");phase4=await mountPhase4({db,getState:()=>state,notify:toast,confirmAction,ownerDelete:(kind,record)=>ownerActions.remove(kind,record)})}
    catch(error){console.error("Employee portal module unavailable",error);toast("Employee portal assets are still deploying. Please refresh after GitHub Pages finishes.",true)}
   }
   if(!phase5){
