@@ -203,6 +203,8 @@
           <div class="two-col asymmetric">
             <article class="panel"><h2>New payroll run</h2><p class="muted">Create a draft period, then generate fictional pay line items from employee compensation and time records.</p>
               <form id="runForm" class="form-stack">
+                <label>Payroll run name (optional)<input id="runName" type="text" maxlength="80" autocomplete="off" placeholder="October 2026 · Regular payroll"></label>
+                <p class="fine-print">Use a name to distinguish payroll runs. Dates remain attached for accurate records.</p>
                 <label>Period start<input id="periodStart" type="date" required></label>
                 <label>Period end<input id="periodEnd" type="date" required></label>
                 <label>Simulated payday<input id="payDate" type="date" required></label>
@@ -210,10 +212,10 @@
               </form>
               <div class="data-note"><strong>Approval separation enforced</strong><small>The approver must differ from the submitter; the finalizer must differ from the approver.</small></div>
             </article>
-            <article class="panel"><h2>Payroll run register</h2><div class="list-toolbar"><input id="runSearch" class="search-input" type="search" placeholder="Find period or date"><select id="runStatus" aria-label="Filter payroll runs"><option value="all">All</option><option value="draft">Draft</option><option value="submitted">Submitted</option><option value="approved">Approved</option><option value="finalized">Finalized</option><option value="rejected">Rejected</option><option value="voided">Voided</option></select><select id="runSort" aria-label="Sort payroll periods"><option value="newest">Period · newest</option><option value="oldest">Period · oldest</option><option value="payday">Payday · newest</option><option value="status">Status · A–Z</option></select></div><p class="fine-print" id="runCount"></p><div id="runList" class="list"></div><button id="loadMoreRuns" class="btn hidden" type="button">Load more payroll runs</button></article>
+            <article class="panel"><h2>Payroll run register</h2><div class="list-toolbar"><input id="runSearch" class="search-input" type="search" placeholder="Find run name, period or date"><select id="runStatus" aria-label="Filter payroll runs"><option value="all">All</option><option value="draft">Draft</option><option value="submitted">Submitted</option><option value="approved">Approved</option><option value="finalized">Finalized</option><option value="rejected">Rejected</option><option value="voided">Voided</option></select><select id="runSort" aria-label="Sort payroll periods"><option value="newest">Period · newest</option><option value="oldest">Period · oldest</option><option value="payday">Payday · newest</option><option value="status">Status · A–Z</option></select></div><p class="fine-print" id="runCount"></p><div id="runList" class="list"></div><button id="loadMoreRuns" class="btn hidden" type="button">Load more payroll runs</button></article>
           </div>
           <article id="runDetails" class="panel run-details hidden">
-            <div class="section-heading"><div><div class="eyebrow">SELECTED PAYROLL PERIOD</div><h2 id="runHeading">Payroll period</h2><p class="muted">Inspect pay lines, make authorized draft corrections, then move through approvals.</p></div><span id="runStatusChip" class="status-chip">DRAFT</span></div>
+            <div class="section-heading"><div><div class="eyebrow">SELECTED PAYROLL PERIOD</div><h2 id="runHeading">Payroll period</h2><p class="muted" id="runPeriodLabel">Inspect pay lines, make authorized draft corrections, then move through approvals.</p></div><div class="run-heading-actions"><span id="runStatusChip" class="status-chip">DRAFT</span><button id="renameRunButton" class="btn small hidden" type="button">Rename</button></div></div>
             <div id="runTotals" class="metric-grid compact"></div>
             <div class="list-toolbar payroll-line-filters"><input id="lineSearch" type="search" placeholder="Find an employee in this run" aria-label="Search pay lines"><select id="lineSort" aria-label="Sort pay lines"><option value="employee">Employee · A–Z</option><option value="gross">Gross · highest</option><option value="net">Net · highest</option></select><span id="lineCount" class="data-count" role="status"></span></div>
             <div id="runLines" class="data-table-wrap" aria-label="Employee pay line register"></div>
@@ -221,6 +223,17 @@
           </article>
         </section>
         <div id="phase3Payroll" class="phase3-section client-only hidden"></div>
+        <dialog id="renameRunDialog" class="workspace-form-dialog payroll-name-dialog" aria-labelledby="renameRunTitle">
+          <header><h2 id="renameRunTitle">Rename payroll run</h2><button type="button" id="renameRunClose" class="workspace-form-close" aria-label="Close">✕</button></header>
+          <div class="payroll-name-dialog-body">
+            <p class="muted">This changes the label only. Dates, employee earnings, approval status and payroll history stay the same.</p>
+            <form id="renameRunForm" class="form-stack">
+              <label>Payroll run name<input id="renameRunInput" type="text" maxlength="80" autocomplete="off" required placeholder="October 2026 · Regular payroll"></label>
+              <p id="renameRunError" class="fine-print payroll-name-error hidden" role="alert"></p>
+              <div class="payroll-name-actions"><button id="renameRunCancel" class="btn" type="button">Cancel</button><button id="renameRunSave" class="btn primary" type="submit">Save name</button></div>
+            </form>
+          </div>
+        </dialog>
         <section id="page-access" class="page hidden">
           <div class="two-col asymmetric">
             <article class="panel"><h2>Invite a company teammate</h2><p class="muted">Sterling administrators now assign existing accounts directly. Legacy invitations are no longer needed for new company access.</p>
