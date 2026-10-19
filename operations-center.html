@@ -1,0 +1,74 @@
+<section class="ops30">
+ <header class="ops30-hero">
+  <div><span class="eyebrow">STERLING PAYROLL / OPERATIONS 3.0</span><h2>Payroll command center</h2>
+   <p>One place for payroll readiness, schedules, compensation, reviews, reconciliation, reporting, and client coordination.</p></div>
+  <div class="ops30-head-actions"><button id="opReload" class="btn">Refresh all records</button><button id="opGoRun" class="btn primary">Open payroll runs</button></div>
+ </header>
+ <p id="opStatus" class="ops30-state" role="status">Choose a client company to load records.</p>
+ <div id="opMetrics" class="ops30-metrics"></div>
+ <div class="ops30-tabs" role="tablist" aria-label="Operations modules">
+  <button type="button" data-op-tab="readiness" aria-selected="true">Readiness</button>
+  <button type="button" data-op-tab="schedules">Pay schedules</button>
+  <button type="button" data-op-tab="profiles">Compensation</button>
+  <button type="button" data-op-tab="approvals">Approval center</button>
+  <button type="button" data-op-tab="reports">Reports & audit</button>
+  <button type="button" data-op-tab="services">Client requests</button>
+  <button type="button" data-op-tab="health">System health</button>
+ </div>
+ <section data-op-panel="readiness" class="ops30-panel">
+  <div class="ops30-head"><div><h3>Payroll integrity & reconciliation</h3><p>Select a pay run, inspect every source and calculate whether the results reconcile. No changes are made during inspection.</p></div></div>
+  <div class="ops30-row"><label>Payroll period<select id="opRunSelect"></select></label><button id="opInspect" class="btn primary">Inspect selected run</button><button id="opGoTime" class="btn">Review timecards</button></div>
+  <div id="opRunSummary" class="ops30-inspection"></div>
+  <div id="opIssues" class="ops30-list"></div>
+ </section>
+ <section data-op-panel="schedules" class="ops30-panel hidden">
+  <div class="ops30-head"><div><h3>Recurring payroll schedules</h3><p>Set up weekly, biweekly, semimonthly, or monthly fictional pay periods. Preview dates and create draft runs without overlapping an existing period.</p></div></div>
+  <form id="opScheduleForm" class="ops30-form">
+   <label>Schedule name<input id="opScheduleName" required maxlength="80" placeholder="Regular biweekly payroll"></label>
+   <label>Frequency<select id="opCadence"><option value="weekly">Weekly</option><option value="biweekly">Every two weeks</option><option value="semimonthly">Twice a month (1–15 / 16–end)</option><option value="monthly">Monthly</option></select></label>
+   <label>Next period begins<input type="date" id="opNextStart" required></label>
+   <label>Payday after period ends (days)<input type="number" min="0" max="30" id="opPayDelay" value="3" required></label>
+   <label>Processing mode<select id="opMode"><option value="combined">Timecards + commissions</option><option value="timecards-only">Timecards only</option><option value="commissions-only">Commissions only</option></select></label>
+   <div class="ops30-form-buttons"><button class="btn primary" type="submit">Save schedule</button><button id="opPreviewSchedule" type="button" class="btn">Preview next 3 periods</button></div>
+  </form>
+  <div id="opSchedulePreview" class="ops30-list"></div>
+  <h4>Saved schedules</h4><div id="opScheduleList" class="ops30-list"></div>
+ </section>
+ <section data-op-panel="profiles" class="ops30-panel hidden">
+  <div class="ops30-head"><div><h3>Compensation profiles & history</h3><p>Configure employee-specific fictional withholding and recurring deductions, effective from a chosen date. Existing finalized pay records are never recalculated.</p></div></div>
+  <form id="opCompForm" class="ops30-form">
+   <label>Employee<select id="opCompEmployee" required></select></label>
+   <label>Effective from<input id="opCompDate" type="date" required></label>
+   <label>Simulated tax rate (%)<input id="opCompTax" type="number" step="0.01" min="0" max="100" value="0" required></label>
+   <label>Other recurring deduction ($)<input id="opCompOther" type="number" step="0.01" min="0" value="0" required></label>
+   <div class="ops30-form-buttons"><button class="btn primary" type="submit">Save compensation profile</button></div>
+  </form>
+  <h4>Active profiles</h4><div id="opCompList" class="ops30-list"></div>
+  <h4>Recent profile changes</h4><div id="opCompHistory" class="ops30-list"></div>
+ </section>
+ <section data-op-panel="approvals" class="ops30-panel hidden">
+  <div class="ops30-head"><div><h3>Unified review queue</h3><p>Pending timecards, submitted payroll, and approved payroll ready for finalization. Actions continue through the appropriate permission-controlled workflow.</p></div></div>
+  <div id="opApprovalQueue" class="ops30-list"></div>
+ </section>
+ <section data-op-panel="reports" class="ops30-panel hidden">
+  <div class="ops30-head"><div><h3>Reports and activity history</h3><p>Export the full loaded payroll register or a per-employee fictional earnings breakdown. Printed reports use your browser's Print/Save as PDF function.</p></div></div>
+  <div class="ops30-row"><button id="opExportRuns" class="btn primary">Export payroll register CSV</button><button id="opExportEmployee" class="btn">Export employee earnings CSV</button><button id="opPrintReport" class="btn">Print summary</button></div>
+  <div id="opReportTable" class="ops30-table-wrap"></div>
+  <h4>Recent activity</h4><div id="opAuditList" class="ops30-list"></div>
+ </section>
+ <section data-op-panel="services" class="ops30-panel hidden">
+  <div class="ops30-head"><div><h3>Company requests and communications</h3><p>Request a correction or assistance without directly changing Sterling-managed service records. Requests create traceable support cases.</p></div></div>
+  <form id="opRequestForm" class="ops30-form">
+   <label>Request type<select id="opRequestType"><option value="payroll">Payroll correction or run assistance</option><option value="employee">Employee profile or access assistance</option><option value="billing">Billing question</option><option value="technical">Technical issue</option></select></label>
+   <label>Subject<input id="opRequestSubject" required minlength="3" maxlength="120" placeholder="Question about a pay period"></label>
+   <label class="ops30-full">Details<textarea id="opRequestDetails" required minlength="4" maxlength="1500" rows="4" placeholder="Explain the issue and the affected fictional pay period. Avoid sensitive personal details."></textarea></label>
+   <div class="ops30-form-buttons"><button class="btn primary" type="submit">Open support case</button><button type="button" id="opOpenService" class="btn">Go to Client Services</button></div>
+  </form>
+  <p class="muted">Only the case creator and authorized Sterling support can access the conversation; Sterling staff control assignment and case status.</p>
+ </section>
+ <section data-op-panel="health" class="ops30-panel hidden">
+  <div class="ops30-head"><div><h3>Diagnostics & reliability</h3><p>Check record coverage, date integrity, and accessible Firebase data sources. This does not prove that production security rules are deployed; deploy and test those separately.</p></div></div>
+  <div class="ops30-row"><button id="opHealthCheck" class="btn primary">Run diagnostics</button><button id="opExportHealth" class="btn">Download diagnostics CSV</button></div>
+  <div id="opHealthList" class="ops30-list"></div>
+ </section>
+</section>
