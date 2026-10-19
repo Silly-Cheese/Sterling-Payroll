@@ -1,5 +1,5 @@
 import {calculateLine,assertMoney,hoursValue,summarizeLines} from "./payroll-core.js";
-import {applySimulatedTaxes} from "./payroll-tax-core.js";
+import {applySimulatedTaxes} from "./payroll-tax-core.js?v=sterling-sim-tax-20261018";
 export const DEFAULT_POLICY=Object.freeze({version:1,overtimeMultiplierHundredths:150,defaultBonusCents:0,defaultDeductionCents:0,defaultTaxRateBasisPoints:0,requireApprovedTime:true});
 export function validatePolicy(input){
  const version=Number(input.version||1);
