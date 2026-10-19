@@ -24,7 +24,9 @@ jobs:
           java-version: '21'
       - name: Install emulator test dependencies
         run: npm install --no-package-lock --no-audit --no-fund
-      - name: Verify Firestore security rules
+      - name: Check payroll business calculations
+        run: npm test
+      - name: Verify Firestore security rules and full commission-only write batches
         run: npm run test:rules
   deploy:
     needs: verify
