@@ -1,9 +1,9 @@
 import {collection,doc,getDoc,getDocs,addDoc,updateDoc,setDoc,serverTimestamp,query,limit,orderBy,documentId,startAfter} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 import {toCents,money} from "./payroll-core.js";
-import {taxBasisPoints} from "./payroll-tax-core.js";
+import {taxBasisPoints} from "./payroll-tax-core.js?v=sterling-sim-tax-20261018";
 import {readCompletePages} from "./payroll-paging.js?v=sterling-complete-payroll-20261017";
 import {mountBulkTimecardApprovals} from "./timecard-bulk.js?v=sterling-timekeeping-20261018";
-import {DEFAULT_POLICY,validatePolicy,validReviewTransition,validateCorrection,validateLeave,buildPayrollPreview,csvStatement} from "./phase3-core.js";
+import {DEFAULT_POLICY,validatePolicy,validReviewTransition,validateCorrection,validateLeave,buildPayrollPreview,csvStatement} from "./phase3-core.js?v=sterling-sim-tax-20261018";
 const el=(tag,cls,text)=>{const a=document.createElement(tag);if(cls)a.className=cls;if(text!==undefined)a.textContent=String(text);return a};
 const opt=(v,text)=>{const a=el("option","",text);a.value=v;return a};
 const display=(container,records,mapper,emptyMessage)=>{container.replaceChildren();if(!records.length)container.append(el("p","muted",emptyMessage));else for(const record of records)container.append(mapper(record))};
@@ -13,7 +13,7 @@ export async function mountPhase3({db,getState,refreshCompany,notify,confirmActi
  const time=document.getElementById("phase3Time"),payroll=document.getElementById("phase3Payroll");
  if(!time||!payroll)throw Error("Phase 3 workspace containers missing");
  const html=await Promise.all(["phase3-time.html","phase3-payroll.html"].map(async name=>{
-  const response=await fetch("./"+name+"?v=sterling-payroll-overhaul-20261018");if(!response.ok)throw Error("Missing "+name);return response.text()
+  const response=await fetch("./"+name+"?v=sterling-sim-tax-20261018");if(!response.ok)throw Error("Missing "+name);return response.text()
  }));
  time.innerHTML=html[0];payroll.innerHTML=html[1];
  const $=id=>document.getElementById(id),S=()=>getState();
