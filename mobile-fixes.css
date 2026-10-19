@@ -1,0 +1,44 @@
+/* Responsive accessibility improvements for Sterling Payroll. */
+html,body{max-width:100%;overflow-x:clip}
+#shell,#shell .stage,#shell .content,#shell .page,#shell .panel{min-width:0}
+#shell .panel,#shell .list-toolbar,#shell .section-heading,#shell .actions{max-width:100%}
+#shell .list-toolbar>*{min-width:0}
+#shell input,#shell select,#shell textarea{max-width:100%;font-size:max(16px,1em)}
+#shell .btn,#shell button{touch-action:manipulation}
+#shell .data-table-wrap{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain}
+#shell .list-toolbar,#shell .run-heading-actions,#shell .payroll-line-filters{display:flex;flex-wrap:wrap;gap:9px}
+#shell .list-toolbar input[type="search"]{flex:1 1 240px}
+#shell .list-toolbar select{flex:1 1 150px}
+#shell .metric{overflow-wrap:anywhere}
+#shell dialog{max-width:min(95vw,680px);max-height:90dvh;overflow-y:auto}
+@media(max-width:900px){
+ #shell .two-col,#shell .two-col.asymmetric,#shell .three-col{grid-template-columns:minmax(0,1fr)!important}
+ #shell .panel{padding:clamp(13px,3vw,20px)}
+ #shell .section-heading{flex-wrap:wrap;gap:10px}
+ #shell .run-details{max-width:100%}
+}
+@media(max-width:760px){
+ #shell .topbar{min-width:0;flex-wrap:wrap}
+ #shell .topbar>*{min-width:0}
+ #shell .content{padding:12px 10px 24px}
+ #shell .page-heading{flex-wrap:wrap}
+ #shell .list-toolbar{align-items:stretch}
+ #shell .list-toolbar input,#shell .list-toolbar select{width:100%;flex:1 1 100%}
+ #shell .two-fields,#shell .timekeeping-filter-grid,#shell .payroll-advanced-grid{grid-template-columns:minmax(0,1fr)!important}
+ #shell .actions,#shell .run-heading-actions{flex-wrap:wrap}
+ #shell .actions .btn{min-height:44px}
+ #shell .data-table-wrap td{overflow-wrap:anywhere}
+ #shell .data-table-wrap td::before{min-width:70px;text-align:left}
+ #shell dialog{width:calc(100vw - 20px);margin:auto;padding:clamp(12px,3vw,24px)}
+ #shell .footer{text-align:center;overflow-wrap:anywhere}
+}
+@media(max-width:420px){
+ #shell .metric-grid,#shell .metric-grid.compact{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #shell .metric{padding:11px}
+ #shell .metric strong,#shell .metric-value{font-size:clamp(18px,6vw,25px)}
+ #shell .section-heading h2{font-size:clamp(20px,6vw,27px)}
+ #shell .payroll-processing-fieldset{padding:9px}
+ #shell .actions .btn{flex:1 1 100%;white-space:normal}
+ #shell .data-table-wrap tr{padding:10px}
+}
+@media(hover:none){#shell .btn,#shell .nav-item,#shell summary{min-height:44px}}
