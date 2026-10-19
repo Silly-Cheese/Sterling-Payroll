@@ -104,3 +104,13 @@ Sterling Payroll Services now has a **default simulated tax rate** per company a
 - **Review:** Payroll register, gross/net summaries, CSV exports, and employee fictional statements display simulated taxes separately. Older payroll lines without tax metadata continue to show 0% tax and retain their historical fixed deductions.
 
 **Important:** These are illustrative simulated deductions only. They are **not** actual payroll taxes, withholding tables, legal tax filings, or remittances. The new Firestore fields require the updated `firestore.rules` to be deployed to project `sterling-payroll-5d200` before the feature works against production Firestore. GitHub Pages deployment does **not** deploy database security rules; use the gated Firestore rules workflow in this repository or publish the approved rules from Firebase Console.
+
+## Commission-only payroll and cached settings-form recovery
+
+When creating a payroll run, choose **Commissions only** to include approved sales in the selected period without salary, hours, overtime, leave or bonuses. **Timecards only** ignores sales, and **Timecards + commissions** includes both. A run created before processing modes were introduced remains **combined**. Names are optional at creation, and authorized users can rename runs later.
+
+To diagnose a commission-only run, open it and choose **Inspect input exceptions**. The inspection now checks active employee eligibility, enabled company commissions, approved sales dated within the pay period, calculated commission amounts and simulated taxes. Pending, rejected and out-of-period sales do not become pay lines.
+
+Some browsers previously cached a payroll-policy form without its simulated-tax percentage input, causing a `Cannot set properties of null (setting 'value')` error. The Phase 3 controller now requests uncached, release-versioned partials and inserts that field defensively when an older form is present. If the site still displays the old form, first wait for the GitHub Pages deployment and perform a hard refresh.
+
+**Important:** All payroll and tax outputs are fictional. Security changes in `firestore.rules` must be deployed separately to Firebase; GitHub Pages only deploys the frontend.
